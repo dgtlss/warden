@@ -28,20 +28,6 @@ class WardenAuditCommand extends Command
         $output = $process->getOutput();
         $data = json_decode($output, true);
 
-        // fake data
-        $data = [
-            'advisories' => [
-                'test/test' => [
-                    [
-                        'title' => 'Test',
-                        'cve' => 'CVE-2024-1234', 
-                        'link' => 'https://example.com',
-                        'affected_versions' => '1.0.0'
-                    ]
-                ]
-            ]
-        ];
-
         if (isset($data['advisories']) && !empty($data['advisories'])) {
             $this->newLine();
             $this->error('Vulnerabilities found.');
@@ -58,13 +44,16 @@ class WardenAuditCommand extends Command
                 }
             }
 
+            $this->newLine();
+            $this->info('Warden audit completed.');
+
             // Check if the --silent option is not set before sending notifications
             if (!$this->option('silent')) {
                 $this->sendNotifications($report);
+                $this->newLine();
+                $this->info('Notifications sent.');
             }
 
-            $this->newLine();
-            $this->info('Warden audit completed.');
             $this->newLine();
             $this->info('⭐️ If you found this useful, please consider starring the project on GitHub: https://github.com/dgtlss/warden');
 
@@ -103,8 +92,6 @@ class WardenAuditCommand extends Command
         if ($webhookUrl) {
             Http::post($webhookUrl, ['text' => $report]);
         }
-
-        $emailRecipients = 'nathanlanger@googlemail.com';
 
         if ($emailRecipients) {
             $this->sendEmailReport($report, $emailRecipients);
