@@ -30,18 +30,13 @@ Add the following variables to your `.env` file:
 ```env
 # Webhook Configuration
 WARDEN_WEBHOOK_URL=
-WARDEN_EMAIL_RECIPIENTS=email1@example.com,email2@example.com
-
-# Mail Configuration
-WARDEN_MAIL_TRANSPORT=smtp
-WARDEN_MAIL_HOST=smtp.example.com
-WARDEN_MAIL_PORT=587
-WARDEN_MAIL_USERNAME=
-WARDEN_MAIL_PASSWORD=
-WARDEN_MAIL_ENCRYPTION=tls
-WARDEN_MAIL_FROM_ADDRESS=warden@example.com
-WARDEN_MAIL_FROM_NAME="Warden Alerts"
 ```
+
+```env
+# Email Recipients Configuration
+WARDEN_EMAIL_RECIPIENTS=email1@example.com,email2@example.com
+```
+
 
 ## Usage
 
