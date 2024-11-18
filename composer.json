@@ -1,6 +1,9 @@
 {
     "name": "dgtlss/warden",
     "description": "A Laravel package that proactively monitors your dependencies for security vulnerabilities by running automated composer audits and sending notifications via webhooks and email",
+    "keywords": ["laravel", "composer", "security", "vulnerabilities", "audits", "notifications", "CVE"],
+    "version": "1.0.0",
+    "license": "MIT",
     "autoload": {
         "psr-4": {
             "Dgtlss\\Warden\\": "src/"
@@ -8,14 +11,19 @@
     },
     "authors": [
         {
-            "name": "dgtlss",
+            "name": "Nathan Langer",
             "email": "nathanlanger@googlemail.com"
         }
     ],
+    "minimum-stability": "dev",
+    "prefer-stable": true,
     "require": {
-        "php": "^7.4|^8.0",
-        "illuminate/support": "^7.0|^8.0|^9.0",
+        "php": ">=8.1",
+        "illuminate/support": "^7.0|^8.0|^9.0|^10.0|^11.0",
         "guzzlehttp/guzzle": "^7.0"
+    },
+    "require-dev": {
+        "laravel/framework": "^9.0.0"
     },
     "extra": {
         "laravel": {
