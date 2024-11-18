@@ -6,8 +6,6 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Symfony\Component\Process\Process;
-use Illuminate\Mail\Mailer;
-use Illuminate\Mail\MailManager;
 
 class WardenAuditCommand extends Command
 {
@@ -17,27 +15,58 @@ class WardenAuditCommand extends Command
 
     public function handle()
     {
-        $this->info('Running composer audit...');
+        $this->info('Running Warden audit...');
 
         $process = new Process(['composer', 'audit', '--format=json']);
         $process->run();
 
         if (!$process->isSuccessful()) {
-            $this->error('Composer audit failed to run.');
+            $this->error('Warden audit failed to run.');
             return 2; // Non-zero exit code indicates failure
         }
 
         $output = $process->getOutput();
         $data = json_decode($output, true);
 
+        // fake data
+        $data = [
+            'advisories' => [
+                'test/test' => [
+                    [
+                        'title' => 'Test',
+                        'cve' => 'CVE-2024-1234', 
+                        'link' => 'https://example.com',
+                        'affected_versions' => '1.0.0'
+                    ]
+                ]
+            ]
+        ];
+
         if (isset($data['advisories']) && !empty($data['advisories'])) {
+            $this->newLine();
             $this->error('Vulnerabilities found.');
             $report = $this->prepareReport($data['advisories']);
+
+            $this->newLine();
+            foreach($report as $package => $issues) {
+                $this->info('Package: '.$package);
+                foreach($issues as $issue) {
+                    $this->info('Title: '.$issue['title']);
+                    $this->info('CVE: '.$issue['cve']);
+                    $this->info('Link: https://www.cve.org/CVERecord?id='.$issue['cve']);
+                    $this->info('Affected Versions: '.$issue['affected_versions']);
+                }
+            }
 
             // Check if the --silent option is not set before sending notifications
             if (!$this->option('silent')) {
                 $this->sendNotifications($report);
             }
+
+            $this->newLine();
+            $this->info('Warden audit completed.');
+            $this->newLine();
+            $this->info('⭐️ If you found this useful, please consider starring the project on GitHub: https://github.com/dgtlss/warden');
 
             return 1; // Non-zero exit code to fail the CI/CD pipeline
         } else {
@@ -49,20 +78,24 @@ class WardenAuditCommand extends Command
 
     protected function prepareReport(array $advisories)
     {
-        $report = "Composer Audit Report\n\n";
+        $report = "Warden Audit Report\n\n";
+        $reportData = [];
         foreach ($advisories as $package => $issues) {
-            $report .= "Package: $package\n";
+            $packageIssues = [];
             foreach ($issues as $issue) {
-                $report .= "- Title: {$issue['title']}\n";
-                $report .= "  CVE: {$issue['cve']}\n";
-                $report .= "  Link: {$issue['link']}\n";
-                $report .= "  Affected Versions: {$issue['affected_versions']}\n\n";
+                $packageIssues[] = [
+                    'title' => $issue['title'],
+                    'cve' => $issue['cve'],
+                    'link' => "https://www.cve.org/CVERecord?id={$issue['cve']}",
+                    'affected_versions' => $issue['affected_versions']
+                ];
             }
+            $reportData[$package] = $packageIssues;
         }
-        return $report;
+        return $reportData;
     }
 
-    protected function sendNotifications($report)
+    protected function sendNotifications(array $report)
     {
         $webhookUrl = config('warden.webhook_url');
         $emailRecipients = config('warden.email_recipients');
@@ -71,47 +104,18 @@ class WardenAuditCommand extends Command
             Http::post($webhookUrl, ['text' => $report]);
         }
 
-        if ($emailRecipients) {
-            $mailer = $this->createCustomMailer();
+        $emailRecipients = 'nathanlanger@googlemail.com';
 
-            $mailer->raw($report, function ($message) use ($emailRecipients) {
-                $message->to(explode(',', $emailRecipients))
-                        ->subject('Composer Audit Report');
-            });
+        if ($emailRecipients) {
+            $this->sendEmailReport($report, $emailRecipients);
         }
     }
 
-    protected function createCustomMailer()
+    protected function sendEmailReport(array $report, $emailRecipients)
     {
-        $config = [
-            'transport' => config('warden.mail.transport', 'smtp'),
-            'host' => config('warden.mail.host'),
-            'port' => config('warden.mail.port'),
-            'encryption' => config('warden.mail.encryption'),
-            'username' => config('warden.mail.username'),
-            'password' => config('warden.mail.password'),
-            'timeout' => null,
-            'auth_mode' => null,
-        ];
-
-        $fromAddress = config('warden.mail.from_address');
-        $fromName = config('warden.mail.from_name');
-
-        $mailManager = app(MailManager::class);
-
-        // Create a custom transport
-        $transport = $mailManager->createTransport($config);
-
-        // Create a custom mailer instance
-        $mailer = new Mailer(
-            $mailManager->getViewFactory(),
-            $mailManager->getSwiftMailer($transport),
-            app('events')
-        );
-
-        // Set the from address
-        $mailer->alwaysFrom($fromAddress, $fromName);
-
-        return $mailer;
+        Mail::send('warden::mail.report', ['report' => $report], function ($message) use ($emailRecipients, $report) {
+            $message->to($emailRecipients)
+                    ->subject('Warden Audit Report');
+        });
     }
 }

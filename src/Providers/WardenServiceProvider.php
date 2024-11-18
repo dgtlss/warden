@@ -32,5 +32,7 @@ class WardenServiceProvider extends ServiceProvider
                 $schedule->command('warden:audit')->daily();
             });
         }
+
+        $this->loadViewsFrom(__DIR__.'/../views', 'warden');
     }
 }
