@@ -86,7 +86,7 @@
                         <li>Title: {{ $issue['title'] }}</li>
                         <li>CVE: {{ $issue['cve'] }}</li>
                         <li>Link: <a href="{{ $issue['link'] }}" target="_blank">{{ $issue['link'] }}</a></li>
-                        <li>Affected Versions: {{ $issue['affected_versions'] }}</li>
+                        <li>Affected Versions: {{ $issue['affected_versions'] ?? 'N/A' }}</li>
                     @endforeach
                 </ul>
             @endforeach
