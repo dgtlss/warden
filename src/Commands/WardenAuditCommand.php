@@ -20,11 +20,6 @@ class WardenAuditCommand extends Command
         $process = new Process(['composer', 'audit', '--format=json']);
         $process->run();
 
-        if (!$process->isSuccessful()) {
-            $this->error('Warden audit failed to run.');
-            return 2; // Non-zero exit code indicates failure
-        }
-
         $output = $process->getOutput();
         $data = json_decode($output, true);
 
@@ -35,12 +30,13 @@ class WardenAuditCommand extends Command
 
             $this->newLine();
             foreach($report as $package => $issues) {
+                $this->newLine();
                 $this->info('Package: '.$package);
                 foreach($issues as $issue) {
                     $this->info('Title: '.$issue['title']);
                     $this->info('CVE: '.$issue['cve']);
                     $this->info('Link: https://www.cve.org/CVERecord?id='.$issue['cve']);
-                    $this->info('Affected Versions: '.$issue['affected_versions']);
+                    $this->info('Affected Versions: '.$issue['affected_versions'] ?? 'N/A');
                 }
             }
 
@@ -61,7 +57,7 @@ class WardenAuditCommand extends Command
         } else {
             $this->info('No vulnerabilities found.');
             return 0; // Zero exit code indicates success
-            }
+        }
     }
 
 
@@ -76,7 +72,7 @@ class WardenAuditCommand extends Command
                     'title' => $issue['title'],
                     'cve' => $issue['cve'],
                     'link' => "https://www.cve.org/CVERecord?id={$issue['cve']}",
-                    'affected_versions' => $issue['affected_versions']
+                    'affected_versions' => $issue['affected_versions'] ?? 'N/A'
                 ];
             }
             $reportData[$package] = $packageIssues;
