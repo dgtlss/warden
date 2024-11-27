@@ -18,7 +18,7 @@ class WardenServiceProvider extends ServiceProvider
         // Publish configuration
         $this->publishes([
             __DIR__.'/../config/warden.php' => config_path('warden.php'),
-        ], 'config');
+        ], 'warden-config');
 
         // Register command
         if ($this->app->runningInConsole()) {
