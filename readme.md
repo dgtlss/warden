@@ -18,7 +18,7 @@ composer require dgtlss/warden
 Publish the configuration file:
 
 ```bash
-php artisan vendor:publish --tag="warden-config"
+php artisan vendor:publish --tag="config"
 ```
 
 This will create a `config/warden.php` file in your application.
