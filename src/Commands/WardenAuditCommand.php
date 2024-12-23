@@ -6,10 +6,14 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Symfony\Component\Process\Process;
+use Dgtlss\Warden\Services\Audits\ComposerAuditService;
+use Dgtlss\Warden\Services\Audits\NpmAuditService;
+use Dgtlss\Warden\Services\Audits\EnvAuditService;
+use Dgtlss\Warden\Services\Audits\StorageAuditService;
 
 class WardenAuditCommand extends Command
 {
-    protected $signature = 'warden:audit {--silent : Run the audit without sending notifications}';
+    protected $signature = 'warden:audit {--silent : Run the audit without sending notifications} {--npm : Run the npm audit}';
 
     protected $description = 'Performs a composer audit and reports findings via Warden.';
 
@@ -17,47 +21,62 @@ class WardenAuditCommand extends Command
     {
         $this->info('Running Warden audit...');
 
-        $process = new Process(['composer', 'audit', '--format=json']);
-        $process->run();
+        $auditServices = [
+            new ComposerAuditService(),
+            new EnvAuditService(),
+            new StorageAuditService(),
+        ];
 
-        $output = $process->getOutput();
-        $data = json_decode($output, true);
+        if ($this->option('npm')) {
+            $auditServices[] = new NpmAuditService();
+        }
 
-        if (isset($data['advisories']) && !empty($data['advisories'])) {
-            $this->newLine();
-            $this->error('Vulnerabilities found.');
-            $report = $this->prepareReport($data['advisories']);
+        $hasFailures = false;
+        $allFindings = [];
 
-            $this->newLine();
-            foreach($report as $package => $issues) {
-                $this->newLine();
-                $this->info('Package: '.$package);
-                foreach($issues as $issue) {
-                    $this->info('Title: '.$issue['title']);
-                    $this->info('CVE: '.$issue['cve']);
-                    $this->info('Link: https://www.cve.org/CVERecord?id='.$issue['cve']);
-                    $this->info('Affected Versions: '.$issue['affected_versions'] ?? 'N/A');
-                }
+        foreach ($auditServices as $service) {
+            $this->info("Running {$service->getName()} audit...");
+            
+            if (!$service->run()) {
+                $this->error("{$service->getName()} audit failed to run.");
+                $hasFailures = true;
+                continue;
             }
 
-            $this->newLine();
-            $this->info('Warden audit completed.');
+            $findings = $service->getFindings();
+            if (!empty($findings)) {
+                $allFindings = array_merge($allFindings, $findings);
+            }
+        }
 
-            // Check if the --silent option is not set before sending notifications
+        if (!empty($allFindings)) {
+            $this->newLine();
+            $this->error('Vulnerabilities found.');
+            
+            foreach ($allFindings as $finding) {
+                $this->newLine();
+                $this->info('Source: ' . $finding['source']);
+                $this->info('Package: ' . $finding['package']);
+                $this->info('Title: ' . $finding['title']);
+                $this->error('Severity: ' . $finding['severity']);
+                if ($finding['cve']) {
+                    $this->info('CVE: ' . $finding['cve']);
+                    $this->info('Link: https://www.cve.org/CVERecord?id=' . $finding['cve']);
+                }
+                $finding['affected_versions'] ? $this->info('Affected Versions: ' . $finding['affected_versions']) : null;
+            }
+
             if (!$this->option('silent')) {
-                $this->sendNotifications($report);
+                $this->sendNotifications($allFindings);
                 $this->newLine();
                 $this->info('Notifications sent.');
             }
 
-            $this->newLine();
-            $this->info('⭐️ If you found this useful, please consider starring the project on GitHub: https://github.com/dgtlss/warden');
-
-            return 1; // Non-zero exit code to fail the CI/CD pipeline
-        } else {
-            $this->info('No vulnerabilities found.');
-            return 0; // Zero exit code indicates success
+            return 1;
         }
+
+        $this->info('No vulnerabilities found.');
+        return $hasFailures ? 2 : 0;
     }
 
 
@@ -72,7 +91,7 @@ class WardenAuditCommand extends Command
                     'title' => $issue['title'],
                     'cve' => $issue['cve'],
                     'link' => "https://www.cve.org/CVERecord?id={$issue['cve']}",
-                    'affected_versions' => $issue['affected_versions'] ?? 'N/A'
+                    'affected_versions' => $issue['affected_versions']
                 ];
             }
             $reportData[$package] = $packageIssues;

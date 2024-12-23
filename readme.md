@@ -1,4 +1,3 @@
-
 # Warden
 
 Warden is a Laravel package that performs security audits on your composer dependencies and provides automated notifications for any discovered vulnerabilities. 
@@ -37,28 +36,78 @@ WARDEN_WEBHOOK_URL=
 WARDEN_EMAIL_RECIPIENTS=email1@example.com,email2@example.com
 ```
 
+## Available Audits
+
+Warden performs several security audits on your Laravel application:
+
+### 1. Composer Dependencies Audit
+Checks your PHP dependencies for known security vulnerabilities using the `composer audit` command.
+
+### 2. NPM Dependencies Audit
+When enabled with the `--npm` flag, checks your JavaScript dependencies for known security vulnerabilities using `npm audit`.
+
+### 3. Environment Configuration Audit
+Verifies your environment configuration for security best practices:
+- Checks for presence of `.env` file
+- Ensures `.env` is properly gitignored
+- Validates presence of critical environment variables
+- Identifies potentially sensitive information
+
+### 4. Storage Permissions Audit
+Validates directory permissions for critical Laravel paths:
+- `storage/framework`
+- `storage/logs`
+- `bootstrap/cache`
+- Ensures proper write permissions
+- Identifies missing or incorrectly configured directories
+
+### 5. Configuration Security Audit
+Examines your Laravel configuration for security issues:
+- Debug mode status
+- Session security settings
+- CSRF protection
+- Other common security misconfigurations
 
 ## Usage
 
-Warden provides a simple command to run security audits:
-
+### Basic Audit
 ```bash
 php artisan warden:audit
 ```
 
-### Command Options
+### Including NPM Audit
+```bash
+php artisan warden:audit --npm
+```
 
-- `--silent`: Run the audit without sending notifications
+### Silent Mode (No Notifications)
 ```bash
 php artisan warden:audit --silent
 ```
 
-### Exit Codes
+## Understanding Audit Results
 
-The command returns different exit codes based on the audit results:
-- `0`: No vulnerabilities found
-- `1`: Vulnerabilities detected
-- `2`: Audit process failed to run
+The audit command will return different status codes:
+- `0`: No vulnerabilities or issues found
+- `1`: Vulnerabilities or security issues detected
+- `2`: One or more audit processes failed to run
+
+### Severity Levels
+
+Findings are categorized by severity:
+- `critical`: Requires immediate attention
+- `high`: Should be addressed as soon as possible
+- `medium`: Should be reviewed and fixed
+- `low`: Minor security concerns
+- `error`: Audit process or configuration errors
+
+## Notification Format
+
+When notifications are enabled, the report includes:
+- Audit type (composer, npm, environment, storage, or configuration)
+- Issue details specific to each audit type
+- Severity level
+- Remediation suggestions where applicable
 
 ## Notifications
 
