@@ -10,6 +10,10 @@ use Dgtlss\Warden\Services\Audits\ComposerAuditService;
 use Dgtlss\Warden\Services\Audits\NpmAuditService;
 use Dgtlss\Warden\Services\Audits\EnvAuditService;
 use Dgtlss\Warden\Services\Audits\StorageAuditService;
+use Dgtlss\Warden\Services\Audits\DebugModeAuditService;
+use function Laravel\Prompts\info;
+use function Laravel\Prompts\table;
+use function Laravel\Prompts\clear;
 
 class WardenAuditCommand extends Command
 {
@@ -19,12 +23,16 @@ class WardenAuditCommand extends Command
 
     public function handle()
     {
-        $this->info('Running Warden audit...');
+        clear();
+
+        $composerJson = json_decode(file_get_contents(__DIR__ . '/../../composer.json'), true);
+        $this->info('Warden Audit Version ' . $composerJson['version']);
 
         $auditServices = [
             new ComposerAuditService(),
             new EnvAuditService(),
             new StorageAuditService(),
+            new DebugModeAuditService(),
         ];
 
         if ($this->option('npm')) {
@@ -50,32 +58,39 @@ class WardenAuditCommand extends Command
         }
 
         if (!empty($allFindings)) {
-            $this->newLine();
-            $this->error('Vulnerabilities found.');
+            $this->error(count($allFindings) . ' vulnerabilities found.');
             
+            $headers = ['Source', 'Package ', 'Title', 'Severity', 'CVE', 'Link', 'Affected Versions'];
+            $rows = [];
+
             foreach ($allFindings as $finding) {
-                $this->newLine();
-                $this->info('Source: ' . $finding['source']);
-                $this->info('Package: ' . $finding['package']);
-                $this->info('Title: ' . $finding['title']);
-                $this->error('Severity: ' . $finding['severity']);
-                if ($finding['cve']) {
-                    $this->info('CVE: ' . $finding['cve']);
-                    $this->info('Link: https://www.cve.org/CVERecord?id=' . $finding['cve']);
-                }
-                $finding['affected_versions'] ? $this->info('Affected Versions: ' . $finding['affected_versions']) : null;
+                $row = [
+                    $finding['source'],
+                    $finding['package'],
+                    $finding['title'],
+                    $finding['severity'],
+                    $finding['cve'] ?? '-',
+                    $finding['cve'] ? 'https://www.cve.org/CVERecord?id=' . $finding['cve'] : '-',
+                    $finding['affected_versions'] ?? '-'
+                ];
+                $rows[] = $row;
             }
+
+            table(
+                headers: $headers,
+                rows: $rows
+            );
 
             if (!$this->option('silent')) {
                 $this->sendNotifications($allFindings);
                 $this->newLine();
-                $this->info('Notifications sent.');
+                info('Notifications sent.');
             }
 
             return 1;
         }
 
-        $this->info('No vulnerabilities found.');
+        info('No vulnerabilities found.');
         return $hasFailures ? 2 : 0;
     }
 
@@ -109,7 +124,9 @@ class WardenAuditCommand extends Command
         }
 
         if ($emailRecipients) {
-            $this->sendEmailReport($report, $emailRecipients);
+            // Convert comma-separated string to array if needed
+            $recipients = is_string($emailRecipients) ? explode(',', $emailRecipients) : $emailRecipients;
+            $this->sendEmailReport($report, $recipients);
         }
     }
 

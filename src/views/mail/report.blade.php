@@ -25,8 +25,10 @@
             margin-bottom: 20px;
         }
         .logo img {
-            max-width: 200px;
-            height: auto;
+            max-width: 100px;
+            border-radius: 360px;
+            height: 100px;
+            width: 100px;
         }
         .title {
             font-size: 24px;
@@ -71,24 +73,42 @@
 <body>
     <div class="container">
         <div class="logo">
-            <img src="https://github.com/dgtlss/warden/blob/main/public/warden-logo.png" alt="Logo">
+            <img src="https://raw.githubusercontent.com/dgtlss/warden/refs/heads/main/public/warden-logo.png" alt="Logo">
         </div>
         <div class="title">
             Warden Audit Report
         </div>
         <div class="report-content">
-            <p>Here is your warden audit report for {{ now()->format('F j, Y') }}.</p>
+            <p>Here is your warden audit report for {{ now()->format('F j, Y') }}.</p> 
 
-            @foreach($report as $package => $issues)
-                <h2>Package: {{ $package }}</h2>
-                <ul>
-                    @foreach($issues as $issue)
-                        <li>Title: {{ $issue['title'] }}</li>
-                        <li>CVE: {{ $issue['cve'] }}</li>
-                        <li>Link: <a href="{{ $issue['link'] }}" target="_blank">{{ $issue['link'] }}</a></li>
-                        <li>Affected Versions: {{ $issue['affected_versions'] ?? 'N/A' }}</li>
-                    @endforeach
-                </ul>
+            @foreach($report as $finding)
+                <h3>{{ $finding['source'] }} Issue Found</h3>
+                <table>
+                    <tr>
+                        <th>Package</th>
+                        <td>{{ $finding['package'] }}</td>
+                    </tr>
+                    <tr>
+                        <th>Title</th>
+                        <td>{{ $finding['title'] }}</td>
+                    </tr>
+                    <tr>
+                        <th>Severity</th>
+                        <td>{{ $finding['severity'] }}</td>
+                    </tr>
+                    @if(isset($finding['cve']) && $finding['cve'] !== '-')
+                    <tr>
+                        <th>CVE</th>
+                        <td><a href="https://www.cve.org/CVERecord?id={{ $finding['cve'] }}">{{ $finding['cve'] }}</a></td>
+                    </tr>
+                    @endif
+                    @if(isset($finding['affected_versions']) && $finding['affected_versions'] !== '-')
+                    <tr>
+                        <th>Affected Versions</th>
+                        <td>{{ $finding['affected_versions'] }}</td>
+                    </tr>
+                    @endif
+                </table>
             @endforeach
 
             <footer>
