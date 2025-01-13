@@ -48,6 +48,9 @@ class WardenAuditCommand extends Command
             
             if (!$service->run()) {
                 $this->error("{$service->getName()} audit failed to run.");
+                if ($service instanceof ComposerAuditService) {
+                    $this->error("Error: " . collect($service->getFindings())->last()['error'] ?? 'Unknown error');
+                }
                 $hasFailures = true;
                 continue;
             }
