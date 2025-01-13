@@ -41,6 +41,7 @@ class WardenAuditCommand extends Command
 
         $hasFailures = false;
         $allFindings = [];
+        $abandonedPackages = [];
 
         foreach ($auditServices as $service) {
             $this->info("Running {$service->getName()} audit...");
@@ -54,6 +55,35 @@ class WardenAuditCommand extends Command
             $findings = $service->getFindings();
             if (!empty($findings)) {
                 $allFindings = array_merge($allFindings, $findings);
+            }
+
+            // Collect abandoned packages
+            if ($service instanceof ComposerAuditService) {
+                $abandonedPackages = $service->getAbandonedPackages();
+            }
+        }
+
+        // Handle abandoned packages separately
+        if (!empty($abandonedPackages)) {
+            $this->warn(count($abandonedPackages) . ' abandoned packages found.');
+            
+            $headers = ['Package', 'Recommended Replacement'];
+            $rows = [];
+
+            foreach ($abandonedPackages as $package) {
+                $rows[] = [
+                    $package['package'],
+                    $package['replacement'] ?? 'No replacement suggested'
+                ];
+            }
+
+            table(
+                headers: $headers,
+                rows: $rows
+            );
+
+            if (!$this->option('silent')) {
+                $this->sendAbandonedPackagesNotification($abandonedPackages);
             }
         }
 
@@ -136,5 +166,32 @@ class WardenAuditCommand extends Command
             $message->to($emailRecipients)
                     ->subject('Warden Audit Report');
         });
+    }
+
+    protected function sendAbandonedPackagesNotification(array $abandonedPackages)
+    {
+        $webhookUrl = config('warden.webhook_url');
+        $emailRecipients = config('warden.email_recipients');
+
+        $message = "The following packages are marked as abandoned:\n\n";
+        foreach ($abandonedPackages as $package) {
+            $message .= "- {$package['package']}";
+            if ($package['replacement']) {
+                $message .= " (Recommended replacement: {$package['replacement']})";
+            }
+            $message .= "\n";
+        }
+
+        if ($webhookUrl) {
+            Http::post($webhookUrl, ['text' => $message]);
+        }
+
+        if ($emailRecipients) {
+            $recipients = is_string($emailRecipients) ? explode(',', $emailRecipients) : $emailRecipients;
+            Mail::raw($message, function ($message) use ($recipients) {
+                $message->to($recipients)
+                        ->subject('Warden Audit - Abandoned Packages Found');
+            });
+        }
     }
 }

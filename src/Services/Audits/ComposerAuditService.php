@@ -6,6 +6,8 @@ use Symfony\Component\Process\Process;
 
 class ComposerAuditService extends AbstractAuditService
 {
+    private $abandonedPackages = [];
+
     public function getName(): string
     {
         return 'composer';
@@ -22,6 +24,17 @@ class ComposerAuditService extends AbstractAuditService
 
         $output = json_decode($process->getOutput(), true);
         
+        // Handle abandoned packages
+        if (isset($output['abandoned']) && !empty($output['abandoned'])) {
+            foreach ($output['abandoned'] as $package => $replacement) {
+                $this->abandonedPackages[] = [
+                    'package' => $package,
+                    'replacement' => is_string($replacement) ? $replacement : null
+                ];
+            }
+        }
+
+        // Handle security advisories
         if (isset($output['advisories']) && !empty($output['advisories'])) {
             foreach ($output['advisories'] as $package => $issues) {
                 foreach ($issues as $issue) {
@@ -37,5 +50,10 @@ class ComposerAuditService extends AbstractAuditService
         }
 
         return true;
+    }
+
+    public function getAbandonedPackages(): array
+    {
+        return $this->abandonedPackages;
     }
 }
