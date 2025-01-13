@@ -19,19 +19,19 @@ class DebugModeAuditService extends AbstractAuditService
 
     public function run(): bool
     {
-        // Check if APP_DEBUG is enabled
-        if (config('app.debug') === true) {
+        // Check if APP_DEBUG is enabled in production only
+        if (config('app.env') === 'production' && config('app.debug') === true) {
             $this->addFinding([
                 'package' => 'app-config',
-                'title' => 'Debug mode is enabled',
+                'title' => 'Debug mode is enabled in production',
                 'severity' => 'critical',
                 'cve' => null,
                 'affected_versions' => null
             ]);
         }
 
-        // Check if APP_ENV is production but debug features are enabled
-        if (config('app.env') === 'production') {
+        // Only check for development packages if we're actually running in production
+        if ($this->isActuallyProduction()) {
             // Check for development packages in composer.json
             $composerJson = $this->getComposerJson();
             if ($composerJson) {
@@ -121,5 +121,27 @@ class DebugModeAuditService extends AbstractAuditService
         }
 
         return false;
+    }
+
+    private function isActuallyProduction(): bool
+    {
+        // Check for common CI/CD environment variables
+        $ciEnvironments = [
+            'CI',
+            'CONTINUOUS_INTEGRATION',
+            'GITHUB_ACTIONS',
+            'GITLAB_CI',
+            'JENKINS_URL',
+            'TRAVIS',
+            'CIRCLECI'
+        ];
+
+        foreach ($ciEnvironments as $env) {
+            if (getenv($env) !== false) {
+                return false;
+            }
+        }
+
+        return config('app.env') === 'production';
     }
 }
