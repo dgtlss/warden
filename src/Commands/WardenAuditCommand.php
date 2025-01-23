@@ -13,7 +13,6 @@ use Dgtlss\Warden\Services\Audits\StorageAuditService;
 use Dgtlss\Warden\Services\Audits\DebugModeAuditService;
 use function Laravel\Prompts\info;
 use function Laravel\Prompts\table;
-use function Laravel\Prompts\clear;
 
 class WardenAuditCommand extends Command
 {
@@ -23,7 +22,6 @@ class WardenAuditCommand extends Command
 
     public function handle()
     {
-        clear();
 
         $composerJson = json_decode(file_get_contents(__DIR__ . '/../../composer.json'), true);
         $this->info('Warden Audit Version ' . $composerJson['version']);
