@@ -16,7 +16,10 @@ use function Laravel\Prompts\table;
 
 class WardenAuditCommand extends Command
 {
-    protected $signature = 'warden:audit {--silent : Run the audit without sending notifications} {--npm : Run the npm audit}';
+    protected $signature = 'warden:audit 
+    {--silent : Run the audit without sending notifications} 
+    {--npm : Run the npm audit}
+    {--ignore-abandoned : Ignore abandoned packages, without throwing an error}';
 
     protected $description = 'Performs a composer audit and reports findings via Warden.';
 
@@ -65,7 +68,7 @@ class WardenAuditCommand extends Command
         }
 
         // Handle abandoned packages separately
-        if (!empty($abandonedPackages)) {
+        if (!empty($abandonedPackages) && !$this->option('ignore-abandoned')) {
             $this->warn(count($abandonedPackages) . ' abandoned packages found.');
             
             $headers = ['Package', 'Recommended Replacement'];
@@ -86,6 +89,8 @@ class WardenAuditCommand extends Command
             if (!$this->option('silent')) {
                 $this->sendAbandonedPackagesNotification($abandonedPackages);
             }
+        } elseif (!empty($abandonedPackages)) {
+            $this->warn(count($abandonedPackages) . ' abandoned packages found (ignored due to --ignore-abandoned flag)');
         }
 
         if (!empty($allFindings)) {

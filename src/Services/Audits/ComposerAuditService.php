@@ -43,7 +43,7 @@ class ComposerAuditService extends AbstractAuditService
                 return false;
             }
 
-            // Handle abandoned packages
+            // Handle abandoned packages (but don't fail the audit)
             if (isset($output['abandoned']) && !empty($output['abandoned'])) {
                 foreach ($output['abandoned'] as $package => $replacement) {
                     $this->abandonedPackages[] = [
