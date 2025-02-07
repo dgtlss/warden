@@ -68,6 +68,12 @@ Examines your Laravel configuration for security issues:
 - CSRF protection
 - Other common security misconfigurations
 
+## Additional Arguments
+
+### --ignore-abandoned
+
+This flag will ignore abandoned packages in the warden audit. This is useful if you are using warden in a CI/CD pipeline and you want to ignore abandoned packages without failing the deployment. Particularly useful for Laravel packages that have abandoned packages as dependencies.
+
 ## Usage
 
 ### Basic Audit
