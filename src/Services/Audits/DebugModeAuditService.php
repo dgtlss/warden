@@ -135,7 +135,14 @@ class DebugModeAuditService extends AbstractAuditService
     private function hasProtectiveMiddleware($route): bool
     {
         $middleware = $route->middleware();
-        $protectiveMiddleware = ['auth', 'admin', 'can:', 'ability:', 'role:','\Barryvdh\Debugbar\Middleware\DebugbarEnabled::class'];
+        $protectiveMiddleware = [
+            'auth',
+            'admin',
+            'can:',
+            'ability:',
+            'role:',
+            'Barryvdh\Debugbar\Middleware\DebugbarEnabled'
+        ];
         
         foreach ($middleware as $m) {
             foreach ($protectiveMiddleware as $protect) {
