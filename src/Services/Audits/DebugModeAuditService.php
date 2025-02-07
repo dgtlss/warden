@@ -102,17 +102,26 @@ class DebugModeAuditService extends AbstractAuditService
 
     private function hasExposedTestingRoutes(): bool
     {
-        // Check common testing routes that shouldn't be accessible in production
-        $testingRoutes = [
-            'telescope',
-            'horizon',
-            '_dusk',
-            '_debugbar',
-        ];
-
         $routeCollection = \Route::getRoutes();
+        
+        // Check debugbar routes separately as they're allowed when APP_DEBUG is true
         foreach ($routeCollection as $route) {
             $uri = $route->uri();
+            if (str_starts_with($uri, '_debugbar')) {
+                // Only flag debugbar routes as exposed if APP_DEBUG is false and there's no protective middleware
+                if (!config('app.debug') && !$this->hasProtectiveMiddleware($route)) {
+                    return true;
+                }
+                continue;
+            }
+            
+            // Check other testing routes that should never be exposed in production
+            $testingRoutes = [
+                'telescope',
+                'horizon',
+                '_dusk',
+            ];
+            
             foreach ($testingRoutes as $testRoute) {
                 if (str_starts_with($uri, $testRoute)) {
                     return true;
@@ -120,6 +129,22 @@ class DebugModeAuditService extends AbstractAuditService
             }
         }
 
+        return false;
+    }
+
+    private function hasProtectiveMiddleware($route): bool
+    {
+        $middleware = $route->middleware();
+        $protectiveMiddleware = ['auth', 'admin', 'can:', 'ability:', 'role:','\Barryvdh\Debugbar\Middleware\DebugbarEnabled::class'];
+        
+        foreach ($middleware as $m) {
+            foreach ($protectiveMiddleware as $protect) {
+                if (str_starts_with($m, $protect)) {
+                    return true;
+                }
+            }
+        }
+        
         return false;
     }
 
