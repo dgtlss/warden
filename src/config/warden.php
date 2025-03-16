@@ -4,33 +4,44 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Warden Configuration
+    | Notification Settings
     |--------------------------------------------------------------------------
     |
-    | Set the webhook URL and email recipients for notifications.
-    | These can be set here or in the .env file.
+    | Configure where Warden should send security audit notifications:
+    | - webhook_url: Slack, Discord, or custom webhook endpoint
+    | - email_recipients: Comma-separated list of email addresses
+    |
+    | Example:
+    | WARDEN_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+    | WARDEN_EMAIL_RECIPIENTS=security@company.com,admin@company.com
     |
     */
 
     'webhook_url' => env('WARDEN_WEBHOOK_URL', null),
-
-    'email_recipients' => env('WARDEN_EMAIL_RECIPIENTS', null), // Comma-separated emails
+    'email_recipients' => env('WARDEN_EMAIL_RECIPIENTS', null),
 
     /*
     |--------------------------------------------------------------------------
-    | Sensitive Keys
+    | Security Audit Configuration
     |--------------------------------------------------------------------------
     |
-    | These are the keys that we want to check for in the .env file.
-    | If they are not found, we will add a finding to your report.
+    | Define environment variables that should be checked during security audits.
+    | These keys are considered security-critical and should be properly set
+    | in your production environment.
+    |
+    | Add your own sensitive keys based on your application's requirements.
+    | The check will fail if these keys are missing from your .env file,
+    | encouraging proper security configuration from the start.
+    |
+    | Example key formats:
+    | - Database: DB_PASSWORD
+    | - Email: SMTP_PASSWORD, MAILGUN_SECRET
+    | - Payment: STRIPE_SECRET_KEY, PAYPAL_SECRET
+    | - Cloud: AWS_SECRET_KEY, GOOGLE_CLOUD_KEY
     |
     */
    
     'sensitive_keys' => [
-        'DB_PASSWORD',
-        'MAIL_PASSWORD',
-        'STRIPE_API_KEY',
-        'AWS_ACCESS_KEY_ID',
-        'AWS_SECRET_ACCESS_KEY',
+       // Add your sensitive keys here
     ],
 ];
