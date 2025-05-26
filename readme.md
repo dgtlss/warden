@@ -1,5 +1,9 @@
 # Warden
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/dgtlss/warden.svg?style=flat-square)](https://packagist.org/packages/dgtlss/warden)
+[![Total Downloads](https://img.shields.io/packagist/dt/dgtlss/warden.svg?style=flat-square)](https://packagist.org/packages/dgtlss/warden)
+[![License](https://img.shields.io/packagist/l/dgtlss/warden.svg?style=flat-square)](https://packagist.org/packages/dgtlss/warden)
+
 Warden is a Laravel package that performs security audits on your composer dependencies and provides automated notifications for any discovered vulnerabilities. 
 
 It is designed to fail your preferred CI/CD pipeline when vulnerabilities are detected, ensuring that security issues are addressed promptly.
