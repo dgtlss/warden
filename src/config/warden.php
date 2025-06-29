@@ -66,6 +66,17 @@ return [
         'retry_attempts' => env('WARDEN_RETRY_ATTEMPTS', 3),
         'retry_delay' => env('WARDEN_RETRY_DELAY', 1000), // milliseconds
         'severity_filter' => env('WARDEN_SEVERITY_FILTER', null), // null|low|medium|high|critical
+
+        'php_syntax' => [
+            'enabled' => env('WARDEN_PHP_SYNTAX_AUDIT_ENABLED', false),
+            'exclude' => [
+                'vendor',
+                'node_modules',
+                'storage',
+                'bootstrap/cache',
+                '.git',
+            ],
+        ],
     ],
 
     /*
