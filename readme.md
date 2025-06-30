@@ -3,8 +3,9 @@
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/dgtlss/warden.svg?style=flat-square)](https://packagist.org/packages/dgtlss/warden)
 [![Total Downloads](https://img.shields.io/packagist/dt/dgtlss/warden.svg?style=flat-square)](https://packagist.org/packages/dgtlss/warden)
 [![License](https://img.shields.io/packagist/l/dgtlss/warden.svg?style=flat-square)](https://packagist.org/packages/dgtlss/warden)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/dgtlss/warden/ci.yml?branch=main&style=flat-square)](https://github.com/dgtlss/warden/actions)
 [![PHP Version Require](https://img.shields.io/packagist/php-v/dgtlss/warden.svg?style=flat-square)](https://packagist.org/packages/dgtlss/warden)
+![GitHub repo size](https://img.shields.io/github/repo-size/dgtlss/warden)
+
 
 Warden is a comprehensive Laravel security audit package that proactively monitors your dependencies and application configuration for security vulnerabilities. With support for parallel execution, multiple notification channels, and extensible custom audits, Warden provides enterprise-grade security scanning for Laravel applications.
 
