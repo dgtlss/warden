@@ -24,7 +24,9 @@
         "laravel/prompts": "^0.1"
     },
     "require-dev": {
-        "laravel/framework": "^9.0.0"
+        "laravel/framework": "^9.0.0",
+        "orchestra/testbench": "^7.0|^8.0|^9.0|^10.0",
+        "phpunit/phpunit": "^9.0|^10.0|^11.0|^12.0"
     },
     "extra": {
         "laravel": {
