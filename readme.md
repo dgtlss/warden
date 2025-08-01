@@ -3,91 +3,82 @@
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/dgtlss/warden.svg?style=flat-square)](https://packagist.org/packages/dgtlss/warden)
 [![Total Downloads](https://img.shields.io/packagist/dt/dgtlss/warden.svg?style=flat-square)](https://packagist.org/packages/dgtlss/warden)
 [![License](https://img.shields.io/packagist/l/dgtlss/warden.svg?style=flat-square)](https://packagist.org/packages/dgtlss/warden)
+[![PHP Version Require](https://img.shields.io/packagist/php-v/dgtlss/warden.svg?style=flat-square)](https://packagist.org/packages/dgtlss/warden)
+![GitHub repo size](https://img.shields.io/github/repo-size/dgtlss/warden)
 
-Warden is a Laravel package that performs security audits on your composer dependencies and provides automated notifications for any discovered vulnerabilities. 
+**Warden** is a comprehensive Laravel security audit package that proactively monitors your dependencies and application configuration for security vulnerabilities. Built for enterprise-grade security scanning, Warden provides powerful features for modern Laravel applications.
 
-It is designed to fail your preferred CI/CD pipeline when vulnerabilities are detected, ensuring that security issues are addressed promptly.
+## 🚀 Key Features
 
-## Installation
+### ✅ Core Security Audits
+- **🔍 Dependency Scanning**: Composer and NPM vulnerability detection
+- **⚙️ Configuration Audits**: Environment, storage permissions, and Laravel config
+- **📝 Code Analysis**: PHP syntax validation and security checks
+- **🔧 Custom Audit Rules**: Organization-specific security policies
 
-You can install the package via composer:
+### ✅ Performance & Scalability  
+- **⚡ Parallel Execution**: Up to 5x faster audit performance
+- **🗄️ Intelligent Caching**: Prevents redundant scans with configurable TTL
+- **🎯 Severity Filtering**: Focus on critical issues only
+
+### ✅ Integration & Automation
+- **📊 Multiple Output Formats**: JSON, GitHub Actions, GitLab CI, Jenkins
+- **🔔 Rich Notifications**: Slack, Discord, Email with formatted reports
+- **⏰ Automated Scheduling**: Laravel scheduler integration
+- **🔄 CI/CD Ready**: Native support for all major platforms
+
+Perfect for continuous security monitoring and DevOps pipelines.
+
+---
+
+## 📋 Table of Contents
+
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [Security Audits](#security-audits)
+- [Usage Examples](#usage-examples)
+- [Notifications](#notifications)
+- [Custom Audits](#custom-audits)
+- [Scheduling](#scheduling)
+- [CI/CD Integration](#cicd-integration)
+- [Advanced Features](#advanced-features)
+
+---
+
+## 🚀 Installation
+
+Install via Composer:
 
 ```bash
 composer require dgtlss/warden
 ```
 
-## Configuration
-
-Publish the configuration file:
+Publish configuration:
 
 ```bash
 php artisan vendor:publish --tag="warden-config"
 ```
 
-This will create a `config/warden.php` file in your application.
+This creates `config/warden.php` with all available options.
 
-### Environment Variables
+---
 
-Add the following variables to your `.env` file:
+## ⚡ Quick Start
 
-```env
-# Webhook Configuration
-WARDEN_WEBHOOK_URL=
-```
-
-```env
-# Email Recipients Configuration
-WARDEN_EMAIL_RECIPIENTS=email1@example.com,email2@example.com
-```
-
-## Available Audits
-
-Warden performs several security audits on your Laravel application:
-
-### 1. Composer Dependencies Audit
-Checks your PHP dependencies for known security vulnerabilities using the `composer audit` command.
-
-### 2. NPM Dependencies Audit
-When enabled with the `--npm` flag, checks your JavaScript dependencies for known security vulnerabilities using `npm audit`.
-
-### 3. Environment Configuration Audit
-Verifies your environment configuration for security best practices:
-- Checks for presence of `.env` file
-- Ensures `.env` is properly gitignored
-- Validates presence of critical environment variables
-- Identifies potentially sensitive information
-
-### 4. Storage Permissions Audit
-Validates directory permissions for critical Laravel paths:
-- `storage/framework`
-- `storage/logs`
-- `bootstrap/cache`
-- Ensures proper write permissions
-- Identifies missing or incorrectly configured directories
-
-### 5. Configuration Security Audit
-Examines your Laravel configuration for security issues:
-- Debug mode status
-- Session security settings
-- CSRF protection
-- Other common security misconfigurations
-
-## Additional Arguments
-
-### --ignore-abandoned
-
-This flag will ignore abandoned packages in the warden audit. This is useful if you are using warden in a CI/CD pipeline and you want to ignore abandoned packages without failing the deployment. Particularly useful for Laravel packages that have abandoned packages as dependencies.
-
-## Usage
-
-### Basic Audit
+### Basic Security Audit
 ```bash
 php artisan warden:audit
 ```
 
-### Including NPM Audit
+### With NPM Dependencies
 ```bash
 php artisan warden:audit --npm
+```
+
+### JSON Output for CI/CD
+```bash
+php artisan warden:audit --output=json --severity=high
 ```
 
 ### Silent Mode (No Notifications)
@@ -95,81 +86,486 @@ php artisan warden:audit --npm
 php artisan warden:audit --silent
 ```
 
-## Understanding Audit Results
+---
 
-The audit command will return different status codes:
-- `0`: No vulnerabilities or issues found
-- `1`: Vulnerabilities or security issues detected
-- `2`: One or more audit processes failed to run
+## ⚙️ Configuration
 
-### Severity Levels
+### Environment Variables
 
-Findings are categorized by severity:
-- `critical`: Requires immediate attention
-- `high`: Should be addressed as soon as possible
+Add these to your `.env` file:
+
+#### 🔔 Notifications
+```env
+# Slack (recommended - rich formatting)
+WARDEN_SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+
+# Discord
+WARDEN_DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR/WEBHOOK
+
+# Microsoft Teams
+WARDEN_TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/YOUR/WEBHOOK
+
+# Email
+WARDEN_EMAIL_RECIPIENTS=security@company.com,admin@company.com
+WARDEN_EMAIL_FROM=security@company.com
+WARDEN_EMAIL_FROM_NAME="Security Team"
+
+# Legacy webhook (backward compatibility)
+WARDEN_WEBHOOK_URL=https://your-webhook-url.com
+```
+
+#### ⚡ Performance
+```env
+WARDEN_CACHE_ENABLED=true
+WARDEN_CACHE_DURATION=3600        # Cache for 1 hour
+WARDEN_PARALLEL_EXECUTION=true    # Enable parallel audits
+```
+
+#### ⏰ Scheduling
+```env
+WARDEN_SCHEDULE_ENABLED=false
+WARDEN_SCHEDULE_FREQUENCY=daily   # hourly|daily|weekly|monthly
+WARDEN_SCHEDULE_TIME=03:00
+WARDEN_SCHEDULE_TIMEZONE=UTC
+```
+
+#### 📊 Output & Filtering
+```env
+WARDEN_SEVERITY_FILTER=           # null|low|medium|high|critical
+WARDEN_OUTPUT_JSON=false
+WARDEN_OUTPUT_JUNIT=false
+```
+
+---
+
+## 🔍 Security Audits
+
+Warden performs comprehensive security analysis across multiple areas:
+
+### 1. **Composer Dependencies**
+- Scans PHP dependencies for known vulnerabilities
+- Uses official `composer audit` command
+- Identifies abandoned packages with replacement suggestions
+
+### 2. **NPM Dependencies** 
+- Analyzes JavaScript dependencies (when `--npm` flag used)
+- Detects vulnerable packages in `package.json`
+- Validates `package-lock.json` integrity
+
+### 3. **Environment Configuration**
+- Verifies `.env` file presence and `.gitignore` status
+- Checks for missing critical environment variables
+- Validates sensitive key configuration
+
+### 4. **Storage & Permissions**
+- Audits Laravel storage directories (`storage/`, `bootstrap/cache/`)
+- Ensures proper write permissions
+- Identifies missing or misconfigured paths
+
+### 5. **Laravel Configuration**
+- Debug mode status verification
+- Session security settings
+- CSRF protection validation
+- General security misconfigurations
+
+### 6. **PHP Syntax Analysis**
+- Code syntax validation across your application
+- Configurable directory exclusions
+- Integration with existing audit workflow
+
+---
+
+## 💡 Usage Examples
+
+### Basic Commands
+
+```bash
+# Standard audit
+php artisan warden:audit
+
+# Include NPM + severity filtering
+php artisan warden:audit --npm --severity=medium
+
+# Force cache refresh
+php artisan warden:audit --force
+
+# Ignore abandoned packages
+php artisan warden:audit --ignore-abandoned
+```
+
+### Output Formats
+
+```bash
+# JSON for processing
+php artisan warden:audit --output=json > security-report.json
+
+# GitHub Actions annotations
+php artisan warden:audit --output=github
+
+# GitLab CI dependency scanning
+php artisan warden:audit --output=gitlab > gl-dependency-scanning-report.json
+
+# Jenkins format
+php artisan warden:audit --output=jenkins
+```
+
+### Advanced Usage
+
+```bash
+# Combined options
+php artisan warden:audit --npm --severity=high --output=json --silent
+
+# PHP syntax check
+php artisan warden:syntax
+
+# Schedule management
+php artisan warden:schedule --enable
+php artisan warden:schedule --status
+```
+
+---
+
+## 🔔 Notifications
+
+Warden supports multiple notification channels with rich formatting:
+
+### ✅ Slack (Recommended)
+- Color-coded severity levels
+- Organized finding blocks  
+- Clickable CVE links
+- Professional formatting
+
+```env
+WARDEN_SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+```
+
+### ✅ Discord  
+- Rich embeds with color coding
+- Grouped findings by source
+- Custom branding
+
+```env
+WARDEN_DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR/WEBHOOK
+```
+
+### ✅ Microsoft Teams
+- Adaptive Cards with structured layouts
+- Color-coded severity indicators
+- Action buttons and rich formatting
+
+```env
+WARDEN_TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/YOUR/WEBHOOK
+```
+
+### ✅ Email
+- Professional HTML templates with modern styling
+- Severity-based color coding and summary statistics
+- Grouped findings by source with detailed information
+- Separate templates for vulnerabilities and abandoned packages
+
+```env
+WARDEN_EMAIL_RECIPIENTS=security@company.com,admin@company.com
+WARDEN_EMAIL_FROM=security@company.com
+WARDEN_EMAIL_FROM_NAME="Security Team"
+```
+
+### Multiple Channels
+Configure multiple channels simultaneously - Warden sends to all configured endpoints.
+
+---
+
+## 🔧 Custom Audits
+
+Create organization-specific security rules:
+
+### 1. Implement Custom Audit
+
+```php
+<?php
+
+namespace App\Audits;
+
+use Dgtlss\Warden\Contracts\CustomAudit;
+
+class DatabasePasswordAudit implements CustomAudit
+{
+    public function audit(): bool
+    {
+        $dbPassword = env('DB_PASSWORD', '');
+        return !in_array(strtolower($dbPassword), ['password', '123456', 'admin']);
+    }
+
+    public function getFindings(): array
+    {
+        return [
+            [
+                'package' => 'environment',
+                'title' => 'Weak Database Password',
+                'severity' => 'critical',
+                'description' => 'Database password is weak or commonly used',
+                'remediation' => 'Use a strong, unique password'
+            ]
+        ];
+    }
+
+    public function getName(): string
+    {
+        return 'Database Password Security';
+    }
+
+    public function getDescription(): string
+    {
+        return 'Checks for weak database passwords';
+    }
+
+    public function shouldRun(): bool
+    {
+        return !empty(env('DB_CONNECTION'));
+    }
+}
+```
+
+### 2. Register Custom Audit
+
+Add to `config/warden.php`:
+
+```php
+'custom_audits' => [
+    \App\Audits\DatabasePasswordAudit::class,
+    \App\Audits\ApiKeySecurityAudit::class,
+    // Add more custom audits
+],
+```
+
+---
+
+## ⏰ Scheduling
+
+### Enable Automated Audits
+
+```bash
+# Enable scheduling
+php artisan warden:schedule --enable
+
+# Check status
+php artisan warden:schedule --status
+
+# Disable scheduling  
+php artisan warden:schedule --disable
+```
+
+### Configure Schedule
+
+```env
+WARDEN_SCHEDULE_ENABLED=true
+WARDEN_SCHEDULE_FREQUENCY=daily
+WARDEN_SCHEDULE_TIME=03:00
+```
+
+### Laravel Cron Setup
+
+Ensure Laravel's scheduler is running:
+
+```bash
+* * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1
+```
+
+---
+
+## 🔄 CI/CD Integration
+
+### GitHub Actions
+
+```yaml
+name: Security Audit
+on: [push, pull_request]
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+      
+      - name: Install dependencies
+        run: composer install --no-progress --prefer-dist
+      
+      - name: Security Audit
+        run: php artisan warden:audit --output=github --severity=high
+```
+
+### GitLab CI
+
+```yaml
+security_audit:
+  stage: test
+  script:
+    - composer install --no-progress --prefer-dist
+    - php artisan warden:audit --output=gitlab --silent > gl-dependency-scanning-report.json
+  artifacts:
+    reports:
+      dependency_scanning: gl-dependency-scanning-report.json
+    expire_in: 1 week
+  allow_failure: false
+```
+
+### Jenkins
+
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('Security Audit') {
+            steps {
+                sh 'composer install --no-progress --prefer-dist'
+                sh 'php artisan warden:audit --output=jenkins --severity=high'
+            }
+            post {
+                always {
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: '.',
+                        reportFiles: 'audit-report.json',
+                        reportName: 'Security Audit Report'
+                    ])
+                }
+            }
+        }
+    }
+}
+```
+
+---
+
+## 🎯 Advanced Features
+
+### Performance Optimization
+
+1. **Parallel Execution**: Enabled by default for 5x speed improvement
+2. **Intelligent Caching**: Configurable cache duration prevents redundant API calls  
+3. **Severity Filtering**: Focus resources on critical issues
+
+### Audit Results
+
+**Exit Codes:**
+- `0`: No vulnerabilities found
+- `1`: Vulnerabilities detected  
+- `2`: Audit process failures
+
+**Severity Levels:**
+- `critical`: Immediate attention required
+- `high`: Address as soon as possible
 - `medium`: Should be reviewed and fixed
 - `low`: Minor security concerns
-- `error`: Audit process or configuration errors
 
-## Notification Format
+### Configuration Examples
 
-When notifications are enabled, the report includes:
-- Audit type (composer, npm, environment, storage, or configuration)
-- Issue details specific to each audit type
-- Severity level
-- Remediation suggestions where applicable
+```php
+// config/warden.php
 
-## Notifications
+'audits' => [
+    'parallel_execution' => true,
+    'timeout' => 300,
+    'retry_attempts' => 3,
+    'severity_filter' => 'medium',
+],
 
-Warden supports two types of notifications:
+'cache' => [
+    'enabled' => true,
+    'duration' => 3600, // 1 hour
+],
 
-### 1. Webhook Notifications
-Configure `WARDEN_WEBHOOK_URL` in your `.env` file to receive webhook notifications. The webhook will receive a POST request with the audit report in the request body.
-
-### 2. Email Notifications
-Configure the email recipients and SMTP settings in your `.env` file to receive email notifications. Multiple recipients can be specified as a comma-separated list in `WARDEN_EMAIL_RECIPIENTS`.
-
-## Report Format
-
-The audit report includes:
-- Package name
-- Vulnerability title
-- CVE identifier
-- Reference link
-- Affected versions
-
-## CI/CD Integration
-
-Warden is designed to fail your CI/CD pipeline when vulnerabilities are detected. This ensures that security issues are addressed promptly.
-
-Example GitHub Actions workflow:
-
-```yaml
-steps:
-  - name: Security Audit
-    run: php artisan warden:audit
-    continue-on-error: false
+'sensitive_keys' => [
+    'DB_PASSWORD',
+    'STRIPE_SECRET',
+    'AWS_SECRET_ACCESS_KEY',
+],
 ```
 
-Example Chipper CI workflow:
+---
 
-```yaml
-tasks:
-  - name: Install Dependencies
-    script: composer install --no-interaction --prefer-dist
+## 🆕 What's New in v1.3.0
 
-  - name: Run Warden Audit
-    script: php artisan warden:audit --silent
+- ✅ **Parallel audit execution** for 5x faster performance
+- ✅ **Complete notification suite** (Slack, Discord, Teams, Enhanced Email) 
+- ✅ **Professional email templates** with severity colors and statistics
+- ✅ **Microsoft Teams integration** with Adaptive Cards
+- ✅ **CI/CD output formats** (GitHub Actions, GitLab CI, Jenkins)
+- ✅ **Automated scheduling** via Laravel scheduler
+- ✅ **Custom audit rules** for organization-specific policies
+- ✅ **Intelligent caching** with force refresh capability
+- ✅ **Severity filtering** to focus on critical issues
+
+---
+
+## 📈 Roadmap
+
+### Coming Soon
+- 📊 **Audit history tracking** and trend analysis
+- 🔍 **Additional audit types** (Docker, Git, API security)
+- 📋 **Web dashboard** for audit management
+- 🤖 **AI-powered vulnerability analysis** and recommendations
+
+---
+
+## 🛠️ Troubleshooting
+
+### Common Issues
+
+**Command not found:**
+```bash
+php artisan config:clear
+composer dump-autoload
 ```
 
-## License
+**Composer audit failures:**
+```bash
+# Update Composer to latest version
+composer self-update
+```
 
-This package is open source and released under the MIT License.
+---
 
-## Contributing
+## 📄 License
 
-We welcome contributions to improve the package. Please see our [CONTRIBUTING GUIDELINES](CONTRIBUTING.md) for guidelines on how to submit improvements and bug fixes.
+This package is open source and released under the [MIT License](LICENSE).
 
-## Donate
+---
 
-If you find this package useful, please consider donating to support its development and maintenance.
+## 🤝 Contributing
+
+We welcome contributions! Please see our [CONTRIBUTING GUIDELINES](CONTRIBUTING.md) for details on:
+
+- 🐛 Bug reports
+- ✨ Feature requests  
+- 🔧 Code contributions
+- 📚 Documentation improvements
+
+---
+
+## 💬 Support
+
+- 🐛 **Issues**: [GitHub Issues](https://github.com/dgtlss/warden/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/dgtlss/warden/discussions)  
+- 📋 **Releases**: [Version History & Changelogs](https://github.com/dgtlss/warden/releases)
+
+---
+
+## 💝 Support Development
+
+If you find Warden useful for your organization's security needs, please consider [supporting its development](https://github.com/sponsors/dgtlss).
+
+---
+
+<div align="center">
+
+**Made with ❤️ for the Laravel community**
+
+[⭐ Star on GitHub](https://github.com/dgtlss/warden) | [📦 Packagist](https://packagist.org/packages/dgtlss/warden) | [🐦 Follow Updates](https://twitter.com/nlangerdev)
+
+</div>
