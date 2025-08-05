@@ -76,8 +76,8 @@ class DebugModeAuditService extends AbstractAuditService
             }
         }
 
-        // Check for exposed testing routes
-        if ($this->hasExposedTestingRoutes()) {
+        // Check for exposed testing routes only in production
+        if ($this->isActuallyProduction() && $this->hasExposedTestingRoutes()) {
             $this->addFinding([
                 'package' => 'routes',
                 'title' => 'Testing routes are exposed',

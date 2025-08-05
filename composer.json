@@ -2,7 +2,7 @@
     "name": "dgtlss/warden",
     "description": "A Laravel package that proactively monitors your dependencies for security vulnerabilities by running automated composer audits and sending notifications via webhooks and email",
     "keywords": ["laravel", "composer", "security", "vulnerabilities", "audits", "notifications", "CVE"],
-    "version": "1.3.0",
+    "version": "1.3.1",
     "license": "MIT",
     "autoload": {
         "psr-4": {
