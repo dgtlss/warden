@@ -3,6 +3,8 @@
 namespace Dgtlss\Warden\Services\Audits;
 
 use Symfony\Component\Process\Process;
+use Dgtlss\Warden\Services\Dependencies\SystemCommandDependency;
+use Dgtlss\Warden\Services\Dependencies\FileDependency;
 
 class ComposerAuditService extends AbstractAuditService
 {
@@ -13,14 +15,55 @@ class ComposerAuditService extends AbstractAuditService
         return 'composer';
     }
 
+    /**
+     * Called when the audit is initialized.
+     *
+     * @return void
+     */
+    protected function onInitialize(): void
+    {
+        // Add Composer command dependency
+        $composerDep = new SystemCommandDependency('composer', ['--version']);
+        $this->addDependency($composerDep);
+
+        // Add composer.json file dependency
+        $composerJsonDep = new FileDependency('composer.json', true, false);
+        $this->addDependency($composerJsonDep);
+
+        // Add composer.lock file dependency (optional but recommended)
+        $composerLockDep = new FileDependency('composer.lock', true, false);
+        $this->addDependency($composerLockDep);
+    }
+
+    /**
+     * Get the default configuration for this audit.
+     *
+     * @return array
+     */
+    protected function getDefaultConfig(): array
+    {
+        return array_merge(parent::getDefaultConfig(), [
+            'ignore_abandoned' => false,
+            'format' => 'json',
+            'working_directory' => base_path(),
+        ]);
+    }
+
     public function run(): bool
     {
-        $process = new Process(['composer', 'audit', '--format=json']);
-        $process->setWorkingDirectory(base_path());
-        $process->setTimeout(60);
+        if (!$this->shouldRun()) {
+            $this->info('Audit should not run - skipping');
+            return true;
+        }
+
+        $workingDirectory = $this->getConfigValue('working_directory', base_path());
+        $format = $this->getConfigValue('format', 'json');
         
-        // Add debug output before running
-        info("Running composer audit from: " . base_path());
+        $process = new Process(['composer', 'audit', "--format={$format}"]);
+        $process->setWorkingDirectory($workingDirectory);
+        $process->setTimeout($this->getTimeout());
+        
+        $this->info("Running composer audit from: {$workingDirectory}");
         
         try {
             $process->run();
@@ -33,11 +76,15 @@ class ComposerAuditService extends AbstractAuditService
                 $exitCode = $process->getExitCode();
                 
                 $this->addFinding([
-                    'source' => $this->getName(),
                     'package' => 'composer',
                     'title' => 'Composer audit failed to run',
                     'severity' => 'high',
                     'error' => "Exit Code: {$exitCode}\nError: {$errorOutput}"
+                ]);
+                
+                $this->error("Composer audit failed", [
+                    'exit_code' => $exitCode,
+                    'error' => $errorOutput
                 ]);
                 
                 return false;
@@ -51,6 +98,11 @@ class ComposerAuditService extends AbstractAuditService
                         'replacement' => is_string($replacement) ? $replacement : null
                     ];
                 }
+
+                // Log abandoned packages if not ignored
+                if (!$this->getConfigValue('ignore_abandoned', false)) {
+                    $this->warning('Found abandoned packages', ['count' => count($this->abandonedPackages)]);
+                }
             }
 
             // Handle security advisories
@@ -58,12 +110,13 @@ class ComposerAuditService extends AbstractAuditService
                 foreach ($output['advisories'] as $package => $issues) {
                     foreach ($issues as $issue) {
                         $this->addFinding([
-                            'source' => $this->getName(),
                             'package' => $package,
                             'title' => $issue['title'],
                             'severity' => $issue['severity'] ?? 'unknown',
                             'cve' => $issue['cve'] ?? null,
-                            'affected_versions' => $issue['affectedVersions'] ?? null
+                            'affected_versions' => $issue['affectedVersions'] ?? null,
+                            'link' => $issue['link'] ?? null,
+                            'reported_at' => $issue['reportedAt'] ?? null
                         ]);
                     }
                 }
@@ -72,14 +125,13 @@ class ComposerAuditService extends AbstractAuditService
             return true;
         } catch (\Exception $e) {
             $this->addFinding([
-                'source' => $this->getName(),
                 'package' => 'composer',
                 'title' => 'Composer audit failed with exception',
                 'severity' => 'high',
                 'error' => $e->getMessage()
             ]);
             
-            info("Composer audit exception: " . $e->getMessage());
+            $this->error("Composer audit exception: " . $e->getMessage());
             return false;
         }
     }

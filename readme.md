@@ -11,17 +11,20 @@
 ## 🚀 Key Features
 
 ### ✅ Core Security Audits
+
 - **🔍 Dependency Scanning**: Composer and NPM vulnerability detection
 - **⚙️ Configuration Audits**: Environment, storage permissions, and Laravel config
 - **📝 Code Analysis**: PHP syntax validation and security checks
 - **🔧 Custom Audit Rules**: Organization-specific security policies
 
 ### ✅ Performance & Scalability  
+
 - **⚡ Parallel Execution**: Up to 5x faster audit performance
 - **🗄️ Intelligent Caching**: Prevents redundant scans with configurable TTL
 - **🎯 Severity Filtering**: Focus on critical issues only
 
 ### ✅ Integration & Automation
+
 - **📊 Multiple Output Formats**: JSON, GitHub Actions, GitLab CI, Jenkins
 - **🔔 Rich Notifications**: Slack, Discord, Email with formatted reports
 - **⏰ Automated Scheduling**: Laravel scheduler integration

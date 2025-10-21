@@ -7,8 +7,13 @@ use Illuminate\Console\Scheduling\Schedule;
 use Dgtlss\Warden\Commands\WardenAuditCommand;
 use Dgtlss\Warden\Commands\WardenScheduleCommand;
 use Dgtlss\Warden\Commands\WardenSyntaxCommand;
+use Dgtlss\Warden\Commands\WardenPluginCommand;
 use Dgtlss\Warden\Services\AuditCacheService;
 use Dgtlss\Warden\Services\ParallelAuditExecutor;
+use Dgtlss\Warden\Services\PluginManager;
+use Dgtlss\Warden\Services\Dependencies\DependencyResolver;
+use Dgtlss\Warden\Plugins\CoreAuditPlugin;
+use Dgtlss\Warden\Contracts\PluginManagerInterface;
 
 class WardenServiceProvider extends ServiceProvider
 {
@@ -16,7 +21,7 @@ class WardenServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/warden.php', 'warden');
         
-        // Register services
+        // Register core services
         $this->app->singleton(AuditCacheService::class, function ($app) {
             return new AuditCacheService();
         });
@@ -24,6 +29,21 @@ class WardenServiceProvider extends ServiceProvider
         $this->app->bind(ParallelAuditExecutor::class, function ($app) {
             return new ParallelAuditExecutor();
         });
+
+        // Register plugin manager
+        $this->app->singleton(PluginManagerInterface::class, function ($app) {
+            return new PluginManager();
+        });
+
+        $this->app->alias(PluginManagerInterface::class, 'warden.plugin_manager');
+
+        // Register dependency resolver
+        $this->app->singleton(DependencyResolver::class, function ($app) {
+            $pluginManager = $app->make(PluginManagerInterface::class);
+            return new DependencyResolver($pluginManager);
+        });
+
+        $this->app->alias(DependencyResolver::class, 'warden.dependency_resolver');
     }
 
     public function boot()
@@ -40,12 +60,16 @@ class WardenServiceProvider extends ServiceProvider
             ], 'warden-migrations');
         }
 
+        // Initialize plugin system
+        $this->initializePluginSystem();
+
         // Register commands
         if ($this->app->runningInConsole()) {
             $this->commands([
                 WardenAuditCommand::class,
                 WardenScheduleCommand::class,
                 WardenSyntaxCommand::class,
+                WardenPluginCommand::class,
             ]);
 
             // Schedule the command if enabled
@@ -82,5 +106,40 @@ class WardenServiceProvider extends ServiceProvider
         }
 
         $this->loadViewsFrom(__DIR__.'/../views', 'warden');
+    }
+
+    /**
+     * Initialize the plugin system.
+     *
+     * @return void
+     */
+    protected function initializePluginSystem(): void
+    {
+        $pluginManager = $this->app->make(PluginManagerInterface::class);
+        $dependencyResolver = $this->app->make(DependencyResolver::class);
+
+        // Register the core audit plugin
+        $corePlugin = new CoreAuditPlugin($dependencyResolver);
+        $pluginManager->register($corePlugin);
+
+        // Discover additional plugins if enabled
+        if (config('warden.plugins.auto_discover', true)) {
+            $pluginManager->discoverPlugins();
+        }
+
+        // Register plugins from configuration
+        $configuredPlugins = config('warden.plugins.register', []);
+        foreach ($configuredPlugins as $pluginClass) {
+            if (class_exists($pluginClass)) {
+                try {
+                    $plugin = $this->app->make($pluginClass);
+                    if ($plugin instanceof \Dgtlss\Warden\Contracts\AuditPluginInterface) {
+                        $pluginManager->register($plugin);
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Failed to register plugin {$pluginClass}: " . $e->getMessage());
+                }
+            }
+        }
     }
 }

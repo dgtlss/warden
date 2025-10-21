@@ -3,6 +3,8 @@
 namespace Dgtlss\Warden\Services\Audits;
 
 use Symfony\Component\Process\Process;
+use Dgtlss\Warden\Services\Dependencies\SystemCommandDependency;
+use Dgtlss\Warden\Services\Dependencies\FileDependency;
 
 class NpmAuditService extends AbstractAuditService
 {
@@ -11,33 +13,77 @@ class NpmAuditService extends AbstractAuditService
         return 'npm';
     }
 
+    /**
+     * Called when the audit is initialized.
+     *
+     * @return void
+     */
+    protected function onInitialize(): void
+    {
+        // Add NPM command dependency
+        $npmDep = new SystemCommandDependency('npm', ['--version']);
+        $this->addDependency($npmDep);
+
+        // Add package.json file dependency
+        $packageJsonDep = new FileDependency('package.json', true, false);
+        $this->addDependency($packageJsonDep);
+
+        // Add package-lock.json file dependency (recommended)
+        $packageLockDep = new FileDependency('package-lock.json', true, false);
+        $this->addDependency($packageLockDep);
+    }
+
+    /**
+     * Get the default configuration for this audit.
+     *
+     * @return array
+     */
+    protected function getDefaultConfig(): array
+    {
+        return array_merge(parent::getDefaultConfig(), [
+            'format' => 'json',
+            'working_directory' => base_path(),
+            'require_lockfile' => true,
+        ]);
+    }
+
+    /**
+     * Called to determine if the audit should run.
+     *
+     * @return bool
+     */
+    protected function onShouldRun(): bool
+    {
+        // Only run if package.json exists
+        if (!file_exists(base_path('package.json'))) {
+            $this->info('package.json not found - skipping NPM audit');
+            return false;
+        }
+
+        // Check if lockfile is required
+        if ($this->getConfigValue('require_lockfile', true) && !file_exists(base_path('package-lock.json'))) {
+            $this->warning('package-lock.json not found but is required - skipping NPM audit');
+            return false;
+        }
+
+        return parent::onShouldRun();
+    }
+
     public function run(): bool
     {
-        if (!file_exists(base_path('package.json'))) {
-            $this->addFinding([
-                'package' => 'npm',
-                'title' => 'Missing package.json',
-                'severity' => 'error',
-                'cve' => null,
-                'affected_versions' => null
-            ]);
-            return false;
+        if (!$this->shouldRun()) {
+            $this->info('Audit should not run - skipping');
+            return true;
         }
 
-        if (!file_exists(base_path('package-lock.json'))) {
-            $this->addFinding([
-                'package' => 'npm',
-                'title' => 'Missing package-lock.json',
-                'severity' => 'error',
-                'cve' => null,
-                'affected_versions' => null
-            ]);
-            return false;
-        }
+        $workingDirectory = $this->getConfigValue('working_directory', base_path());
+        $format = $this->getConfigValue('format', 'json');
+        
+        $process = new Process(['npm', 'audit', "--format={$format}"]);
+        $process->setWorkingDirectory($workingDirectory);
+        $process->setTimeout($this->getTimeout());
 
-        $process = new Process(['npm', 'audit', '--json']);
-        $process->setWorkingDirectory(base_path());
-        $process->setTimeout(config('warden.audits.timeout', 300));
+        $this->info("Running NPM audit from: {$workingDirectory}");
 
         try {
             $process->run();
@@ -53,10 +99,14 @@ class NpmAuditService extends AbstractAuditService
                     'package' => 'npm',
                     'title' => 'npm audit failed to run',
                     'severity' => 'high',
-                    'cve' => null,
-                    'affected_versions' => null,
                     'error' => "Exit Code: {$exitCode}\nError: {$errorOutput}"
                 ]);
+                
+                $this->error("NPM audit failed", [
+                    'exit_code' => $exitCode,
+                    'error' => $errorOutput
+                ]);
+                
                 return false;
             }
 
@@ -109,10 +159,10 @@ class NpmAuditService extends AbstractAuditService
                 'package' => 'npm',
                 'title' => 'npm audit failed with exception',
                 'severity' => 'high',
-                'cve' => null,
-                'affected_versions' => null,
                 'error' => $e->getMessage()
             ]);
+            
+            $this->error("NPM audit exception: " . $e->getMessage());
             return false;
         }
     }
