@@ -14,6 +14,7 @@ use Dgtlss\Warden\Services\Audits\PhpSyntaxAuditService;
 use Dgtlss\Warden\Services\Audits\DockerAuditService;
 use Dgtlss\Warden\Services\Audits\KubernetesAuditService;
 use Dgtlss\Warden\Services\Audits\GitAuditService;
+use Dgtlss\Warden\Services\Audits\SecurityCodePatternsAuditService;
 
 class CoreAuditPlugin extends AbstractAuditPlugin
 {
@@ -92,6 +93,7 @@ class CoreAuditPlugin extends AbstractAuditPlugin
             DockerAuditService::class,
             KubernetesAuditService::class,
             GitAuditService::class,
+            SecurityCodePatternsAuditService::class,
         ];
     }
 
@@ -232,6 +234,31 @@ class CoreAuditPlugin extends AbstractAuditPlugin
                         'bootstrap/cache/',
                         '.git/',
                     ],
+                ],
+                'security_patterns' => [
+                    'enabled' => true,
+                    'timeout' => 300,
+                    'scan_paths' => ['app/', 'config/', 'routes/', 'database/', 'resources/'],
+                    'exclude_directories' => ['vendor/', 'node_modules/', 'storage/', 'bootstrap/cache/', 'tests/', '.git/'],
+                    'exclude_files' => ['*.min.php', 'vendor/*', 'node_modules/*'],
+                    'included_extensions' => ['.php'],
+                    'severity_threshold' => 'medium',
+                    'check_sql_injection' => true,
+                    'check_xss' => true,
+                    'check_command_injection' => true,
+                    'check_file_inclusion' => true,
+                    'check_hardcoded_credentials' => true,
+                    'check_weak_crypto' => true,
+                    'check_weak_random' => true,
+                    'check_insecure_upload' => true,
+                    'check_insecure_session' => true,
+                    'check_insecure_deserialization' => true,
+                    'check_information_disclosure' => true,
+                    'check_idor' => true,
+                    'check_ldap_injection' => true,
+                    'check_xxe' => true,
+                    'check_insecure_headers' => true,
+                    'custom_patterns' => [],
                 ],
             ]
         ]);
@@ -451,6 +478,34 @@ class CoreAuditPlugin extends AbstractAuditPlugin
                             'custom_patterns' => ['type' => 'array', 'default' => []],
                             'exclude_patterns' => ['type' => 'array', 'default' => []],
                             'exclude_files' => ['type' => 'array', 'default' => ['vendor/', 'node_modules/', 'storage/', 'bootstrap/cache/', '.git/']],
+                        ]
+                    ],
+                    'security_patterns' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'enabled' => ['type' => 'boolean', 'default' => true],
+                            'timeout' => ['type' => 'integer', 'default' => 300],
+                            'scan_paths' => ['type' => 'array', 'default' => ['app/', 'config/', 'routes/', 'database/', 'resources/']],
+                            'exclude_directories' => ['type' => 'array', 'default' => ['vendor/', 'node_modules/', 'storage/', 'bootstrap/cache/', 'tests/', '.git/']],
+                            'exclude_files' => ['type' => 'array', 'default' => ['*.min.php', 'vendor/*', 'node_modules/*']],
+                            'included_extensions' => ['type' => 'array', 'default' => ['.php']],
+                            'severity_threshold' => ['type' => 'string', 'default' => 'medium', 'enum' => ['low', 'medium', 'high', 'critical']],
+                            'check_sql_injection' => ['type' => 'boolean', 'default' => true],
+                            'check_xss' => ['type' => 'boolean', 'default' => true],
+                            'check_command_injection' => ['type' => 'boolean', 'default' => true],
+                            'check_file_inclusion' => ['type' => 'boolean', 'default' => true],
+                            'check_hardcoded_credentials' => ['type' => 'boolean', 'default' => true],
+                            'check_weak_crypto' => ['type' => 'boolean', 'default' => true],
+                            'check_weak_random' => ['type' => 'boolean', 'default' => true],
+                            'check_insecure_upload' => ['type' => 'boolean', 'default' => true],
+                            'check_insecure_session' => ['type' => 'boolean', 'default' => true],
+                            'check_insecure_deserialization' => ['type' => 'boolean', 'default' => true],
+                            'check_information_disclosure' => ['type' => 'boolean', 'default' => true],
+                            'check_idor' => ['type' => 'boolean', 'default' => true],
+                            'check_ldap_injection' => ['type' => 'boolean', 'default' => true],
+                            'check_xxe' => ['type' => 'boolean', 'default' => true],
+                            'check_insecure_headers' => ['type' => 'boolean', 'default' => true],
+                            'custom_patterns' => ['type' => 'array', 'default' => []],
                         ]
                     ]
                 ]

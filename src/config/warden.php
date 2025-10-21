@@ -212,6 +212,42 @@ return [
             'include_extensions' => env('WARDEN_GIT_INCLUDE_EXTENSIONS', 'php,js,ts,jsx,tsx,vue,py,rb,java,go,rs,c,cpp,h,yml,yaml,json,xml,ini,conf,config,env,sh,bash,zsh,sql,md,txt,html,css,scss,less,dockerfile'),
             'custom_patterns' => env('WARDEN_GIT_CUSTOM_PATTERNS', ''),
         ],
+
+        'security_patterns' => [
+            'enabled' => env('WARDEN_SECURITY_PATTERNS_ENABLED', true),
+            'timeout' => env('WARDEN_SECURITY_PATTERNS_TIMEOUT', 300),
+            'scan_paths' => env('WARDEN_SECURITY_PATTERNS_SCAN_PATHS', 'app/,config/,routes/,database/,resources/'),
+            'exclude_directories' => env('WARDEN_SECURITY_PATTERNS_EXCLUDE_DIRS', 'vendor/,node_modules/,storage/,bootstrap/cache/,tests/,.git/'),
+            'exclude_files' => env('WARDEN_SECURITY_PATTERNS_EXCLUDE_FILES', '*.min.php,vendor/*,node_modules/*'),
+            'included_extensions' => env('WARDEN_SECURITY_PATTERNS_EXTENSIONS', '.php'),
+            'severity_threshold' => env('WARDEN_SECURITY_PATTERNS_SEVERITY_THRESHOLD', 'medium'), // low|medium|high|critical
+            'check_sql_injection' => env('WARDEN_CHECK_SQL_INJECTION', true),
+            'check_xss' => env('WARDEN_CHECK_XSS', true),
+            'check_command_injection' => env('WARDEN_CHECK_COMMAND_INJECTION', true),
+            'check_file_inclusion' => env('WARDEN_CHECK_FILE_INCLUSION', true),
+            'check_hardcoded_credentials' => env('WARDEN_CHECK_HARDCODED_CREDENTIALS', true),
+            'check_weak_crypto' => env('WARDEN_CHECK_WEAK_CRYPTO', true),
+            'check_weak_random' => env('WARDEN_CHECK_WEAK_RANDOM', true),
+            'check_insecure_upload' => env('WARDEN_CHECK_INSECURE_UPLOAD', true),
+            'check_insecure_session' => env('WARDEN_CHECK_INSECURE_SESSION', true),
+            'check_insecure_deserialization' => env('WARDEN_CHECK_INSECURE_DESERIALIZATION', true),
+            'check_information_disclosure' => env('WARDEN_CHECK_INFORMATION_DISCLOSURE', true),
+            'check_idor' => env('WARDEN_CHECK_IDOR', true),
+            'check_ldap_injection' => env('WARDEN_CHECK_LDAP_INJECTION', true),
+            'check_xxe' => env('WARDEN_CHECK_XXE', true),
+            'check_insecure_headers' => env('WARDEN_CHECK_INSECURE_HEADERS', true),
+            'custom_patterns' => [
+                // Example custom pattern:
+                // 'custom_api_usage' => [
+                //     'name' => 'Custom API Usage',
+                //     'severity' => 'medium',
+                //     'patterns' => [
+                //         '/custom_function\s*\(\s*\$_(GET|POST|REQUEST)/i',
+                //     ],
+                //     'description' => 'Custom API usage with user input detected'
+                // ],
+            ],
+        ],
     ],
 
     /*
@@ -380,6 +416,4 @@ return [
         'check_weak_configurations' => true,
         'check_exposed_secrets' => true,
     ],
-
-    
 ];

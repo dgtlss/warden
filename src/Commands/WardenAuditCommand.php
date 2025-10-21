@@ -16,6 +16,7 @@ use Dgtlss\Warden\Services\Audits\DebugModeAuditService;
 use Dgtlss\Warden\Services\Audits\DockerAuditService;
 use Dgtlss\Warden\Services\Audits\KubernetesAuditService;
 use Dgtlss\Warden\Services\Audits\GitAuditService;
+use Dgtlss\Warden\Services\Audits\SecurityCodePatternsAuditService;
 use Dgtlss\Warden\Services\AuditCacheService;
 use Dgtlss\Warden\Services\ParallelAuditExecutor;
 use Dgtlss\Warden\Notifications\Channels\SlackChannel;
@@ -34,6 +35,7 @@ class WardenAuditCommand extends Command
     {--docker : Run the docker audit}
     {--kubernetes : Run the kubernetes audit}
     {--git : Run the git audit}
+    {--security-patterns : Run the security code patterns audit}
     {--ignore-abandoned : Ignore abandoned packages, without throwing an error}
     {--output= : Output format (json|github|gitlab|jenkins)}
     {--severity= : Filter by severity level (low|medium|high|critical)}
@@ -230,6 +232,10 @@ class WardenAuditCommand extends Command
 
         if ($this->option('git')) {
             $services[] = new GitAuditService();
+        }
+
+        if ($this->option('security-patterns')) {
+            $services[] = new SecurityCodePatternsAuditService();
         }
 
         // Load custom audits from configuration
