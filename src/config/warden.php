@@ -160,6 +160,33 @@ return [
             'exclude_images' => env('WARDEN_DOCKER_EXCLUDE_IMAGES', ''),
             'custom_registry_urls' => env('WARDEN_DOCKER_CUSTOM_REGISTRY_URLS', ''),
         ],
+        
+        'kubernetes' => [
+            'enabled' => env('WARDEN_KUBERNETES_AUDIT_ENABLED', true),
+            'timeout' => 300, // 5 minutes for kubectl operations
+            'kubeconfig_path' => env('KUBECONFIG', '~/.kube/config'),
+            'manifest_paths' => [
+                'k8s/',
+                'kubernetes/',
+                'deploy/',
+                'manifests/',
+                '*.yaml',
+                '*.yml',
+            ],
+            'scan_cluster' => env('WARDEN_KUBERNETES_SCAN_CLUSTER', true),
+            'scan_manifests' => env('WARDEN_KUBERNETES_SCAN_MANIFESTS', true),
+            'check_rbac' => env('WARDEN_KUBERNETES_CHECK_RBAC', true),
+            'check_network_policies' => env('WARDEN_KUBERNETES_CHECK_NETWORK_POLICIES', true),
+            'check_pod_security' => env('WARDEN_KUBERNETES_CHECK_POD_SECURITY', true),
+            'check_secrets' => env('WARDEN_KUBERNETES_CHECK_SECRETS', true),
+            'check_resource_limits' => env('WARDEN_KUBERNETES_CHECK_RESOURCE_LIMITS', true),
+            'check_image_security' => env('WARDEN_KUBERNETES_CHECK_IMAGE_SECURITY', true),
+            'check_service_accounts' => env('WARDEN_KUBERNETES_CHECK_SERVICE_ACCOUNTS', true),
+            'check_admission_controllers' => env('WARDEN_KUBERNETES_CHECK_ADMISSION_CONTROLLERS', true),
+            'severity_threshold' => env('WARDEN_KUBERNETES_SEVERITY_THRESHOLD', 'medium'), // low|medium|high|critical
+            'exclude_namespaces' => env('WARDEN_KUBERNETES_EXCLUDE_NAMESPACES', 'kube-system,kube-public,kube-node-lease'),
+            'exclude_workloads' => env('WARDEN_KUBERNETES_EXCLUDE_WORKLOADS', ''),
+        ],
     ],
 
     /*
@@ -272,6 +299,7 @@ return [
                     'config' => ['enabled' => true],
                     'php_syntax' => ['enabled' => false],
                     'docker' => ['enabled' => true],
+                    'kubernetes' => ['enabled' => true],
                 ],
             ],
         ],

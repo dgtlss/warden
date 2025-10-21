@@ -12,6 +12,7 @@ use Dgtlss\Warden\Services\Audits\DebugModeAuditService;
 use Dgtlss\Warden\Services\Audits\ConfigAuditService;
 use Dgtlss\Warden\Services\Audits\PhpSyntaxAuditService;
 use Dgtlss\Warden\Services\Audits\DockerAuditService;
+use Dgtlss\Warden\Services\Audits\KubernetesAuditService;
 
 class CoreAuditPlugin extends AbstractAuditPlugin
 {
@@ -88,6 +89,7 @@ class CoreAuditPlugin extends AbstractAuditPlugin
             ConfigAuditService::class,
             PhpSyntaxAuditService::class,
             DockerAuditService::class,
+            KubernetesAuditService::class,
         ];
     }
 
@@ -180,6 +182,32 @@ class CoreAuditPlugin extends AbstractAuditPlugin
                     'exclude_images' => [],
                     'custom_registry_urls' => [],
                 ],
+                'kubernetes' => [
+                    'enabled' => true,
+                    'timeout' => 300,
+                    'kubeconfig_path' => '~/.kube/config',
+                    'manifest_paths' => [
+                        'k8s/',
+                        'kubernetes/',
+                        'deploy/',
+                        'manifests/',
+                        '*.yaml',
+                        '*.yml',
+                    ],
+                    'scan_cluster' => true,
+                    'scan_manifests' => true,
+                    'check_rbac' => true,
+                    'check_network_policies' => true,
+                    'check_pod_security' => true,
+                    'check_secrets' => true,
+                    'check_resource_limits' => true,
+                    'check_image_security' => true,
+                    'check_service_accounts' => true,
+                    'check_admission_controllers' => true,
+                    'severity_threshold' => 'medium',
+                    'exclude_namespaces' => ['kube-system', 'kube-public', 'kube-node-lease'],
+                    'exclude_workloads' => [],
+                ],
             ]
         ]);
     }
@@ -250,6 +278,16 @@ class CoreAuditPlugin extends AbstractAuditPlugin
                 null // No auto-install for Docker
             );
             $this->dependencyResolver->addDependency($dockerDep);
+        }
+
+        // kubectl dependency for Kubernetes audit
+        if ($this->getConfig('audits.kubernetes.enabled', true)) {
+            $kubectlDep = $this->dependencyResolver->createSystemCommandDependency(
+                'kubectl',
+                ['version', '--client'],
+                null // No auto-install for kubectl
+            );
+            $this->dependencyResolver->addDependency($kubectlDep);
         }
     }
 
@@ -338,8 +376,30 @@ class CoreAuditPlugin extends AbstractAuditPlugin
                             'custom_registry_urls' => ['type' => 'array', 'default' => []],
                         ]
                     ],
+                    'kubernetes' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'enabled' => ['type' => 'boolean', 'default' => true],
+                            'timeout' => ['type' => 'integer', 'default' => 300],
+                            'kubeconfig_path' => ['type' => 'string', 'default' => '~/.kube/config'],
+                            'manifest_paths' => ['type' => 'array', 'default' => ['k8s/', 'kubernetes/', 'deploy/', 'manifests/', '*.yaml', '*.yml']],
+                            'scan_cluster' => ['type' => 'boolean', 'default' => true],
+                            'scan_manifests' => ['type' => 'boolean', 'default' => true],
+                            'check_rbac' => ['type' => 'boolean', 'default' => true],
+                            'check_network_policies' => ['type' => 'boolean', 'default' => true],
+                            'check_pod_security' => ['type' => 'boolean', 'default' => true],
+                            'check_secrets' => ['type' => 'boolean', 'default' => true],
+                            'check_resource_limits' => ['type' => 'boolean', 'default' => true],
+                            'check_image_security' => ['type' => 'boolean', 'default' => true],
+                            'check_service_accounts' => ['type' => 'boolean', 'default' => true],
+                            'check_admission_controllers' => ['type' => 'boolean', 'default' => true],
+                            'severity_threshold' => ['type' => 'string', 'default' => 'medium', 'enum' => ['low', 'medium', 'high', 'critical']],
+                            'exclude_namespaces' => ['type' => 'array', 'default' => ['kube-system', 'kube-public', 'kube-node-lease']],
+                            'exclude_workloads' => ['type' => 'array', 'default' => []],
+                        ]
+                    ],
                 ]
             ]
-        ]);
+        });
     }
 }
