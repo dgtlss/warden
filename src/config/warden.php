@@ -144,6 +144,22 @@ return [
                 '.git',
             ],
         ],
+        
+        'docker' => [
+            'enabled' => env('WARDEN_DOCKER_AUDIT_ENABLED', true),
+            'timeout' => 600, // 10 minutes for Docker scans
+            'dockerfile_path' => env('WARDEN_DOCKERFILE_PATH', 'Dockerfile'),
+            'docker_compose_path' => env('WARDEN_DOCKER_COMPOSE_PATH', 'docker-compose.yml'),
+            'scan_images' => env('WARDEN_DOCKER_SCAN_IMAGES', true),
+            'scan_dockerfile' => env('WARDEN_DOCKER_SCAN_DOCKERFILE', true),
+            'scan_docker_compose' => env('WARDEN_DOCKER_SCAN_DOCKER_COMPOSE', true),
+            'check_base_images' => env('WARDEN_DOCKER_CHECK_BASE_IMAGES', true),
+            'check_secrets' => env('WARDEN_DOCKER_CHECK_SECRETS', true),
+            'check_vulnerabilities' => env('WARDEN_DOCKER_CHECK_VULNERABILITIES', true),
+            'severity_threshold' => env('WARDEN_DOCKER_SEVERITY_THRESHOLD', 'medium'), // low|medium|high|critical
+            'exclude_images' => env('WARDEN_DOCKER_EXCLUDE_IMAGES', ''),
+            'custom_registry_urls' => env('WARDEN_DOCKER_CUSTOM_REGISTRY_URLS', ''),
+        ],
     ],
 
     /*
@@ -255,6 +271,7 @@ return [
                     'debug' => ['enabled' => true],
                     'config' => ['enabled' => true],
                     'php_syntax' => ['enabled' => false],
+                    'docker' => ['enabled' => true],
                 ],
             ],
         ],

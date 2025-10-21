@@ -11,6 +11,7 @@ use Dgtlss\Warden\Services\Audits\StorageAuditService;
 use Dgtlss\Warden\Services\Audits\DebugModeAuditService;
 use Dgtlss\Warden\Services\Audits\ConfigAuditService;
 use Dgtlss\Warden\Services\Audits\PhpSyntaxAuditService;
+use Dgtlss\Warden\Services\Audits\DockerAuditService;
 
 class CoreAuditPlugin extends AbstractAuditPlugin
 {
@@ -86,6 +87,7 @@ class CoreAuditPlugin extends AbstractAuditPlugin
             DebugModeAuditService::class,
             ConfigAuditService::class,
             PhpSyntaxAuditService::class,
+            DockerAuditService::class,
         ];
     }
 
@@ -163,6 +165,21 @@ class CoreAuditPlugin extends AbstractAuditPlugin
                         '.git',
                     ],
                 ],
+                'docker' => [
+                    'enabled' => true,
+                    'timeout' => 600,
+                    'dockerfile_path' => 'Dockerfile',
+                    'docker_compose_path' => 'docker-compose.yml',
+                    'scan_images' => true,
+                    'scan_dockerfile' => true,
+                    'scan_docker_compose' => true,
+                    'check_base_images' => true,
+                    'check_secrets' => true,
+                    'check_vulnerabilities' => true,
+                    'severity_threshold' => 'medium',
+                    'exclude_images' => [],
+                    'custom_registry_urls' => [],
+                ],
             ]
         ]);
     }
@@ -223,6 +240,16 @@ class CoreAuditPlugin extends AbstractAuditPlugin
         if ($this->getConfig('audits.env.enabled', true)) {
             $envDep = $this->dependencyResolver->createFileDependency('.env', true, false);
             $this->dependencyResolver->addDependency($envDep);
+        }
+
+        // Docker dependency for Docker audit
+        if ($this->getConfig('audits.docker.enabled', true)) {
+            $dockerDep = $this->dependencyResolver->createSystemCommandDependency(
+                'docker',
+                ['--version'],
+                null // No auto-install for Docker
+            );
+            $this->dependencyResolver->addDependency($dockerDep);
         }
     }
 
@@ -291,6 +318,24 @@ class CoreAuditPlugin extends AbstractAuditPlugin
                         'properties' => [
                             'enabled' => ['type' => 'boolean', 'default' => false],
                             'exclude' => ['type' => 'array', 'default' => ['vendor', 'node_modules', 'storage', 'bootstrap/cache', '.git']],
+                        ]
+                    ],
+                    'docker' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'enabled' => ['type' => 'boolean', 'default' => true],
+                            'timeout' => ['type' => 'integer', 'default' => 600],
+                            'dockerfile_path' => ['type' => 'string', 'default' => 'Dockerfile'],
+                            'docker_compose_path' => ['type' => 'string', 'default' => 'docker-compose.yml'],
+                            'scan_images' => ['type' => 'boolean', 'default' => true],
+                            'scan_dockerfile' => ['type' => 'boolean', 'default' => true],
+                            'scan_docker_compose' => ['type' => 'boolean', 'default' => true],
+                            'check_base_images' => ['type' => 'boolean', 'default' => true],
+                            'check_secrets' => ['type' => 'boolean', 'default' => true],
+                            'check_vulnerabilities' => ['type' => 'boolean', 'default' => true],
+                            'severity_threshold' => ['type' => 'string', 'default' => 'medium', 'enum' => ['low', 'medium', 'high', 'critical']],
+                            'exclude_images' => ['type' => 'array', 'default' => []],
+                            'custom_registry_urls' => ['type' => 'array', 'default' => []],
                         ]
                     ],
                 ]

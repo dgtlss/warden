@@ -13,6 +13,7 @@ use Dgtlss\Warden\Services\Audits\NpmAuditService;
 use Dgtlss\Warden\Services\Audits\EnvAuditService;
 use Dgtlss\Warden\Services\Audits\StorageAuditService;
 use Dgtlss\Warden\Services\Audits\DebugModeAuditService;
+use Dgtlss\Warden\Services\Audits\DockerAuditService;
 use Dgtlss\Warden\Services\AuditCacheService;
 use Dgtlss\Warden\Services\ParallelAuditExecutor;
 use Dgtlss\Warden\Notifications\Channels\SlackChannel;
@@ -28,6 +29,7 @@ class WardenAuditCommand extends Command
     protected $signature = 'warden:audit 
     {--silent : Run the audit without sending notifications} 
     {--npm : Run the npm audit}
+    {--docker : Run the docker audit}
     {--ignore-abandoned : Ignore abandoned packages, without throwing an error}
     {--output= : Output format (json|github|gitlab|jenkins)}
     {--severity= : Filter by severity level (low|medium|high|critical)}
@@ -212,6 +214,10 @@ class WardenAuditCommand extends Command
 
         if ($this->option('npm')) {
             $services[] = new NpmAuditService();
+        }
+
+        if ($this->option('docker')) {
+            $services[] = new DockerAuditService();
         }
 
         // Load custom audits from configuration
