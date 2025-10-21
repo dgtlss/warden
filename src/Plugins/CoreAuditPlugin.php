@@ -13,6 +13,7 @@ use Dgtlss\Warden\Services\Audits\ConfigAuditService;
 use Dgtlss\Warden\Services\Audits\PhpSyntaxAuditService;
 use Dgtlss\Warden\Services\Audits\DockerAuditService;
 use Dgtlss\Warden\Services\Audits\KubernetesAuditService;
+use Dgtlss\Warden\Services\Audits\GitAuditService;
 
 class CoreAuditPlugin extends AbstractAuditPlugin
 {
@@ -90,6 +91,7 @@ class CoreAuditPlugin extends AbstractAuditPlugin
             PhpSyntaxAuditService::class,
             DockerAuditService::class,
             KubernetesAuditService::class,
+            GitAuditService::class,
         ];
     }
 
@@ -208,6 +210,29 @@ class CoreAuditPlugin extends AbstractAuditPlugin
                     'exclude_namespaces' => ['kube-system', 'kube-public', 'kube-node-lease'],
                     'exclude_workloads' => [],
                 ],
+                'git' => [
+                    'enabled' => true,
+                    'timeout' => 300,
+                    'scan_working_tree' => true,
+                    'scan_staged_files' => true,
+                    'scan_commit_history' => true,
+                    'history_depth' => 100,
+                    'check_secrets' => true,
+                    'check_sensitive_files' => true,
+                    'check_large_files' => true,
+                    'large_file_threshold' => 10485760, // 10MB
+                    'check_binary_files' => true,
+                    'binary_file_threshold' => 1024, // 1KB
+                    'custom_patterns' => [],
+                    'exclude_patterns' => [],
+                    'exclude_files' => [
+                        'vendor/',
+                        'node_modules/',
+                        'storage/',
+                        'bootstrap/cache/',
+                        '.git/',
+                    ],
+                ],
             ]
         ]);
     }
@@ -288,6 +313,16 @@ class CoreAuditPlugin extends AbstractAuditPlugin
                 null // No auto-install for kubectl
             );
             $this->dependencyResolver->addDependency($kubectlDep);
+        }
+
+        // git dependency for Git audit
+        if ($this->getConfig('audits.git.enabled', true)) {
+            $gitDep = $this->dependencyResolver->createSystemCommandDependency(
+                'git',
+                ['--version'],
+                null // No auto-install for git
+            );
+            $this->dependencyResolver->addDependency($gitDep);
         }
     }
 
@@ -398,8 +433,28 @@ class CoreAuditPlugin extends AbstractAuditPlugin
                             'exclude_workloads' => ['type' => 'array', 'default' => []],
                         ]
                     ],
+                    'git' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'enabled' => ['type' => 'boolean', 'default' => true],
+                            'timeout' => ['type' => 'integer', 'default' => 300],
+                            'scan_working_tree' => ['type' => 'boolean', 'default' => true],
+                            'scan_staged_files' => ['type' => 'boolean', 'default' => true],
+                            'scan_commit_history' => ['type' => 'boolean', 'default' => true],
+                            'history_depth' => ['type' => 'integer', 'default' => 100],
+                            'check_secrets' => ['type' => 'boolean', 'default' => true],
+                            'check_sensitive_files' => ['type' => 'boolean', 'default' => true],
+                            'check_large_files' => ['type' => 'boolean', 'default' => true],
+                            'large_file_threshold' => ['type' => 'integer', 'default' => 10485760],
+                            'check_binary_files' => ['type' => 'boolean', 'default' => true],
+                            'binary_file_threshold' => ['type' => 'integer', 'default' => 1024],
+                            'custom_patterns' => ['type' => 'array', 'default' => []],
+                            'exclude_patterns' => ['type' => 'array', 'default' => []],
+                            'exclude_files' => ['type' => 'array', 'default' => ['vendor/', 'node_modules/', 'storage/', 'bootstrap/cache/', '.git/']],
+                        ]
+                    ]
                 ]
             ]
-        });
+        ]);
     }
 }

@@ -187,6 +187,31 @@ return [
             'exclude_namespaces' => env('WARDEN_KUBERNETES_EXCLUDE_NAMESPACES', 'kube-system,kube-public,kube-node-lease'),
             'exclude_workloads' => env('WARDEN_KUBERNETES_EXCLUDE_WORKLOADS', ''),
         ],
+        
+        'git' => [
+            'enabled' => env('WARDEN_GIT_AUDIT_ENABLED', true),
+            'timeout' => 300, // 5 minutes for git operations
+            'repository_path' => env('WARDEN_GIT_REPOSITORY_PATH', base_path()),
+            'scan_history' => env('WARDEN_GIT_SCAN_HISTORY', true),
+            'scan_staged' => env('WARDEN_GIT_SCAN_STAGED', true),
+            'scan_working_tree' => env('WARDEN_GIT_SCAN_WORKING_TREE', true),
+            'max_commits' => env('WARDEN_GIT_MAX_COMMITS', 100),
+            'check_secrets' => env('WARDEN_GIT_CHECK_SECRETS', true),
+            'check_credentials' => env('WARDEN_GIT_CHECK_CREDENTIALS', true),
+            'check_keys' => env('WARDEN_GIT_CHECK_KEYS', true),
+            'check_tokens' => env('WARDEN_GIT_CHECK_TOKENS', true),
+            'check_api_keys' => env('WARDEN_GIT_CHECK_API_KEYS', true),
+            'check_certificates' => env('WARDEN_GIT_CHECK_CERTIFICATES', true),
+            'check_passwords' => env('WARDEN_GIT_CHECK_PASSWORDS', true),
+            'check_sensitive_files' => env('WARDEN_GIT_CHECK_SENSITIVE_FILES', true),
+            'check_large_files' => env('WARDEN_GIT_CHECK_LARGE_FILES', true),
+            'check_binary_files' => env('WARDEN_GIT_CHECK_BINARY_FILES', true),
+            'max_file_size' => env('WARDEN_GIT_MAX_FILE_SIZE', 1048576), // 1MB
+            'severity_threshold' => env('WARDEN_GIT_SEVERITY_THRESHOLD', 'medium'), // low|medium|high|critical
+            'exclude_paths' => env('WARDEN_GIT_EXCLUDE_PATHS', 'vendor/,node_modules/,/.git/,storage/,bootstrap/cache/,tests/,*.log,*.tmp'),
+            'include_extensions' => env('WARDEN_GIT_INCLUDE_EXTENSIONS', 'php,js,ts,jsx,tsx,vue,py,rb,java,go,rs,c,cpp,h,yml,yaml,json,xml,ini,conf,config,env,sh,bash,zsh,sql,md,txt,html,css,scss,less,dockerfile'),
+            'custom_patterns' => env('WARDEN_GIT_CUSTOM_PATTERNS', ''),
+        ],
     ],
 
     /*
@@ -300,6 +325,7 @@ return [
                     'php_syntax' => ['enabled' => false],
                     'docker' => ['enabled' => true],
                     'kubernetes' => ['enabled' => true],
+                    'git' => ['enabled' => true],
                 ],
             ],
         ],
