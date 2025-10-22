@@ -11,7 +11,7 @@ class WardenPluginCommand extends Command
 {
     protected $signature = 'warden:plugin 
                             {action : The action to perform (list, enable, disable, info, dependencies)}
-                            {--plugin= : The plugin identifier (for enable/disable/info actions)}
+                            {plugin? : The plugin identifier (for enable/disable/info actions)}
                             {--all : Show all plugins including disabled ones}';
 
     protected $description = 'Manage Warden audit plugins';
@@ -187,7 +187,16 @@ class WardenPluginCommand extends Command
         $config = $this->pluginManager->getPluginConfig($pluginId);
         $this->line("\n<options=bold>Configuration:</>");
         foreach ($config as $key => $value) {
-            $displayValue = is_bool($value) ? ($value ? 'true' : 'false') : $value;
+            if (is_bool($value)) {
+                $displayValue = $value ? 'true' : 'false';
+            } elseif (is_array($value)) {
+                $displayValue = json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+                $displayValue = str_replace("\n", "\n    ", $displayValue); // Indent multiline arrays
+            } elseif (is_null($value)) {
+                $displayValue = 'null';
+            } else {
+                $displayValue = $value;
+            }
             $this->line("  {$key}: {$displayValue}");
         }
 
@@ -249,7 +258,7 @@ class WardenPluginCommand extends Command
 
     protected function getPluginIdentifier(): ?string
     {
-        $pluginId = $this->option('plugin');
+        $pluginId = $this->argument('plugin') ?: $this->option('plugin');
         
         if (!$pluginId) {
             $plugins = $this->pluginManager->getPlugins();

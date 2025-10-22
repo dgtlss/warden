@@ -8,6 +8,7 @@ use Dgtlss\Warden\Commands\WardenAuditCommand;
 use Dgtlss\Warden\Commands\WardenScheduleCommand;
 use Dgtlss\Warden\Commands\WardenSyntaxCommand;
 use Dgtlss\Warden\Commands\WardenPluginCommand;
+use Dgtlss\Warden\Commands\WardenHelpCommand;
 use Dgtlss\Warden\Services\AuditCacheService;
 use Dgtlss\Warden\Services\ParallelAuditExecutor;
 use Dgtlss\Warden\Services\PluginManager;
@@ -70,6 +71,7 @@ class WardenServiceProvider extends ServiceProvider
                 WardenScheduleCommand::class,
                 WardenSyntaxCommand::class,
                 WardenPluginCommand::class,
+                WardenHelpCommand::class,
             ]);
 
             // Schedule the command if enabled

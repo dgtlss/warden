@@ -257,7 +257,35 @@ class WardenAuditCommand extends Command
             }
         }
         
+        // Initialize all services with their configuration
+        foreach ($services as $service) {
+            if (method_exists($service, 'initialize')) {
+                $config = $this->getAuditConfig($service);
+                $service->initialize($config);
+            }
+        }
+        
         return $services;
+    }
+    
+    /**
+     * Get configuration for an audit service.
+     *
+     * @param object $service
+     * @return array
+     */
+    protected function getAuditConfig(object $service): array
+    {
+        $serviceName = strtolower(str_replace('AuditService', '', class_basename($service)));
+        
+        // Get configuration from warden config
+        $config = config("warden.audits.{$serviceName}", []);
+        
+        // Add common configuration
+        return array_merge($config, [
+            'timeout' => config('warden.timeout', 300),
+            'retry_attempts' => config('warden.retry_attempts', 3),
+        ]);
     }
 
     /**

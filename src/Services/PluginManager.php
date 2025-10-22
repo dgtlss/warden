@@ -395,7 +395,7 @@ class PluginManager implements PluginManagerInterface
                 return;
             }
 
-            $plugin = new $className();
+            $plugin = app()->make($className);
             $this->register($plugin);
 
         } catch (\Exception $e) {

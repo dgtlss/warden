@@ -62,8 +62,23 @@ class GitAuditService extends AbstractAuditService
     protected function onInitialize(): void
     {
         $this->repositoryPath = $this->getConfigValue('repository_path', base_path());
-        $this->excludePaths = $this->getConfigValue('exclude_paths', []);
-        $this->fileExtensions = $this->getConfigValue('include_extensions', []);
+        
+        // Handle string to array conversion for exclude_paths
+        $excludePaths = $this->getConfigValue('exclude_paths', []);
+        if (is_string($excludePaths)) {
+            $this->excludePaths = explode(',', $excludePaths);
+        } else {
+            $this->excludePaths = $excludePaths;
+        }
+        
+        // Handle string to array conversion for include_extensions
+        $fileExtensions = $this->getConfigValue('include_extensions', []);
+        if (is_string($fileExtensions)) {
+            $this->fileExtensions = explode(',', $fileExtensions);
+        } else {
+            $this->fileExtensions = $fileExtensions;
+        }
+        
         $this->initializeSecretPatterns();
     }
 
@@ -271,8 +286,15 @@ class GitAuditService extends AbstractAuditService
 
         // Add custom patterns from configuration
         $customPatterns = $this->getConfigValue('custom_patterns', []);
-        foreach ($customPatterns as $name => $pattern) {
-            $this->secretPatterns[$name] = $pattern;
+        if (is_string($customPatterns)) {
+            // Handle JSON string or empty string
+            $customPatterns = json_decode($customPatterns, true) ?: [];
+        }
+        
+        if (is_array($customPatterns)) {
+            foreach ($customPatterns as $name => $pattern) {
+                $this->secretPatterns[$name] = $pattern;
+            }
         }
     }
 

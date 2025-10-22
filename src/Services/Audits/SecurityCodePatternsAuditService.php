@@ -2,7 +2,7 @@
 
 namespace Dgtlss\Warden\Services\Audits;
 
-use Dgtlss\Warden\Abstracts\AbstractAuditService;
+use Dgtlss\Warden\Services\Audits\AbstractAuditService;
 use Illuminate\Support\Facades\File;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -11,7 +11,6 @@ use SplFileInfo;
 class SecurityCodePatternsAuditService extends AbstractAuditService
 {
     protected array $patterns = [];
-    protected array $findings = [];
     protected array $scannedFiles = [];
     protected array $excludedDirectories = [];
     protected array $excludedFiles = [];
