@@ -79,7 +79,8 @@ class NpmAuditService extends AbstractAuditService
         $workingDirectory = $this->getConfigValue('working_directory', base_path());
         $format = $this->getConfigValue('format', 'json');
         
-        $process = new Process(['npm', 'audit', "--format={$format}"]);
+        // Use --json flag instead of deprecated --format flag for npm audit
+        $process = new Process(['npm', 'audit', '--json']);
         $process->setWorkingDirectory($workingDirectory);
         $process->setTimeout($this->getTimeout());
 
