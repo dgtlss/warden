@@ -30,18 +30,19 @@ use function Laravel\Prompts\table;
 class WardenAuditCommand extends Command
 {
     protected $signature = 'warden:audit 
-    {--silent : Run the audit without sending notifications} 
-    {--npm : Run the npm audit}
-    {--docker : Run the docker audit}
-    {--kubernetes : Run the kubernetes audit}
-    {--git : Run the git audit}
-    {--security-patterns : Run the security code patterns audit}
-    {--ignore-abandoned : Ignore abandoned packages, without throwing an error}
+    {--full : Run comprehensive security audit with all checks}
+    {--npm : Include NPM audit (included in --full)}
+    {--docker : Include Docker audit (included in --full)}
+    {--kubernetes : Include Kubernetes audit (included in --full)}
+    {--git : Include Git audit (included in --full)}
+    {--security-patterns : Include security patterns audit (included in --full)}
+    {--silent : Run without notifications (default in CI/CD mode)}
     {--output= : Output format (json|github|gitlab|jenkins)}
     {--severity= : Filter by severity level (low|medium|high|critical)}
-    {--force : Force cache refresh and ignore cached results}';
+    {--ignore-abandoned : Ignore abandoned packages}
+    {--force : Force cache refresh (only for --full mode)}';
 
-    protected $description = 'Performs a composer audit and reports findings via Warden.';
+    protected $description = 'Performs security audits. CI/CD mode by default (fast), use --full for comprehensive analysis.';
 
     protected AuditCacheService $cacheService;
     protected ParallelAuditExecutor $parallelExecutor;
@@ -62,6 +63,60 @@ class WardenAuditCommand extends Command
     {
         $this->displayVersion();
         
+        // CI/CD mode - simple, fast execution
+        if (!$this->option('full')) {
+            return $this->runCICDAudit();
+        }
+        
+        // Full mode - current complex logic with caching and notifications
+        return $this->runFullAudit();
+    }
+
+    /**
+     * Run CI/CD focused audit - fast, simple, no caching or notifications.
+     *
+     * @return int Exit code: 0 for success, 1 for vulnerabilities found, 2 for audit failures
+     */
+    protected function runCICDAudit(): int
+    {
+        $this->info('Running CI/CD security audit...');
+        
+        $auditServices = $this->initializeCICDAuditServices();
+        $allFindings = [];
+        $abandonedPackages = [];
+        $hasFailures = false;
+
+        foreach ($auditServices as $service) {
+            $auditName = $service->getName();
+            $this->info("Running {$auditName} audit...");
+            
+            if (!$service->run()) {
+                $this->error("{$auditName} audit failed to run.");
+                $hasFailures = true;
+                continue;
+            }
+
+            $findings = $service->getFindings();
+            if (!empty($findings)) {
+                $allFindings = array_merge($allFindings, $findings);
+            }
+
+            // Collect abandoned packages from composer audit
+            if ($service instanceof ComposerAuditService) {
+                $abandonedPackages = $service->getAbandonedPackages();
+            }
+        }
+
+        return $this->processCIResults($allFindings, $abandonedPackages, $hasFailures);
+    }
+
+    /**
+     * Run full audit with all features - caching, notifications, parallel execution.
+     *
+     * @return int Exit code: 0 for success, 1 for vulnerabilities found, 2 for audit failures
+     */
+    protected function runFullAudit(): int
+    {
         // Handle cache clearing if force option is used
         if ($this->option('force')) {
             $this->cacheService->clearCache();
@@ -69,7 +124,7 @@ class WardenAuditCommand extends Command
         }
 
         // Check if we should use parallel execution
-        $useParallel = config('warden.audits.parallel_execution', true);
+        $useParallel = config('warden.full.parallel', config('warden.audits.parallel_execution', true));
         
         if ($useParallel) {
             return $this->runParallelAudits();
@@ -205,7 +260,31 @@ class WardenAuditCommand extends Command
     }
 
     /**
-     * Initialize and return all audit services based on command options.
+     * Initialize CI/CD focused audit services - core security checks only.
+     *
+     * @return array Array of audit service instances
+     */
+    protected function initializeCICDAuditServices(): array
+    {
+        $services = [
+            new ComposerAuditService(),
+            new EnvAuditService(),
+            new DebugModeAuditService(),
+        ];
+        
+        // Initialize all services with basic configuration
+        foreach ($services as $service) {
+            if (method_exists($service, 'initialize')) {
+                $config = $this->getCIAuditConfig($service);
+                $service->initialize($config);
+            }
+        }
+        
+        return $services;
+    }
+
+    /**
+     * Initialize and return all audit services based on command options (full mode).
      *
      * @return array Array of audit service instances
      */
@@ -278,14 +357,70 @@ class WardenAuditCommand extends Command
     {
         $serviceName = strtolower(str_replace('AuditService', '', class_basename($service)));
         
-        // Get configuration from warden config
+        // Get configuration from warden config (backward compatibility)
         $config = config("warden.audits.{$serviceName}", []);
         
-        // Add common configuration
+        // Add common configuration from new structure
         return array_merge($config, [
-            'timeout' => config('warden.timeout', 300),
-            'retry_attempts' => config('warden.retry_attempts', 3),
+            'timeout' => config('warden.full.timeout', config('warden.audits.timeout', 300)),
+            'retry_attempts' => config('warden.audits.retry_attempts', 3),
         ]);
+    }
+
+    /**
+     * Get CI/CD optimized configuration for an audit service.
+     *
+     * @param object $service
+     * @return array
+     */
+    protected function getCIAuditConfig(object $service): array
+    {
+        $serviceName = strtolower(str_replace('AuditService', '', class_basename($service)));
+        
+        // Get basic configuration from warden config
+        $config = config("warden.audits.{$serviceName}", []);
+        
+        // CI/CD optimized configuration - no caching, faster timeouts
+        return array_merge($config, [
+            'timeout' => 120, // Shorter timeout for CI/CD
+            'retry_attempts' => 1, // Fewer retries in CI/CD
+            'cache_enabled' => false, // No caching in CI/CD
+        ]);
+    }
+
+    /**
+     * Process CI/CD audit results - simplified output, no notifications.
+     *
+     * @param array $allFindings List of vulnerability findings
+     * @param array $abandonedPackages List of abandoned packages
+     * @param bool $hasFailures Whether any audits failed
+     * @return int Exit code
+     */
+    protected function processCIResults(array $allFindings, array $abandonedPackages, bool $hasFailures): int
+    {
+        // Apply severity filtering if specified
+        if ($this->option('severity')) {
+            $allFindings = $this->filterBySeverity($allFindings, $this->option('severity'));
+        }
+
+        // Handle abandoned packages
+        $this->handleAbandonedPackages($abandonedPackages);
+
+        // Handle output formatting
+        $outputFormat = $this->option('output');
+        if ($outputFormat) {
+            $this->outputFormattedResults($allFindings, $outputFormat);
+            return !empty($allFindings) ? 1 : ($hasFailures ? 2 : 0);
+        }
+
+        // Display findings (default console output)
+        if (!empty($allFindings)) {
+            $this->displayFindings($allFindings);
+            return 1;
+        }
+
+        $this->info('No vulnerabilities found.');
+        return $hasFailures ? 2 : 0;
     }
 
     /**

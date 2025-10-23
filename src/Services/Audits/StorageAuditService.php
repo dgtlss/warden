@@ -4,15 +4,42 @@ namespace Dgtlss\Warden\Services\Audits;
 
 class StorageAuditService extends AbstractAuditService
 {
-    private $directories = [
-        'storage/framework',
-        'storage/logs',
-        'bootstrap/cache',
-    ];
+    private $directories = [];
 
     public function getName(): string
     {
         return 'storage';
+    }
+
+    /**
+     * Get the default configuration for this audit.
+     *
+     * @return array
+     */
+    protected function getDefaultConfig(): array
+    {
+        return array_merge(parent::getDefaultConfig(), [
+            'directories' => env('WARDEN_STORAGE_DIRECTORIES') ? explode(',', env('WARDEN_STORAGE_DIRECTORIES')) : [
+                'storage/framework',
+                'storage/logs',
+                'bootstrap/cache',
+            ],
+            'check_permissions' => env('WARDEN_STORAGE_CHECK_PERMISSIONS', true),
+            'check_existence' => env('WARDEN_STORAGE_CHECK_EXISTENCE', true),
+            'required_permissions' => env('WARDEN_STORAGE_REQUIRED_PERMISSIONS', '755'),
+        ]);
+    }
+
+    /**
+     * Initialize the audit service with configuration.
+     *
+     * @param array $config
+     * @return void
+     */
+    public function initialize(array $config = []): void
+    {
+        parent::initialize($config);
+        $this->directories = $this->getConfigValue('directories', $this->directories);
     }
 
     public function run(): bool

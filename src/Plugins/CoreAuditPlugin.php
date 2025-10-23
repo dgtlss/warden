@@ -15,6 +15,7 @@ use Dgtlss\Warden\Services\Audits\DockerAuditService;
 use Dgtlss\Warden\Services\Audits\KubernetesAuditService;
 use Dgtlss\Warden\Services\Audits\GitAuditService;
 use Dgtlss\Warden\Services\Audits\SecurityCodePatternsAuditService;
+use Dgtlss\Warden\Services\Audits\LaravelSecurityAuditService;
 
 class CoreAuditPlugin extends AbstractAuditPlugin
 {
@@ -94,6 +95,7 @@ class CoreAuditPlugin extends AbstractAuditPlugin
             KubernetesAuditService::class,
             GitAuditService::class,
             SecurityCodePatternsAuditService::class,
+            LaravelSecurityAuditService::class,
         ];
     }
 
@@ -259,6 +261,48 @@ class CoreAuditPlugin extends AbstractAuditPlugin
                     'check_xxe' => true,
                     'check_insecure_headers' => true,
                     'custom_patterns' => [],
+                ],
+                'laravel_security' => [
+                    'enabled' => true,
+                    'timeout' => 300,
+                    'scan_controllers' => true,
+                    'scan_models' => true,
+                    'scan_routes' => true,
+                    'scan_middleware' => true,
+                    'scan_policies' => true,
+                    'scan_views' => true,
+                    'scan_config' => true,
+                    'scan_migrations' => true,
+                    'scan_seeders' => true,
+                    'scan_requests' => true,
+                    'scan_resources' => true,
+                    'check_mass_assignment' => true,
+                    'check_sql_injection' => true,
+                    'check_xss' => true,
+                    'check_csrf' => true,
+                    'check_authentication' => true,
+                    'check_authorization' => true,
+                    'check_file_uploads' => true,
+                    'check_api_security' => true,
+                    'check_sensitive_data' => true,
+                    'check_debug_mode' => true,
+                    'check_env_exposure' => true,
+                    'check_route_protection' => true,
+                    'check_middleware_usage' => true,
+                    'check_validation' => true,
+                    'check_password_security' => true,
+                    'check_session_security' => true,
+                    'check_cache_security' => true,
+                    'check_queue_security' => true,
+                    'check_storage_security' => true,
+                    'severity_threshold' => 'medium',
+                    'exclude_paths' => [
+                        'vendor',
+                        'node_modules',
+                        'storage',
+                        'bootstrap/cache',
+                        'tests',
+                    ],
                 ],
             ]
         ]);
@@ -506,6 +550,45 @@ class CoreAuditPlugin extends AbstractAuditPlugin
                             'check_xxe' => ['type' => 'boolean', 'default' => true],
                             'check_insecure_headers' => ['type' => 'boolean', 'default' => true],
                             'custom_patterns' => ['type' => 'array', 'default' => []],
+                        ]
+                    ],
+                    'laravel_security' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'enabled' => ['type' => 'boolean', 'default' => true],
+                            'timeout' => ['type' => 'integer', 'default' => 300],
+                            'scan_controllers' => ['type' => 'boolean', 'default' => true],
+                            'scan_models' => ['type' => 'boolean', 'default' => true],
+                            'scan_routes' => ['type' => 'boolean', 'default' => true],
+                            'scan_middleware' => ['type' => 'boolean', 'default' => true],
+                            'scan_policies' => ['type' => 'boolean', 'default' => true],
+                            'scan_views' => ['type' => 'boolean', 'default' => true],
+                            'scan_config' => ['type' => 'boolean', 'default' => true],
+                            'scan_migrations' => ['type' => 'boolean', 'default' => true],
+                            'scan_seeders' => ['type' => 'boolean', 'default' => true],
+                            'scan_requests' => ['type' => 'boolean', 'default' => true],
+                            'scan_resources' => ['type' => 'boolean', 'default' => true],
+                            'check_mass_assignment' => ['type' => 'boolean', 'default' => true],
+                            'check_sql_injection' => ['type' => 'boolean', 'default' => true],
+                            'check_xss' => ['type' => 'boolean', 'default' => true],
+                            'check_csrf' => ['type' => 'boolean', 'default' => true],
+                            'check_authentication' => ['type' => 'boolean', 'default' => true],
+                            'check_authorization' => ['type' => 'boolean', 'default' => true],
+                            'check_file_uploads' => ['type' => 'boolean', 'default' => true],
+                            'check_api_security' => ['type' => 'boolean', 'default' => true],
+                            'check_sensitive_data' => ['type' => 'boolean', 'default' => true],
+                            'check_debug_mode' => ['type' => 'boolean', 'default' => true],
+                            'check_env_exposure' => ['type' => 'boolean', 'default' => true],
+                            'check_route_protection' => ['type' => 'boolean', 'default' => true],
+                            'check_middleware_usage' => ['type' => 'boolean', 'default' => true],
+                            'check_validation' => ['type' => 'boolean', 'default' => true],
+                            'check_password_security' => ['type' => 'boolean', 'default' => true],
+                            'check_session_security' => ['type' => 'boolean', 'default' => true],
+                            'check_cache_security' => ['type' => 'boolean', 'default' => true],
+                            'check_queue_security' => ['type' => 'boolean', 'default' => true],
+                            'check_storage_security' => ['type' => 'boolean', 'default' => true],
+                            'severity_threshold' => ['type' => 'string', 'default' => 'medium', 'enum' => ['low', 'medium', 'high', 'critical']],
+                            'exclude_paths' => ['type' => 'array', 'default' => ['vendor', 'node_modules', 'storage', 'bootstrap/cache', 'tests']],
                         ]
                     ]
                 ]

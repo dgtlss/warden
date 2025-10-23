@@ -43,9 +43,11 @@ class ComposerAuditService extends AbstractAuditService
     protected function getDefaultConfig(): array
     {
         return array_merge(parent::getDefaultConfig(), [
-            'ignore_abandoned' => false,
-            'format' => 'json',
-            'working_directory' => base_path(),
+            'ignore_abandoned' => env('WARDEN_COMPOSER_IGNORE_ABANDONED', false),
+            'format' => env('WARDEN_COMPOSER_FORMAT', 'json'),
+            'working_directory' => env('WARDEN_COMPOSER_WORKING_DIRECTORY', base_path()),
+            'timeout' => env('WARDEN_COMPOSER_TIMEOUT', 300),
+            'no_dev' => env('WARDEN_COMPOSER_NO_DEV', true), // Exclude dev dependencies by default in CI/CD
         ]);
     }
 

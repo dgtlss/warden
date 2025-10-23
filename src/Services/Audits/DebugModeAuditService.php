@@ -17,10 +17,44 @@ class DebugModeAuditService extends AbstractAuditService
         return 'debug-mode';
     }
 
+    /**
+     * Get the default configuration for this audit.
+     *
+     * @return array
+     */
+    protected function getDefaultConfig(): array
+    {
+        return array_merge(parent::getDefaultConfig(), [
+            'dev_packages' => env('WARDEN_DEBUG_DEV_PACKAGES') ? explode(',', env('WARDEN_DEBUG_DEV_PACKAGES')) : [
+                'barryvdh/laravel-debugbar',
+                'laravel/telescope',
+                'laravel/horizon',
+                'beyondcode/laravel-dump-server',
+                'laravel/dusk',
+            ],
+            'check_app_debug' => env('WARDEN_DEBUG_CHECK_APP_DEBUG', true),
+            'check_dev_packages' => env('WARDEN_DEBUG_CHECK_DEV_PACKAGES', true),
+            'check_telescope' => env('WARDEN_DEBUG_CHECK_TELESCOPE', true),
+            'production_environments' => env('WARDEN_DEBUG_PRODUCTION_ENVIRONMENTS') ? explode(',', env('WARDEN_DEBUG_PRODUCTION_ENVIRONMENTS')) : ['production'],
+        ]);
+    }
+
+    /**
+     * Initialize the audit service with configuration.
+     *
+     * @param array $config
+     * @return void
+     */
+    public function initialize(array $config = []): void
+    {
+        parent::initialize($config);
+        $this->devPackages = $this->getConfigValue('dev_packages', $this->devPackages);
+    }
+
     public function run(): bool
     {
         // Check if APP_DEBUG is enabled in production only
-        if (config('app.env') === 'production' && config('app.debug') === true) {
+        if ($this->getConfigValue('check_app_debug', true) && $this->isActuallyProduction() && config('app.debug') === true) {
             $this->addFinding([
                 'package' => 'app-config',
                 'title' => 'Debug mode is enabled in production',
@@ -173,7 +207,8 @@ class DebugModeAuditService extends AbstractAuditService
                 return false;
             }
         }
-
-        return config('app.env') === 'production';
+        
+        $productionEnvironments = $this->getConfigValue('production_environments', ['production']);
+        return in_array(config('app.env'), $productionEnvironments);
     }
 }

@@ -8,7 +8,35 @@ class EnvAuditService extends AbstractAuditService
 
     public function __construct()
     {
-        $this->sensitiveKeys = config('warden.sensitive_keys');
+        // Use environment variable or default sensitive keys
+        $customKeys = env('WARDEN_ENV_SENSITIVE_KEYS');
+        if ($customKeys) {
+            $this->sensitiveKeys = explode(',', $customKeys);
+        } else {
+            $this->sensitiveKeys = $this->getDefaultSensitiveKeys();
+        }
+    }
+
+    /**
+     * Get default sensitive environment keys to check.
+     */
+    private function getDefaultSensitiveKeys(): array
+    {
+        return [
+            'DB_PASSWORD',
+            'API_KEY',
+            'SECRET_KEY',
+            'PRIVATE_KEY',
+            'MAIL_PASSWORD',
+            'REDIS_PASSWORD',
+            'AWS_ACCESS_KEY_ID',
+            'AWS_SECRET_ACCESS_KEY',
+            'STRIPE_SECRET',
+            'PUBLISHABLE_KEY',
+            'JWT_SECRET',
+            'ENCRYPTION_KEY',
+            'APP_KEY',
+        ];
     }
 
     public function getName(): string

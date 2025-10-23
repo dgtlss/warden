@@ -21,18 +21,18 @@ class DockerAuditService extends AbstractAuditService
     protected function getDefaultConfig(): array
     {
         return array_merge(parent::getDefaultConfig(), [
-            'dockerfile_path' => 'Dockerfile',
-            'docker_compose_path' => 'docker-compose.yml',
-            'scan_images' => true,
-            'scan_dockerfile' => true,
-            'scan_docker_compose' => true,
-            'check_base_images' => true,
-            'check_secrets' => true,
-            'check_vulnerabilities' => true,
-            'severity_threshold' => 'medium', // low, medium, high, critical
-            'timeout' => 600, // 10 minutes for Docker scans
-            'exclude_images' => [],
-            'custom_registry_urls' => [],
+            'dockerfile_path' => env('WARDEN_DOCKERFILE_PATH', 'Dockerfile'),
+            'docker_compose_path' => env('WARDEN_DOCKER_COMPOSE_PATH', 'docker-compose.yml'),
+            'scan_images' => env('WARDEN_DOCKER_SCAN_IMAGES', true),
+            'scan_dockerfile' => env('WARDEN_DOCKER_SCAN_DOCKERFILE', true),
+            'scan_docker_compose' => env('WARDEN_DOCKER_SCAN_DOCKER_COMPOSE', true),
+            'check_base_images' => env('WARDEN_DOCKER_CHECK_BASE_IMAGES', true),
+            'check_secrets' => env('WARDEN_DOCKER_CHECK_SECRETS', true),
+            'check_vulnerabilities' => env('WARDEN_DOCKER_CHECK_VULNERABILITIES', true),
+            'severity_threshold' => env('WARDEN_DOCKER_SEVERITY_THRESHOLD', 'medium'), // low, medium, high, critical
+            'timeout' => env('WARDEN_DOCKER_TIMEOUT', 600), // 10 minutes for Docker scans
+            'exclude_images' => env('WARDEN_DOCKER_EXCLUDE_IMAGES') ? explode(',', env('WARDEN_DOCKER_EXCLUDE_IMAGES')) : [],
+            'custom_registry_urls' => env('WARDEN_DOCKER_CUSTOM_REGISTRY_URLS') ? explode(',', env('WARDEN_DOCKER_CUSTOM_REGISTRY_URLS')) : [],
         ]);
     }
 

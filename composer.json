@@ -29,5 +29,9 @@
                 "Dgtlss\\Warden\\Providers\\WardenServiceProvider"
             ]
         }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.4",
+        "orchestra/testbench": "^10.6"
     }
 }

@@ -11,10 +11,30 @@ class PhpSyntaxAuditService extends AbstractAuditService
         return 'PHP Syntax';
     }
 
+    /**
+     * Get the default configuration for this audit.
+     *
+     * @return array
+     */
+    protected function getDefaultConfig(): array
+    {
+        return array_merge(parent::getDefaultConfig(), [
+            'exclude' => env('WARDEN_PHP_SYNTAX_EXCLUDE') ? explode(',', env('WARDEN_PHP_SYNTAX_EXCLUDE')) : [
+                'vendor',
+                'node_modules',
+                'storage',
+                'bootstrap/cache',
+                '.git',
+            ],
+            'timeout' => env('WARDEN_PHP_SYNTAX_TIMEOUT', 300),
+            'max_files' => env('WARDEN_PHP_SYNTAX_MAX_FILES', 1000), // Limit files to check for performance
+        ]);
+    }
+
     public function run(): bool
     {
         $process = $this->getProcess();
-        $process->setTimeout(config('warden.audits.timeout', 300));
+        $process->setTimeout($this->getTimeout());
         $process->run();
 
         // The command's output can be on stdout or stderr, so we combine them.
@@ -51,7 +71,7 @@ class PhpSyntaxAuditService extends AbstractAuditService
 
     protected function getProcess(): Process
     {
-        $excludedDirs = config('warden.audits.php_syntax.exclude', [
+        $excludedDirs = $this->getConfigValue('exclude', [
             'vendor',
             'node_modules',
             'storage',

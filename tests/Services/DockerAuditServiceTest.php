@@ -1,8 +1,8 @@
 <?php
 
-namespace Tests\Services;
+namespace Dgtlss\Warden\Tests\Services;
 
-use PHPUnit\Framework\TestCase;
+use Dgtlss\Warden\Tests\TestCase;
 use Dgtlss\Warden\Services\Audits\DockerAuditService;
 use Symfony\Component\Process\Process;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +13,8 @@ class DockerAuditServiceTest extends TestCase
 
     protected function setUp(): void
     {
+        parent::setUp();
+        
         $this->auditService = new DockerAuditService();
         $this->auditService->initialize([
             'enabled' => true,
@@ -33,6 +35,7 @@ class DockerAuditServiceTest extends TestCase
     public function testDefaultConfig()
     {
         $service = new DockerAuditService();
+        $service->initialize();
         $config = $service->getConfig();
         
         $this->assertTrue($config['enabled']);

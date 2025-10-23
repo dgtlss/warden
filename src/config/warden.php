@@ -1,7 +1,6 @@
 <?php
 
 return [
-
     /*
     |--------------------------------------------------------------------------
     | Warden Security Audit Configuration
@@ -10,47 +9,76 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Notification Settings
+    | Core Settings
+    |--------------------------------------------------------------------------
+    */
+
+    'default_mode' => env('WARDEN_DEFAULT_MODE', 'ci'), // ci|full
+    'cache_enabled' => env('WARDEN_CACHE_ENABLED', false),
+    'notifications_enabled' => env('WARDEN_NOTIFICATIONS_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Mode Configurations
     |--------------------------------------------------------------------------
     |
-    | Configure where Warden should send security audit notifications.
-    | Multiple notification channels are supported. Configure them here
-    | or use environment variables for sensitive data like webhook URLs.
+    | Pre-configured settings for different operation modes.
     |
     */
 
-    // Legacy support - maintained for backward compatibility
-    'webhook_url' => env('WARDEN_WEBHOOK_URL', null),
-    'email_recipients' => env('WARDEN_EMAIL_RECIPIENTS', null),
+    'ci' => [
+        'timeout' => env('WARDEN_CI_TIMEOUT', 120),
+        'services' => ['composer', 'env', 'debug'],
+        'parallel' => false,
+        'cache' => false,
+        'notifications' => false,
+    ],
+
+    'full' => [
+        'timeout' => env('WARDEN_FULL_TIMEOUT', 300),
+        'services' => ['composer', 'env', 'storage', 'debug', 'npm', 'docker', 'kubernetes', 'git', 'security_patterns'],
+        'parallel' => env('WARDEN_PARALLEL_EXECUTION', true),
+        'cache' => env('WARDEN_CACHE_ENABLED', true),
+        'notifications' => env('WARDEN_NOTIFICATIONS_ENABLED', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Notification Channels
+    |--------------------------------------------------------------------------
+    |
+    | Auto-discovered from environment variables. Channels are only enabled
+    | if their respective environment variables are set.
+    |
+    */
 
     'notifications' => [
-        'enabled' => env('WARDEN_NOTIFICATIONS_ENABLED', true),
-        
-        'channels' => ['slack', 'email'], // Default enabled channels
-        
+        'channels' => array_filter([
+            env('WARDEN_SLACK_WEBHOOK_URL') ? 'slack' : null,
+            env('WARDEN_DISCORD_WEBHOOK_URL') ? 'discord' : null,
+            env('WARDEN_TEAMS_WEBHOOK_URL') ? 'teams' : null,
+            env('WARDEN_EMAIL_RECIPIENTS') ? 'email' : null,
+        ]),
+
         'slack' => [
-            'enabled' => true,
-            'webhook_url' => env('WARDEN_SLACK_WEBHOOK_URL'), // Keep ENV for security
+            'webhook_url' => env('WARDEN_SLACK_WEBHOOK_URL'),
             'channel' => env('WARDEN_SLACK_CHANNEL', '#security'),
             'username' => env('WARDEN_SLACK_USERNAME', 'Warden'),
             'icon_emoji' => ':shield:',
         ],
-        
+
         'discord' => [
-            'enabled' => false, // Disabled by default
-            'webhook_url' => env('WARDEN_DISCORD_WEBHOOK_URL'), // Keep ENV for security
+            'webhook_url' => env('WARDEN_DISCORD_WEBHOOK_URL'),
             'username' => env('WARDEN_DISCORD_USERNAME', 'Warden'),
         ],
-        
+
         'teams' => [
-            'enabled' => false, // Disabled by default
-            'webhook_url' => env('WARDEN_TEAMS_WEBHOOK_URL'), // Keep ENV for security
+            'webhook_url' => env('WARDEN_TEAMS_WEBHOOK_URL'),
             'title' => 'Warden Security Audit',
         ],
-        
+
         'email' => [
-            'enabled' => true,
-            'recipients' => env('WARDEN_EMAIL_RECIPIENTS', null), // Keep ENV for security
+            'recipients' => env('WARDEN_EMAIL_RECIPIENTS'),
             'from_address' => env('WARDEN_EMAIL_FROM', config('mail.from.address')),
             'from_name' => env('WARDEN_EMAIL_FROM_NAME', 'Warden Security'),
             'template' => 'warden::mail.report',
@@ -59,95 +87,98 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Cache Configuration
+    | Service Auto-Discovery
     |--------------------------------------------------------------------------
     |
-    | Configure caching behavior for audit results to prevent running
-    | audits too frequently. This helps with rate limiting and performance.
+    | Automatically enable services based on project structure.
     |
     */
 
+    'auto_discover' => [
+        'npm' => file_exists(base_path('package.json')),
+        'docker' => file_exists(base_path('Dockerfile')) || file_exists(base_path('docker-compose.yml')),
+        'kubernetes' => collect([
+            'k8s/', 'kubernetes/', 'deploy/', 'manifests/',
+            '*.yaml', '*.yml'
+        ])->filter(fn($path) => file_exists(base_path($path)) || glob(base_path($path)))->isNotEmpty(),
+        'git' => true, // Always available in git repositories
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cache Configuration
+    |--------------------------------------------------------------------------
+    */
+
     'cache' => [
-        'enabled' => env('WARDEN_CACHE_ENABLED', true),
-        'duration' => env('WARDEN_CACHE_DURATION', 3600), // 1 hour in seconds
+        'duration' => env('WARDEN_CACHE_DURATION', 3600), // 1 hour
         'driver' => env('WARDEN_CACHE_DRIVER', config('cache.default')),
         'prefix' => 'warden_audit',
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Audit Configuration
+    | Scheduling
+    |--------------------------------------------------------------------------
+    */
+
+    'schedule' => [
+        'enabled' => env('WARDEN_SCHEDULE_ENABLED', false),
+        'frequency' => env('WARDEN_SCHEDULE_FREQUENCY', 'daily'),
+        'time' => env('WARDEN_SCHEDULE_TIME', '03:00'),
+        'timezone' => env('WARDEN_SCHEDULE_TIMEZONE', config('app.timezone')),
+        'silent' => true,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Custom Audits
+    |--------------------------------------------------------------------------
+    */
+
+    'custom_audits' => env('WARDEN_CUSTOM_AUDITS') 
+        ? explode(',', env('WARDEN_CUSTOM_AUDITS')) 
+        : [],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Backward Compatibility
     |--------------------------------------------------------------------------
     |
-    | Configure audit behavior and filtering options.
+    | Legacy configuration support for existing installations.
+    | These will be phased out in future versions.
     |
     */
 
+    // Legacy support - maintained for backward compatibility
+    'webhook_url' => env('WARDEN_WEBHOOK_URL', null),
+    'email_recipients' => env('WARDEN_EMAIL_RECIPIENTS', null),
+
+    // Legacy audit configurations (mapped to new structure)
     'audits' => [
         'parallel_execution' => env('WARDEN_PARALLEL_EXECUTION', true),
-        'timeout' => env('WARDEN_AUDIT_TIMEOUT', 300), // seconds
+        'timeout' => env('WARDEN_AUDIT_TIMEOUT', 300),
         'retry_attempts' => env('WARDEN_RETRY_ATTEMPTS', 3),
-        'retry_delay' => env('WARDEN_RETRY_DELAY', 1000), // milliseconds
-        'severity_filter' => env('WARDEN_SEVERITY_FILTER', null), // null|low|medium|high|critical
-
-        // Individual audit configurations
+        'severity_filter' => env('WARDEN_SEVERITY_FILTER', null),
+        
+        // Backward compatibility: Individual audit configurations
+        // These are now handled by environment variables in each service class
         'composer' => [
-            'enabled' => true,
-            'timeout' => 300,
-            'ignore_abandoned' => false,
-            'format' => 'json',
+            'ignore_abandoned' => env('WARDEN_COMPOSER_IGNORE_ABANDONED', false),
+            'format' => env('WARDEN_COMPOSER_FORMAT', 'json'),
+            'working_directory' => env('WARDEN_COMPOSER_WORKING_DIRECTORY', base_path()),
+            'timeout' => env('WARDEN_COMPOSER_TIMEOUT', 300),
+            'no_dev' => env('WARDEN_COMPOSER_NO_DEV', true),
         ],
-        
         'npm' => [
-            'enabled' => true,
-            'timeout' => 300,
-            'auto_include' => false, // Only run with --npm flag
-            'require_lockfile' => true,
+            'format' => env('WARDEN_NPM_FORMAT', 'json'),
+            'working_directory' => env('WARDEN_NPM_WORKING_DIRECTORY', base_path()),
+            'require_lockfile' => env('WARDEN_NPM_REQUIRE_LOCKFILE', true),
+            'timeout' => env('WARDEN_NPM_TIMEOUT', 300),
+            'production_only' => env('WARDEN_NPM_PRODUCTION_ONLY', false),
+            'audit_level' => env('WARDEN_NPM_AUDIT_LEVEL', 'moderate'),
         ],
-        
-        'env' => [
-            'enabled' => true,
-            'check_gitignore' => true,
-            'sensitive_keys' => [
-                'DB_PASSWORD',
-                'API_KEY',
-                'SECRET_KEY',
-                'PRIVATE_KEY',
-            ],
-        ],
-        
-        'storage' => [
-            'enabled' => true,
-            'check_permissions' => true,
-            'required_directories' => ['storage', 'bootstrap/cache'],
-        ],
-        
-        'debug' => [
-            'enabled' => true,
-            'check_debug_mode' => true,
-            'check_env_debug' => true,
-        ],
-        
-        'config' => [
-            'enabled' => true,
-            'check_session_security' => true,
-            'check_csrf_protection' => true,
-        ],
-        
-        'php_syntax' => [
-            'enabled' => env('WARDEN_PHP_SYNTAX_AUDIT_ENABLED', false), // Disabled by default as it can be slow
-            'exclude' => [
-                'vendor',
-                'node_modules',
-                'storage',
-                'bootstrap/cache',
-                '.git',
-            ],
-        ],
-        
         'docker' => [
-            'enabled' => env('WARDEN_DOCKER_AUDIT_ENABLED', true),
-            'timeout' => 600, // 10 minutes for Docker scans
             'dockerfile_path' => env('WARDEN_DOCKERFILE_PATH', 'Dockerfile'),
             'docker_compose_path' => env('WARDEN_DOCKER_COMPOSE_PATH', 'docker-compose.yml'),
             'scan_images' => env('WARDEN_DOCKER_SCAN_IMAGES', true),
@@ -156,14 +187,12 @@ return [
             'check_base_images' => env('WARDEN_DOCKER_CHECK_BASE_IMAGES', true),
             'check_secrets' => env('WARDEN_DOCKER_CHECK_SECRETS', true),
             'check_vulnerabilities' => env('WARDEN_DOCKER_CHECK_VULNERABILITIES', true),
-            'severity_threshold' => env('WARDEN_DOCKER_SEVERITY_THRESHOLD', 'medium'), // low|medium|high|critical
-            'exclude_images' => env('WARDEN_DOCKER_EXCLUDE_IMAGES', ''),
-            'custom_registry_urls' => env('WARDEN_DOCKER_CUSTOM_REGISTRY_URLS', ''),
+            'severity_threshold' => env('WARDEN_DOCKER_SEVERITY_THRESHOLD', 'medium'),
+            'timeout' => env('WARDEN_DOCKER_TIMEOUT', 600),
+            'exclude_images' => env('WARDEN_DOCKER_EXCLUDE_IMAGES') ? explode(',', env('WARDEN_DOCKER_EXCLUDE_IMAGES')) : [],
+            'custom_registry_urls' => env('WARDEN_DOCKER_CUSTOM_REGISTRY_URLS') ? explode(',', env('WARDEN_DOCKER_CUSTOM_REGISTRY_URLS')) : [],
         ],
-        
         'kubernetes' => [
-            'enabled' => env('WARDEN_KUBERNETES_AUDIT_ENABLED', true),
-            'timeout' => 300, // 5 minutes for kubectl operations
             'kubeconfig_path' => env('KUBECONFIG', '~/.kube/config'),
             'manifest_paths' => [
                 'k8s/',
@@ -183,14 +212,12 @@ return [
             'check_image_security' => env('WARDEN_KUBERNETES_CHECK_IMAGE_SECURITY', true),
             'check_service_accounts' => env('WARDEN_KUBERNETES_CHECK_SERVICE_ACCOUNTS', true),
             'check_admission_controllers' => env('WARDEN_KUBERNETES_CHECK_ADMISSION_CONTROLLERS', true),
-            'severity_threshold' => env('WARDEN_KUBERNETES_SEVERITY_THRESHOLD', 'medium'), // low|medium|high|critical
-            'exclude_namespaces' => env('WARDEN_KUBERNETES_EXCLUDE_NAMESPACES', 'kube-system,kube-public,kube-node-lease'),
-            'exclude_workloads' => env('WARDEN_KUBERNETES_EXCLUDE_WORKLOADS', ''),
+            'severity_threshold' => env('WARDEN_KUBERNETES_SEVERITY_THRESHOLD', 'medium'),
+            'timeout' => env('WARDEN_KUBERNETES_TIMEOUT', 300),
+            'exclude_namespaces' => env('WARDEN_KUBERNETES_EXCLUDE_NAMESPACES') ? explode(',', env('WARDEN_KUBERNETES_EXCLUDE_NAMESPACES')) : ['kube-system', 'kube-public', 'kube-node-lease'],
+            'exclude_workloads' => env('WARDEN_KUBERNETES_EXCLUDE_WORKLOADS') ? explode(',', env('WARDEN_KUBERNETES_EXCLUDE_WORKLOADS')) : [],
         ],
-        
         'git' => [
-            'enabled' => env('WARDEN_GIT_AUDIT_ENABLED', true),
-            'timeout' => 300, // 5 minutes for git operations
             'repository_path' => env('WARDEN_GIT_REPOSITORY_PATH', base_path()),
             'scan_history' => env('WARDEN_GIT_SCAN_HISTORY', true),
             'scan_staged' => env('WARDEN_GIT_SCAN_STAGED', true),
@@ -206,214 +233,61 @@ return [
             'check_sensitive_files' => env('WARDEN_GIT_CHECK_SENSITIVE_FILES', true),
             'check_large_files' => env('WARDEN_GIT_CHECK_LARGE_FILES', true),
             'check_binary_files' => env('WARDEN_GIT_CHECK_BINARY_FILES', true),
-            'max_file_size' => env('WARDEN_GIT_MAX_FILE_SIZE', 1048576), // 1MB
-            'severity_threshold' => env('WARDEN_GIT_SEVERITY_THRESHOLD', 'medium'), // low|medium|high|critical
-            'exclude_paths' => env('WARDEN_GIT_EXCLUDE_PATHS', 'vendor/,node_modules/,/.git/,storage/,bootstrap/cache/,tests/,*.log,*.tmp'),
-            'include_extensions' => env('WARDEN_GIT_INCLUDE_EXTENSIONS', 'php,js,ts,jsx,tsx,vue,py,rb,java,go,rs,c,cpp,h,yml,yaml,json,xml,ini,conf,config,env,sh,bash,zsh,sql,md,txt,html,css,scss,less,dockerfile'),
-            'custom_patterns' => env('WARDEN_GIT_CUSTOM_PATTERNS', ''),
+            'max_file_size' => env('WARDEN_GIT_MAX_FILE_SIZE', 1048576),
+            'severity_threshold' => env('WARDEN_GIT_SEVERITY_THRESHOLD', 'medium'),
+            'timeout' => env('WARDEN_GIT_TIMEOUT', 300),
+            'exclude_paths' => env('WARDEN_GIT_EXCLUDE_PATHS') ? explode(',', env('WARDEN_GIT_EXCLUDE_PATHS')) : [
+                'vendor/', 'node_modules/', '.git/', 'storage/', 'bootstrap/cache/', 'tests/', '*.log', '*.tmp',
+            ],
+            'include_extensions' => env('WARDEN_GIT_INCLUDE_EXTENSIONS') ? explode(',', env('WARDEN_GIT_INCLUDE_EXTENSIONS')) : [
+                'php', 'js', 'ts', 'jsx', 'tsx', 'vue', 'py', 'rb', 'java', 'go', 'rs', 'c', 'cpp', 'h',
+                'yml', 'yaml', 'json', 'xml', 'ini', 'conf', 'config', 'env', 'sh', 'bash', 'zsh',
+                'sql', 'md', 'txt', 'html', 'css', 'scss', 'less', 'dockerfile',
+            ],
+            'custom_patterns' => env('WARDEN_GIT_CUSTOM_PATTERNS') ? json_decode(env('WARDEN_GIT_CUSTOM_PATTERNS'), true) : [],
         ],
-
+        'env' => [
+            'sensitive_keys' => env('WARDEN_ENV_SENSITIVE_KEYS') ? explode(',', env('WARDEN_ENV_SENSITIVE_KEYS')) : [
+                'DB_PASSWORD', 'API_KEY', 'SECRET_KEY', 'PRIVATE_KEY', 'MAIL_PASSWORD', 'REDIS_PASSWORD',
+                'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'STRIPE_SECRET', 'PUBLISHABLE_KEY', 'JWT_SECRET',
+                'ENCRYPTION_KEY', 'APP_KEY',
+            ],
+        ],
+        'storage' => [
+            'directories' => env('WARDEN_STORAGE_DIRECTORIES') ? explode(',', env('WARDEN_STORAGE_DIRECTORIES')) : [
+                'storage/framework', 'storage/logs', 'bootstrap/cache',
+            ],
+            'check_permissions' => env('WARDEN_STORAGE_CHECK_PERMISSIONS', true),
+            'check_existence' => env('WARDEN_STORAGE_CHECK_EXISTENCE', true),
+            'required_permissions' => env('WARDEN_STORAGE_REQUIRED_PERMISSIONS', '755'),
+        ],
+        'debug' => [
+            'dev_packages' => env('WARDEN_DEBUG_DEV_PACKAGES') ? explode(',', env('WARDEN_DEBUG_DEV_PACKAGES')) : [
+                'barryvdh/laravel-debugbar', 'laravel/telescope', 'laravel/horizon', 'beyondcode/laravel-dump-server', 'laravel/dusk',
+            ],
+            'check_app_debug' => env('WARDEN_DEBUG_CHECK_APP_DEBUG', true),
+            'check_dev_packages' => env('WARDEN_DEBUG_CHECK_DEV_PACKAGES', true),
+            'check_telescope' => env('WARDEN_DEBUG_CHECK_TELESCOPE', true),
+            'production_environments' => env('WARDEN_DEBUG_PRODUCTION_ENVIRONMENTS') ? explode(',', env('WARDEN_DEBUG_PRODUCTION_ENVIRONMENTS')) : ['production'],
+        ],
         'security_patterns' => [
-            'enabled' => env('WARDEN_SECURITY_PATTERNS_ENABLED', true),
+            'exclude_directories' => env('WARDEN_SECURITY_PATTERNS_EXCLUDE_DIRECTORIES') ? explode(',', env('WARDEN_SECURITY_PATTERNS_EXCLUDE_DIRECTORIES')) : [
+                'vendor', 'node_modules', 'storage', 'bootstrap/cache', '.git', 'tests',
+            ],
+            'exclude_files' => env('WARDEN_SECURITY_PATTERNS_EXCLUDE_FILES') ? explode(',', env('WARDEN_SECURITY_PATTERNS_EXCLUDE_FILES')) : [
+                '*.min.php', 'vendor/*', 'node_modules/*',
+            ],
+            'included_extensions' => env('WARDEN_SECURITY_PATTERNS_INCLUDE_EXTENSIONS') ? explode(',', env('WARDEN_SECURITY_PATTERNS_INCLUDE_EXTENSIONS')) : ['.php'],
+            'max_file_size' => env('WARDEN_SECURITY_PATTERNS_MAX_FILE_SIZE', 1048576),
             'timeout' => env('WARDEN_SECURITY_PATTERNS_TIMEOUT', 300),
-            'scan_paths' => env('WARDEN_SECURITY_PATTERNS_SCAN_PATHS', 'app/,config/,routes/,database/,resources/'),
-            'exclude_directories' => env('WARDEN_SECURITY_PATTERNS_EXCLUDE_DIRS', 'vendor/,node_modules/,storage/,bootstrap/cache/,tests/,.git/'),
-            'exclude_files' => env('WARDEN_SECURITY_PATTERNS_EXCLUDE_FILES', '*.min.php,vendor/*,node_modules/*'),
-            'included_extensions' => env('WARDEN_SECURITY_PATTERNS_EXTENSIONS', '.php'),
-            'severity_threshold' => env('WARDEN_SECURITY_PATTERNS_SEVERITY_THRESHOLD', 'medium'), // low|medium|high|critical
-            'check_sql_injection' => env('WARDEN_CHECK_SQL_INJECTION', true),
-            'check_xss' => env('WARDEN_CHECK_XSS', true),
-            'check_command_injection' => env('WARDEN_CHECK_COMMAND_INJECTION', true),
-            'check_file_inclusion' => env('WARDEN_CHECK_FILE_INCLUSION', true),
-            'check_hardcoded_credentials' => env('WARDEN_CHECK_HARDCODED_CREDENTIALS', true),
-            'check_weak_crypto' => env('WARDEN_CHECK_WEAK_CRYPTO', true),
-            'check_weak_random' => env('WARDEN_CHECK_WEAK_RANDOM', true),
-            'check_insecure_upload' => env('WARDEN_CHECK_INSECURE_UPLOAD', true),
-            'check_insecure_session' => env('WARDEN_CHECK_INSECURE_SESSION', true),
-            'check_insecure_deserialization' => env('WARDEN_CHECK_INSECURE_DESERIALIZATION', true),
-            'check_information_disclosure' => env('WARDEN_CHECK_INFORMATION_DISCLOSURE', true),
-            'check_idor' => env('WARDEN_CHECK_IDOR', true),
-            'check_ldap_injection' => env('WARDEN_CHECK_LDAP_INJECTION', true),
-            'check_xxe' => env('WARDEN_CHECK_XXE', true),
-            'check_insecure_headers' => env('WARDEN_CHECK_INSECURE_HEADERS', true),
-            'custom_patterns' => [
-                // Example custom pattern:
-                // 'custom_api_usage' => [
-                //     'name' => 'Custom API Usage',
-                //     'severity' => 'medium',
-                //     'patterns' => [
-                //         '/custom_function\s*\(\s*\$_(GET|POST|REQUEST)/i',
-                //     ],
-                //     'description' => 'Custom API usage with user input detected'
-                // ],
-            ],
+            'severity_threshold' => env('WARDEN_SECURITY_PATTERNS_SEVERITY_THRESHOLD', 'medium'),
+            'check_sql_injection' => env('WARDEN_SECURITY_PATTERNS_CHECK_SQL_INJECTION', true),
+            'check_xss' => env('WARDEN_SECURITY_PATTERNS_CHECK_XSS', true),
+            'check_file_inclusion' => env('WARDEN_SECURITY_PATTERNS_CHECK_FILE_INCLUSION', true),
+            'check_code_execution' => env('WARDEN_SECURITY_PATTERNS_CHECK_CODE_EXECUTION', true),
+            'check_hardcoded_secrets' => env('WARDEN_SECURITY_PATTERNS_CHECK_HARDCODED_SECRETS', true),
+            'check_weak_crypto' => env('WARDEN_SECURITY_PATTERNS_CHECK_WEAK_CRYPTO', true),
+            'check_debug_functions' => env('WARDEN_SECURITY_PATTERNS_CHECK_DEBUG_FUNCTIONS', true),
         ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Custom Audits
-    |--------------------------------------------------------------------------
-    |
-    | Register your custom audit classes here. Each class must implement
-    | the Dgtlss\Warden\Contracts\CustomAudit interface.
-    |
-    */
-
-    'custom_audits' => [
-        // \App\Audits\MyCustomAudit::class,
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Scheduling Configuration
-    |--------------------------------------------------------------------------
-    |
-    | Configure automated audit scheduling. Set to false to disable.
-    |
-    */
-
-    'schedule' => [
-        'enabled' => env('WARDEN_SCHEDULE_ENABLED', false), // Disabled by default
-        'frequency' => env('WARDEN_SCHEDULE_FREQUENCY', 'daily'), // hourly|daily|weekly|monthly
-        'time' => env('WARDEN_SCHEDULE_TIME', '03:00'), // Time in 24h format
-        'timezone' => env('WARDEN_SCHEDULE_TIMEZONE', config('app.timezone')),
-        'silent' => true, // Run silently when scheduled
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Audit History
-    |--------------------------------------------------------------------------
-    |
-    | Configure database storage for audit history tracking.
-    |
-    */
-
-    'history' => [
-        'enabled' => env('WARDEN_HISTORY_ENABLED', false), // Disabled by default
-        'table' => env('WARDEN_HISTORY_TABLE', 'warden_audit_history'),
-        'retention_days' => env('WARDEN_HISTORY_RETENTION_DAYS', 90),
-        'cleanup_frequency' => 'weekly', // How often to clean old records
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Output Configuration
-    |--------------------------------------------------------------------------
-    |
-    | Configure default output formats and behavior.
-    |
-    */
-
-    'output' => [
-        'default_format' => 'console', // console|json|junit|markdown|github|gitlab|jenkins
-        'show_summary' => true,
-        'show_details' => true,
-        'group_by_severity' => true,
-        
-        'formats' => [
-            'json' => [
-                'pretty_print' => true,
-                'include_metadata' => true,
-            ],
-            'junit' => [
-                'test_name' => 'WardenSecurityAudit',
-                'classname' => 'Warden',
-            ],
-        ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Plugin System Configuration
-    |--------------------------------------------------------------------------
-    |
-    | Configure the plugin system for extensible audit functionality.
-    | This allows you to add custom audit plugins and manage their behavior.
-    |
-    */
-
-    'plugins' => [
-        'enabled' => true,
-        'auto_discover' => env('WARDEN_PLUGINS_AUTO_DISCOVER', true),
-
-        'discovery_paths' => [
-            base_path('app/Warden/Plugins'),
-            base_path('plugins'),
-            __DIR__ . '/../Plugins',
-        ],
-
-        'register' => [
-            // \App\Warden\Plugins\MyCustomPlugin::class,
-        ],
-
-        'config' => [
-            'core-audit' => [
-                'enabled' => true,
-                'audits' => [
-                    'composer' => ['enabled' => true],
-                    'npm' => ['enabled' => true],
-                    'env' => ['enabled' => true],
-                    'storage' => ['enabled' => true],
-                    'debug' => ['enabled' => true],
-                    'config' => ['enabled' => true],
-                    'php_syntax' => ['enabled' => false],
-                    'docker' => ['enabled' => true],
-                    'kubernetes' => ['enabled' => true],
-                    'git' => ['enabled' => true],
-                ],
-            ],
-        ],
-
-        'dependencies' => [
-            'auto_resolve' => env('WARDEN_PLUGINS_AUTO_RESOLVE_DEPS', true),
-            'fail_on_unresolved' => env('WARDEN_PLUGINS_FAIL_ON_UNRESOLVED_DEPS', false),
-        ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Performance Configuration
-    |--------------------------------------------------------------------------
-    |
-    | Configure performance-related settings for audit execution.
-    |
-    */
-
-    'performance' => [
-        'max_concurrent_audits' => 5,
-        'memory_limit' => '512M',
-        'time_limit' => 600, // 10 minutes
-        'chunk_size' => 100, // For processing large datasets
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Security Configuration
-    |--------------------------------------------------------------------------
-    |
-    | Define security-related settings and sensitive keys to check.
-    |
-    */
-
-    'security' => [
-        // Environment variables that should be checked during security audits
-        'sensitive_keys' => [
-            // 'DB_PASSWORD',
-            // 'API_KEY',
-            // 'SECRET_KEY',
-            // 'PRIVATE_KEY',
-            // 'ENCRYPTION_KEY',
-            // 'JWT_SECRET',
-            // 'STRIPE_SECRET',
-            // 'AWS_SECRET_ACCESS_KEY',
-            // 'GOOGLE_CLOUD_KEY',
-        ],
-        
-        // Additional security checks
-        'check_default_passwords' => true,
-        'check_weak_configurations' => true,
-        'check_exposed_secrets' => true,
     ],
 ];

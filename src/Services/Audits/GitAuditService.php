@@ -22,25 +22,25 @@ class GitAuditService extends AbstractAuditService
     protected function getDefaultConfig(): array
     {
         return array_merge(parent::getDefaultConfig(), [
-            'repository_path' => base_path(),
-            'scan_history' => true,
-            'scan_staged' => true,
-            'scan_working_tree' => true,
-            'max_commits' => 100,
-            'check_secrets' => true,
-            'check_credentials' => true,
-            'check_keys' => true,
-            'check_tokens' => true,
-            'check_api_keys' => true,
-            'check_certificates' => true,
-            'check_passwords' => true,
-            'check_sensitive_files' => true,
-            'check_large_files' => true,
-            'check_binary_files' => true,
-            'max_file_size' => 1048576, // 1MB
-            'severity_threshold' => 'medium', // low|medium|high|critical
-            'timeout' => 300, // 5 minutes for git operations
-            'exclude_paths' => [
+            'repository_path' => env('WARDEN_GIT_REPOSITORY_PATH', base_path()),
+            'scan_history' => env('WARDEN_GIT_SCAN_HISTORY', true),
+            'scan_staged' => env('WARDEN_GIT_SCAN_STAGED', true),
+            'scan_working_tree' => env('WARDEN_GIT_SCAN_WORKING_TREE', true),
+            'max_commits' => env('WARDEN_GIT_MAX_COMMITS', 100),
+            'check_secrets' => env('WARDEN_GIT_CHECK_SECRETS', true),
+            'check_credentials' => env('WARDEN_GIT_CHECK_CREDENTIALS', true),
+            'check_keys' => env('WARDEN_GIT_CHECK_KEYS', true),
+            'check_tokens' => env('WARDEN_GIT_CHECK_TOKENS', true),
+            'check_api_keys' => env('WARDEN_GIT_CHECK_API_KEYS', true),
+            'check_certificates' => env('WARDEN_GIT_CHECK_CERTIFICATES', true),
+            'check_passwords' => env('WARDEN_GIT_CHECK_PASSWORDS', true),
+            'check_sensitive_files' => env('WARDEN_GIT_CHECK_SENSITIVE_FILES', true),
+            'check_large_files' => env('WARDEN_GIT_CHECK_LARGE_FILES', true),
+            'check_binary_files' => env('WARDEN_GIT_CHECK_BINARY_FILES', true),
+            'max_file_size' => env('WARDEN_GIT_MAX_FILE_SIZE', 1048576), // 1MB
+            'severity_threshold' => env('WARDEN_GIT_SEVERITY_THRESHOLD', 'medium'), // low|medium|high|critical
+            'timeout' => env('WARDEN_GIT_TIMEOUT', 300), // 5 minutes for git operations
+            'exclude_paths' => env('WARDEN_GIT_EXCLUDE_PATHS') ? explode(',', env('WARDEN_GIT_EXCLUDE_PATHS')) : [
                 'vendor/',
                 'node_modules/',
                 '.git/',
@@ -50,12 +50,12 @@ class GitAuditService extends AbstractAuditService
                 '*.log',
                 '*.tmp',
             ],
-            'include_extensions' => [
+            'include_extensions' => env('WARDEN_GIT_INCLUDE_EXTENSIONS') ? explode(',', env('WARDEN_GIT_INCLUDE_EXTENSIONS')) : [
                 'php', 'js', 'ts', 'jsx', 'tsx', 'vue', 'py', 'rb', 'java', 'go', 'rs', 'c', 'cpp', 'h',
                 'yml', 'yaml', 'json', 'xml', 'ini', 'conf', 'config', 'env', 'sh', 'bash', 'zsh',
                 'sql', 'md', 'txt', 'html', 'css', 'scss', 'less', 'dockerfile',
             ],
-            'custom_patterns' => [],
+            'custom_patterns' => env('WARDEN_GIT_CUSTOM_PATTERNS') ? json_decode(env('WARDEN_GIT_CUSTOM_PATTERNS'), true) : [],
         ]);
     }
 

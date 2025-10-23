@@ -17,6 +17,41 @@ class SecurityCodePatternsAuditService extends AbstractAuditService
     protected array $includedExtensions = ['.php'];
 
     /**
+     * Get the default configuration for this audit.
+     *
+     * @return array
+     */
+    protected function getDefaultConfig(): array
+    {
+        return array_merge(parent::getDefaultConfig(), [
+            'exclude_directories' => env('WARDEN_SECURITY_PATTERNS_EXCLUDE_DIRECTORIES') ? explode(',', env('WARDEN_SECURITY_PATTERNS_EXCLUDE_DIRECTORIES')) : [
+                'vendor',
+                'node_modules',
+                'storage',
+                'bootstrap/cache',
+                '.git',
+                'tests',
+            ],
+            'exclude_files' => env('WARDEN_SECURITY_PATTERNS_EXCLUDE_FILES') ? explode(',', env('WARDEN_SECURITY_PATTERNS_EXCLUDE_FILES')) : [
+                '*.min.php',
+                'vendor/*',
+                'node_modules/*',
+            ],
+            'included_extensions' => env('WARDEN_SECURITY_PATTERNS_INCLUDE_EXTENSIONS') ? explode(',', env('WARDEN_SECURITY_PATTERNS_INCLUDE_EXTENSIONS')) : ['.php'],
+            'max_file_size' => env('WARDEN_SECURITY_PATTERNS_MAX_FILE_SIZE', 1048576), // 1MB
+            'timeout' => env('WARDEN_SECURITY_PATTERNS_TIMEOUT', 300),
+            'severity_threshold' => env('WARDEN_SECURITY_PATTERNS_SEVERITY_THRESHOLD', 'medium'),
+            'check_sql_injection' => env('WARDEN_SECURITY_PATTERNS_CHECK_SQL_INJECTION', true),
+            'check_xss' => env('WARDEN_SECURITY_PATTERNS_CHECK_XSS', true),
+            'check_file_inclusion' => env('WARDEN_SECURITY_PATTERNS_CHECK_FILE_INCLUSION', true),
+            'check_code_execution' => env('WARDEN_SECURITY_PATTERNS_CHECK_CODE_EXECUTION', true),
+            'check_hardcoded_secrets' => env('WARDEN_SECURITY_PATTERNS_CHECK_HARDCODED_SECRETS', true),
+            'check_weak_crypto' => env('WARDEN_SECURITY_PATTERNS_CHECK_WEAK_CRYPTO', true),
+            'check_debug_functions' => env('WARDEN_SECURITY_PATTERNS_CHECK_DEBUG_FUNCTIONS', true),
+        ]);
+    }
+
+    /**
      * Initialize the audit service with configuration.
      *
      * @param array $config
@@ -26,7 +61,7 @@ class SecurityCodePatternsAuditService extends AbstractAuditService
     {
         parent::initialize($config);
         
-        $this->excludedDirectories = $this->getConfig('exclude_directories', [
+        $this->excludedDirectories = $this->getConfigValue('exclude_directories', [
             'vendor',
             'node_modules',
             'storage',
@@ -35,13 +70,13 @@ class SecurityCodePatternsAuditService extends AbstractAuditService
             'tests',
         ]);
         
-        $this->excludedFiles = $this->getConfig('exclude_files', [
+        $this->excludedFiles = $this->getConfigValue('exclude_files', [
             '*.min.php',
             'vendor/*',
             'node_modules/*',
         ]);
         
-        $this->includedExtensions = $this->getConfig('included_extensions', ['.php']);
+        $this->includedExtensions = $this->getConfigValue('included_extensions', ['.php']);
         
         $this->loadSecurityPatterns();
     }

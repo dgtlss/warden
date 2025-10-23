@@ -41,9 +41,12 @@ class NpmAuditService extends AbstractAuditService
     protected function getDefaultConfig(): array
     {
         return array_merge(parent::getDefaultConfig(), [
-            'format' => 'json',
-            'working_directory' => base_path(),
-            'require_lockfile' => true,
+            'format' => env('WARDEN_NPM_FORMAT', 'json'),
+            'working_directory' => env('WARDEN_NPM_WORKING_DIRECTORY', base_path()),
+            'require_lockfile' => env('WARDEN_NPM_REQUIRE_LOCKFILE', true),
+            'timeout' => env('WARDEN_NPM_TIMEOUT', 300),
+            'production_only' => env('WARDEN_NPM_PRODUCTION_ONLY', false), // Only audit production dependencies
+            'audit_level' => env('WARDEN_NPM_AUDIT_LEVEL', 'moderate'), // low, moderate, high, critical
         ]);
     }
 
