@@ -48,6 +48,7 @@ class TeamsChannel implements NotificationChannel
 
     protected function buildFindingsCard(array $findings): array
     {
+        $appName = config('warden.app_name', 'Application');
         $totalFindings = count($findings);
         $severityCounts = $this->getSeverityCounts($findings);
         $highestSeverity = $this->getHighestSeverity($findings);
@@ -63,10 +64,10 @@ class TeamsChannel implements NotificationChannel
             '@type' => 'MessageCard',
             '@context' => 'http://schema.org/extensions',
             'themeColor' => $themeColor,
-            'summary' => "Warden Security Alert: {$totalFindings} vulnerabilities found",
+            'summary' => "[{$appName}] Warden Security Alert: {$totalFindings} vulnerabilities found",
             'sections' => [
                 [
-                    'activityTitle' => '🛡️ **Warden Security Audit Report**',
+                    'activityTitle' => "🛡️ **[{$appName}] Warden Security Audit Report**",
                     'activitySubtitle' => date('F j, Y \a\t g:i A'),
                     'activityImage' => 'https://raw.githubusercontent.com/dgtlss/warden/refs/heads/main/public/warden-logo.png',
                     'facts' => [
@@ -167,6 +168,7 @@ class TeamsChannel implements NotificationChannel
 
     protected function buildAbandonedPackagesCard(array $abandonedPackages): array
     {
+        $appName = config('warden.app_name', 'Application');
         $totalPackages = count($abandonedPackages);
         $packagesWithReplacements = array_filter($abandonedPackages, fn($pkg) => !empty($pkg['replacement']));
 
@@ -190,10 +192,10 @@ class TeamsChannel implements NotificationChannel
             '@type' => 'MessageCard',
             '@context' => 'http://schema.org/extensions',
             'themeColor' => 'FF8C00', // Orange for warnings
-            'summary' => "Warden Alert: {$totalPackages} abandoned packages detected",
+            'summary' => "[{$appName}] Warden Alert: {$totalPackages} abandoned packages detected",
             'sections' => [
                 [
-                    'activityTitle' => '⚠️ **Abandoned Packages Detected**',
+                    'activityTitle' => "⚠️ **[{$appName}] Abandoned Packages Detected**",
                     'activitySubtitle' => date('F j, Y \a\t g:i A'),
                     'activityImage' => 'https://raw.githubusercontent.com/dgtlss/warden/refs/heads/main/public/warden-logo.png',
                     'facts' => [
@@ -231,14 +233,16 @@ class TeamsChannel implements NotificationChannel
 
     protected function buildSuccessCard(): array
     {
+        $appName = config('warden.app_name', 'Application');
+        
         return [
             '@type' => 'MessageCard',
             '@context' => 'http://schema.org/extensions',
             'themeColor' => '00FF00', // Green for success
-            'summary' => 'Warden Security Audit: All Clear',
+            'summary' => "[{$appName}] Warden Security Audit: All Clear",
             'sections' => [
                 [
-                    'activityTitle' => '✅ **Security Audit Complete**',
+                    'activityTitle' => "✅ **[{$appName}] Security Audit Complete**",
                     'activitySubtitle' => date('F j, Y \a\t g:i A'),
                     'activityImage' => 'https://raw.githubusercontent.com/dgtlss/warden/refs/heads/main/public/warden-logo.png',
                     'text' => '**No security vulnerabilities detected!**  \nYour application dependencies are secure.',

@@ -22,9 +22,11 @@ class SlackChannel implements NotificationChannel
 
         $blocks = $this->buildFindingsBlocks($findings);
         
+        $appName = config('warden.app_name', 'Application');
+        
         Http::post($this->webhookUrl, [
             'blocks' => $blocks,
-            'text' => sprintf('🚨 Warden Security Audit: %d vulnerabilities found', count($findings))
+            'text' => sprintf('🚨 [%s] Warden Security Audit: %d vulnerabilities found', $appName, count($findings))
         ]);
     }
 
@@ -36,9 +38,11 @@ class SlackChannel implements NotificationChannel
 
         $blocks = $this->buildAbandonedPackagesBlocks($abandonedPackages);
         
+        $appName = config('warden.app_name', 'Application');
+        
         Http::post($this->webhookUrl, [
             'blocks' => $blocks,
-            'text' => sprintf('⚠️ Warden Audit: %d abandoned packages found', count($abandonedPackages))
+            'text' => sprintf('⚠️ [%s] Warden Audit: %d abandoned packages found', $appName, count($abandonedPackages))
         ]);
     }
 
@@ -54,12 +58,14 @@ class SlackChannel implements NotificationChannel
 
     protected function buildFindingsBlocks(array $findings): array
     {
+        $appName = config('warden.app_name', 'Application');
+        
         $blocks = [
             [
                 'type' => 'header',
                 'text' => [
                     'type' => 'plain_text',
-                    'text' => '🚨 Warden Security Audit Report',
+                    'text' => sprintf('🚨 [%s] Warden Security Audit Report', $appName),
                     'emoji' => true
                 ]
             ],
@@ -121,12 +127,14 @@ class SlackChannel implements NotificationChannel
 
     protected function buildAbandonedPackagesBlocks(array $abandonedPackages): array
     {
+        $appName = config('warden.app_name', 'Application');
+        
         $blocks = [
             [
                 'type' => 'header',
                 'text' => [
                     'type' => 'plain_text',
-                    'text' => '⚠️ Abandoned Packages Found',
+                    'text' => sprintf('⚠️ [%s] Abandoned Packages Found', $appName),
                     'emoji' => true
                 ]
             ],

@@ -20,12 +20,13 @@ class DiscordChannel implements NotificationChannel
             return;
         }
 
+        $appName = config('warden.app_name', 'Application');
         $embeds = $this->buildFindingsEmbeds($findings);
         
         Http::post($this->webhookUrl, [
             'username' => 'Warden Security',
             'avatar_url' => 'https://raw.githubusercontent.com/dgtlss/warden/main/public/warden-logo.png',
-            'content' => sprintf('🚨 **Security Audit Alert** - %d vulnerabilities found', count($findings)),
+            'content' => sprintf('🚨 **[%s] Security Audit Alert** - %d vulnerabilities found', $appName, count($findings)),
             'embeds' => $embeds
         ]);
     }
@@ -36,12 +37,13 @@ class DiscordChannel implements NotificationChannel
             return;
         }
 
+        $appName = config('warden.app_name', 'Application');
         $embed = $this->buildAbandonedPackagesEmbed($abandonedPackages);
         
         Http::post($this->webhookUrl, [
             'username' => 'Warden Security',
             'avatar_url' => 'https://raw.githubusercontent.com/dgtlss/warden/main/public/warden-logo.png',
-            'content' => sprintf('⚠️ **Abandoned Packages Alert** - %d packages need attention', count($abandonedPackages)),
+            'content' => sprintf('⚠️ **[%s] Abandoned Packages Alert** - %d packages need attention', $appName, count($abandonedPackages)),
             'embeds' => [$embed]
         ]);
     }
@@ -101,8 +103,10 @@ class DiscordChannel implements NotificationChannel
                 ];
             }
             
+            $appName = config('warden.app_name', 'Application');
+            
             $embeds[] = [
-                'title' => sprintf('%s Audit Results', $source),
+                'title' => sprintf('[%s] %s Audit Results', $appName, $source),
                 'color' => $this->getSeverityColor($sourceFindings),
                 'fields' => $fields,
                 'timestamp' => date('c'),
@@ -140,8 +144,10 @@ class DiscordChannel implements NotificationChannel
             ];
         }
         
+        $appName = config('warden.app_name', 'Application');
+        
         return [
-            'title' => '⚠️ Abandoned Packages Found',
+            'title' => sprintf('⚠️ [%s] Abandoned Packages Found', $appName),
             'description' => 'The following packages are no longer maintained and may contain unpatched vulnerabilities.',
             'color' => 0xFF9800, // Orange
             'fields' => $fields,
