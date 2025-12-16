@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'app_name' => env('WARDEN_APP_NAME', config('app.name', 'Laravel')),
+    'app_name' => env('WARDEN_APP_NAME', config('app.name', 'Application')),
 
     /*
     |--------------------------------------------------------------------------
