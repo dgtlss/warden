@@ -4,6 +4,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application Name
+    |--------------------------------------------------------------------------
+    |
+    | Configure the name of your application to be included in notifications.
+    | This helps distinguish between different applications when running Warden
+    | across multiple projects.
+    |
+    */
+
+    'app_name' => env('WARDEN_APP_NAME', config('app.name', 'Laravel')),
+
+    /*
+    |--------------------------------------------------------------------------
     | Notification Settings
     |--------------------------------------------------------------------------
     |

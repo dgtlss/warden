@@ -68,10 +68,12 @@ class EmailChannel implements NotificationChannel
 
     protected function prepareEmailData(array $findings): array
     {
+        $appName = config('warden.app_name', 'Application');
         $severityCounts = $this->getSeverityCounts($findings);
         $findingsBySource = $this->groupFindingsBySource($findings);
         
         return [
+            'appName' => $appName,
             'scanDate' => Carbon::now(),
             'totalFindings' => count($findings),
             'severityCounts' => $severityCounts,
@@ -84,7 +86,10 @@ class EmailChannel implements NotificationChannel
 
     protected function prepareAbandonedPackagesData(array $abandonedPackages): array
     {
+        $appName = config('warden.app_name', 'Application');
+        
         return [
+            'appName' => $appName,
             'scanDate' => Carbon::now(),
             'totalPackages' => count($abandonedPackages),
             'abandonedPackages' => $abandonedPackages,
@@ -168,11 +173,12 @@ class EmailChannel implements NotificationChannel
 
     protected function generateSubject(array $findings): string
     {
+        $appName = config('warden.app_name', 'Application');
         $count = count($findings);
         $highestSeverity = $this->getHighestSeverity($findings);
         
         if ($count === 0) {
-            return '✅ Warden Security Audit: No Issues Found';
+            return "✅ [{$appName}] Warden Security Audit: No Issues Found";
         }
 
         $emoji = match($highestSeverity) {
@@ -183,15 +189,16 @@ class EmailChannel implements NotificationChannel
             default => '⚪'
         };
 
-        return "{$emoji} Warden Security Alert: {$count} " . 
+        return "{$emoji} [{$appName}] Warden Security Alert: {$count} " . 
                ($count === 1 ? 'vulnerability' : 'vulnerabilities') . 
                " found ({$highestSeverity} severity)";
     }
 
     protected function generateAbandonedPackagesSubject(array $abandonedPackages): string
     {
+        $appName = config('warden.app_name', 'Application');
         $count = count($abandonedPackages);
-        return "⚠️ Warden Alert: {$count} abandoned " . 
+        return "⚠️ [{$appName}] Warden Alert: {$count} abandoned " . 
                ($count === 1 ? 'package' : 'packages') . " detected";
     }
 }
