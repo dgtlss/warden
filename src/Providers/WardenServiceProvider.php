@@ -26,7 +26,7 @@ class WardenServiceProvider extends ServiceProvider
         });
     }
 
-    public function boot()
+    public function boot(): void
     {
         // Publish configuration
         $this->publishes([

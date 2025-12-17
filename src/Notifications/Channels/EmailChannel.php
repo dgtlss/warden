@@ -25,7 +25,7 @@ class EmailChannel implements NotificationChannel
             return;
         }
 
-        $recipients = $this->parseRecipients($this->recipients);
+        $recipients = $this->parseRecipients((string) $this->recipients);
         $emailData = $this->prepareEmailData($findings);
 
         Mail::send('warden::mail.enhanced-report', $emailData, function ($message) use ($recipients, $findings) {
@@ -41,7 +41,7 @@ class EmailChannel implements NotificationChannel
             return;
         }
 
-        $recipients = $this->parseRecipients($this->recipients);
+        $recipients = $this->parseRecipients((string) $this->recipients);
         $emailData = $this->prepareAbandonedPackagesData($abandonedPackages);
 
         Mail::send('warden::mail.abandoned-packages', $emailData, function ($message) use ($recipients, $abandonedPackages) {
@@ -61,11 +61,18 @@ class EmailChannel implements NotificationChannel
         return 'Email';
     }
 
+    /**
+     * @return array<string>
+     */
     protected function parseRecipients(string $recipients): array
     {
         return array_map('trim', explode(',', $recipients));
     }
 
+    /**
+     * @param array<array<string, mixed>> $findings
+     * @return array<string, mixed>
+     */
     protected function prepareEmailData(array $findings): array
     {
         $appName = config('warden.app_name', 'Application');
@@ -84,6 +91,10 @@ class EmailChannel implements NotificationChannel
         ];
     }
 
+    /**
+     * @param array<array<string, mixed>> $abandonedPackages
+     * @return array<string, mixed>
+     */
     protected function prepareAbandonedPackagesData(array $abandonedPackages): array
     {
         $appName = config('warden.app_name', 'Application');
@@ -97,6 +108,10 @@ class EmailChannel implements NotificationChannel
         ];
     }
 
+    /**
+     * @param array<array<string, mixed>> $findings
+     * @return array<string, int>
+     */
     protected function getSeverityCounts(array $findings): array
     {
         $counts = [
@@ -116,6 +131,10 @@ class EmailChannel implements NotificationChannel
         return $counts;
     }
 
+    /**
+     * @param array<array<string, mixed>> $findings
+     * @return array<string, array<array<string, mixed>>>
+     */
     protected function groupFindingsBySource(array $findings): array
     {
         $grouped = [];

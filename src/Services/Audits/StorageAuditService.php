@@ -4,7 +4,10 @@ namespace Dgtlss\Warden\Services\Audits;
 
 class StorageAuditService extends AbstractAuditService
 {
-    private $directories = [
+    /**
+     * @var array<string>
+     */
+    private array $directories = [
         'storage/framework',
         'storage/logs',
         'bootstrap/cache',

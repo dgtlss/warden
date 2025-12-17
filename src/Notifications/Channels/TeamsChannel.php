@@ -22,6 +22,10 @@ class TeamsChannel implements NotificationChannel
 
         $card = $this->buildFindingsCard($findings);
         
+        if ($this->webhookUrl === null) {
+            return;
+        }
+        
         Http::post($this->webhookUrl, $card);
     }
 
@@ -32,6 +36,10 @@ class TeamsChannel implements NotificationChannel
         }
 
         $card = $this->buildAbandonedPackagesCard($abandonedPackages);
+        
+        if ($this->webhookUrl === null) {
+            return;
+        }
         
         Http::post($this->webhookUrl, $card);
     }
@@ -46,6 +54,10 @@ class TeamsChannel implements NotificationChannel
         return 'Microsoft Teams';
     }
 
+    /**
+     * @param array<array<string, mixed>> $findings
+     * @return array<string, mixed>
+     */
     protected function buildFindingsCard(array $findings): array
     {
         $appName = config('warden.app_name', 'Application');
@@ -166,6 +178,10 @@ class TeamsChannel implements NotificationChannel
         return $card;
     }
 
+    /**
+     * @param array<array<string, mixed>> $abandonedPackages
+     * @return array<string, mixed>
+     */
     protected function buildAbandonedPackagesCard(array $abandonedPackages): array
     {
         $appName = config('warden.app_name', 'Application');
@@ -231,6 +247,9 @@ class TeamsChannel implements NotificationChannel
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     protected function buildSuccessCard(): array
     {
         $appName = config('warden.app_name', 'Application');

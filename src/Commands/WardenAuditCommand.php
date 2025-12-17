@@ -155,7 +155,10 @@ class WardenAuditCommand extends Command
     {
         // Apply severity filtering if specified
         if ($this->option('severity')) {
-            $allFindings = $this->filterBySeverity($allFindings, $this->option('severity'));
+            $severityOption = $this->option('severity');
+            if (is_string($severityOption)) {
+                $allFindings = $this->filterBySeverity($allFindings, $severityOption);
+            }
         }
 
         // Handle abandoned packages
@@ -164,7 +167,7 @@ class WardenAuditCommand extends Command
         // Handle output formatting
         $outputFormat = $this->option('output');
         if ($outputFormat) {
-            $this->outputFormattedResults($allFindings, $outputFormat);
+            $this->outputFormattedResults($allFindings, (string) $outputFormat);
             return !empty($allFindings) ? 1 : ($hasFailures ? 2 : 0);
         }
 
@@ -192,14 +195,16 @@ class WardenAuditCommand extends Command
      */
     protected function displayVersion(): void
     {
-        $composerJson = json_decode(file_get_contents(__DIR__ . '/../../composer.json'), true);
+        $composerPath = __DIR__ . '/../../composer.json';
+        $composerJsonContent = file_get_contents($composerPath);
+        $composerJson = json_decode($composerJsonContent, true);
         $this->info('Warden Audit Version ' . ($composerJson['version'] ?? 'unknown'));
     }
 
     /**
      * Initialize and return all audit services based on command options.
      *
-     * @return array Array of audit service instances
+     * @return array<int, object> Array of audit service instances
      */
     protected function initializeAuditServices(): array
     {
@@ -220,11 +225,13 @@ class WardenAuditCommand extends Command
             if (class_exists($customAuditClass)) {
                 try {
                     $customAudit = app()->make($customAuditClass);
-                    if (method_exists($customAudit, 'shouldRun') && !$customAudit->shouldRun()) {
+                    if (is_object($customAudit) && method_exists($customAudit, 'shouldRun') && !$customAudit->shouldRun()) {
                         continue;
                     }
                     $services[] = new CustomAuditWrapper($customAudit);
-                    $this->info("Loaded custom audit: {$customAudit->getName()}");
+                    if (is_object($customAudit) && method_exists($customAudit, 'getName')) {
+                        $this->info("Loaded custom audit: {$customAudit->getName()}");
+                    }
                 } catch (\Exception $e) {
                     $this->warn("Failed to load custom audit {$customAuditClass}: {$e->getMessage()}");
                 }
@@ -244,9 +251,12 @@ class WardenAuditCommand extends Command
      */
     protected function handleAuditFailure(object $service): void
     {
-        $this->error("{$service->getName()} audit failed to run.");
+        $serviceName = method_exists($service, 'getName') ? $service->getName() : 'Unknown service';
+        $this->error("{$serviceName} audit failed to run.");
         if ($service instanceof ComposerAuditService) {
-            $this->error("Error: " . Collection::make($service->getFindings())->last()['error'] ?? 'Unknown error');
+            $findings = $service->getFindings();
+            $error = Collection::make($findings)->last()['error'] ?? 'Unknown error';
+            $this->error("Error: " . $error);
         }
     }
 
@@ -323,8 +333,8 @@ class WardenAuditCommand extends Command
     /**
      * Prepare a structured report from advisory data.
      *
-     * @param array $advisories Advisory data organized by package
-     * @return array Structured report data
+     * @param array<string, array<array<string, mixed>>> $advisories Advisory data organized by package
+     * @return array<string, array<array<string, mixed>>> Structured report data
      */
     protected function prepareReport(array $advisories): array
     {
@@ -348,7 +358,7 @@ class WardenAuditCommand extends Command
     /**
      * Send notifications about vulnerabilities through configured channels.
      *
-     * @param array $findings List of vulnerability findings
+     * @param array<array<string, mixed>> $findings List of vulnerability findings
      * @return void
      */
     protected function sendNotifications(array $findings): void
@@ -371,7 +381,7 @@ class WardenAuditCommand extends Command
     /**
      * Get configured notification channels.
      *
-     * @return array
+     * @return array<DiscordChannel|EmailChannel|SlackChannel|TeamsChannel>
      */
     protected function getNotificationChannels(): array
     {
@@ -407,7 +417,7 @@ class WardenAuditCommand extends Command
     /**
      * Send notifications via legacy webhook and email methods.
      *
-     * @param array $findings List of vulnerability findings
+     * @param array<array<string, mixed>> $findings List of vulnerability findings
      * @return void
      */
     protected function sendLegacyNotifications(array $findings): void
@@ -428,8 +438,8 @@ class WardenAuditCommand extends Command
     /**
      * Send a webhook notification with audit findings.
      *
-     * @param string $webhookUrl The URL to send the webhook to
-     * @param array $findings List of vulnerability findings
+     * @param string $webhookUrl The URL to send webhook to
+     * @param array<array<string, mixed>> $findings List of vulnerability findings
      * @return void
      */
     protected function sendWebhookNotification(string $webhookUrl, array $findings): void
@@ -442,7 +452,7 @@ class WardenAuditCommand extends Command
     /**
      * Format findings into a readable message for webhook notifications.
      *
-     * @param array $findings List of vulnerability findings
+     * @param array<array<string, mixed>> $findings List of vulnerability findings
      * @return string Formatted message
      */
     protected function formatFindingsForWebhook(array $findings): string
@@ -465,13 +475,13 @@ class WardenAuditCommand extends Command
     /**
      * Send an email report with audit findings.
      *
-     * @param array $report Report data to include in the email
-     * @param array $emailRecipients Recipients of the email
+     * @param array<array<string, mixed>> $report Report data to include in email
+     * @param array<string> $emailRecipients Recipients of email
      * @return void
      */
     protected function sendEmailReport(array $report, array $emailRecipients): void
     {
-        Mail::send('warden::mail.report', ['report' => $report], function ($message) use ($emailRecipients, $report) {
+        Mail::send('warden::mail.report', ['report' => $report], function ($message) use ($emailRecipients) {
             $message->to($emailRecipients)
                     ->subject('Warden Audit Report');
         });
@@ -480,7 +490,7 @@ class WardenAuditCommand extends Command
     /**
      * Send notifications about abandoned packages.
      *
-     * @param array $abandonedPackages List of abandoned packages
+     * @param array<array<string, mixed>> $abandonedPackages List of abandoned packages
      * @return void
      */
     protected function sendAbandonedPackagesNotification(array $abandonedPackages): void
@@ -489,12 +499,14 @@ class WardenAuditCommand extends Command
 
         foreach ($channels as $channel) {
             try {
+                $channelName = method_exists($channel, 'getName') ? $channel->getName() : 'Unknown channel';
                 if (method_exists($channel, 'sendAbandonedPackages')) {
                     $channel->sendAbandonedPackages($abandonedPackages);
-                    $this->info("Abandoned packages notification sent via {$channel->getName()}");
+                    $this->info("Abandoned packages notification sent via {$channelName}");
                 }
             } catch (\Exception $e) {
-                $this->warn("Failed to send abandoned packages notification via {$channel->getName()}: {$e->getMessage()}");
+                $channelName = method_exists($channel, 'getName') ? $channel->getName() : 'Unknown channel';
+                $this->warn("Failed to send abandoned packages notification via {$channelName}: {$e->getMessage()}");
             }
         }
 
@@ -505,7 +517,7 @@ class WardenAuditCommand extends Command
     /**
      * Send legacy notifications for abandoned packages.
      *
-     * @param array $abandonedPackages List of abandoned packages
+     * @param array<array<string, mixed>> $abandonedPackages List of abandoned packages
      * @return void
      */
     protected function sendLegacyAbandonedPackagesNotification(array $abandonedPackages): void
@@ -538,9 +550,9 @@ class WardenAuditCommand extends Command
     /**
      * Filter findings by severity level.
      *
-     * @param array $findings List of vulnerability findings
+     * @param array<array<string, mixed>> $findings List of vulnerability findings
      * @param string $minSeverity Minimum severity level to include
-     * @return array Filtered findings
+     * @return array<array<string, mixed>> Filtered findings
      */
     protected function filterBySeverity(array $findings, string $minSeverity): array
     {
@@ -563,7 +575,7 @@ class WardenAuditCommand extends Command
     /**
      * Output results in the specified format.
      *
-     * @param array $findings List of vulnerability findings
+     * @param array<array<string, mixed>> $findings List of vulnerability findings
      * @param string $format Output format (json|github|gitlab|jenkins)
      * @return void
      */
@@ -592,7 +604,7 @@ class WardenAuditCommand extends Command
     /**
      * Output findings in JSON format.
      *
-     * @param array $findings List of vulnerability findings
+     * @param array<array<string, mixed>> $findings List of vulnerability findings
      * @return void
      */
     protected function outputJson(array $findings): void
@@ -604,13 +616,14 @@ class WardenAuditCommand extends Command
             'findings' => $findings
         ];
 
-        $this->output->writeln(json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        $jsonOutput = json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $this->output->writeln($jsonOutput);
     }
 
     /**
      * Output findings in GitHub Actions format.
      *
-     * @param array $findings List of vulnerability findings
+     * @param array<array<string, mixed>> $findings List of vulnerability findings
      * @return void
      */
     protected function outputGitHubActions(array $findings): void
@@ -627,7 +640,7 @@ class WardenAuditCommand extends Command
     /**
      * Output findings in GitLab CI format.
      *
-     * @param array $findings List of vulnerability findings
+     * @param array<array<string, mixed>> $findings List of vulnerability findings
      * @return void
      */
     protected function outputGitLabCI(array $findings): void
@@ -661,13 +674,14 @@ class WardenAuditCommand extends Command
             'vulnerabilities' => $vulnerabilities
         ];
 
-        $this->output->writeln(json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        $jsonOutput = json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $this->output->writeln($jsonOutput);
     }
 
     /**
      * Output findings in Jenkins format.
      *
-     * @param array $findings List of vulnerability findings
+     * @param array<array<string, mixed>> $findings List of vulnerability findings
      * @return void
      */
     protected function outputJenkins(array $findings): void
@@ -680,7 +694,8 @@ class WardenAuditCommand extends Command
             ]
         ];
 
-        $this->output->writeln(json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        $jsonOutput = json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $this->output->writeln($jsonOutput);
     }
 
     /**
@@ -690,7 +705,9 @@ class WardenAuditCommand extends Command
      */
     protected function getWardenVersion(): string
     {
-        $composerJson = json_decode(file_get_contents(__DIR__ . '/../../composer.json'), true);
+        $composerPath = __DIR__ . '/../../composer.json';
+        $composerJsonContent = file_get_contents($composerPath);
+        $composerJson = json_decode($composerJsonContent, true);
         return $composerJson['version'] ?? 'unknown';
     }
 }
@@ -724,6 +741,9 @@ class CustomAuditWrapper
         return $success;
     }
 
+    /**
+     * @return array<array<string, mixed>>
+     */
     public function getFindings(): array
     {
         return $this->findings;
@@ -731,6 +751,9 @@ class CustomAuditWrapper
 
     public function shouldRun(): bool
     {
-        return method_exists($this->customAudit, 'shouldRun') ? $this->customAudit->shouldRun() : true;
+        if (method_exists($this->customAudit, 'shouldRun')) {
+            return $this->customAudit->shouldRun();
+        }
+        return true;
     }
 }

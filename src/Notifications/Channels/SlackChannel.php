@@ -24,6 +24,10 @@ class SlackChannel implements NotificationChannel
         
         $appName = config('warden.app_name', 'Application');
         
+        if ($this->webhookUrl === null) {
+            return;
+        }
+        
         Http::post($this->webhookUrl, [
             'blocks' => $blocks,
             'text' => sprintf('🚨 [%s] Warden Security Audit: %d vulnerabilities found', $appName, count($findings))
@@ -39,6 +43,10 @@ class SlackChannel implements NotificationChannel
         $blocks = $this->buildAbandonedPackagesBlocks($abandonedPackages);
         
         $appName = config('warden.app_name', 'Application');
+        
+        if ($this->webhookUrl === null) {
+            return;
+        }
         
         Http::post($this->webhookUrl, [
             'blocks' => $blocks,
@@ -56,6 +64,10 @@ class SlackChannel implements NotificationChannel
         return 'Slack';
     }
 
+    /**
+     * @param array<array<string, mixed>> $findings
+     * @return array<array<string, mixed>>
+     */
     protected function buildFindingsBlocks(array $findings): array
     {
         $appName = config('warden.app_name', 'Application');
@@ -125,6 +137,10 @@ class SlackChannel implements NotificationChannel
         return $blocks;
     }
 
+    /**
+     * @param array<array<string, mixed>> $abandonedPackages
+     * @return array<array<string, mixed>>
+     */
     protected function buildAbandonedPackagesBlocks(array $abandonedPackages): array
     {
         $appName = config('warden.app_name', 'Application');

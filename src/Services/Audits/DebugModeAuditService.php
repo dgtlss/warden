@@ -90,6 +90,9 @@ class DebugModeAuditService extends AbstractAuditService
         return true;
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     private function getComposerJson(): ?array
     {
         $composerPath = base_path('composer.json');
@@ -97,7 +100,8 @@ class DebugModeAuditService extends AbstractAuditService
             return null;
         }
 
-        return json_decode(file_get_contents($composerPath), true);
+        $composerJsonContent = file_get_contents($composerPath);
+        return json_decode($composerJsonContent, true);
     }
 
     private function hasExposedTestingRoutes(): bool
@@ -132,6 +136,9 @@ class DebugModeAuditService extends AbstractAuditService
         return false;
     }
 
+    /**
+     * @param object $route
+     */
     private function hasProtectiveMiddleware($route): bool
     {
         $middleware = $route->middleware();

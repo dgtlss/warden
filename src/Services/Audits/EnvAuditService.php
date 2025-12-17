@@ -65,6 +65,6 @@ class EnvAuditService extends AbstractAuditService
         }
         
         $gitignore = file_get_contents($gitignorePath);
-        return strpos($gitignore, '.env') !== false;
+        return strpos((string) $gitignore, '.env') !== false;
     }
 }

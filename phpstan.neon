@@ -1,0 +1,63 @@
+# PHPStan Configuration for Warden Laravel Package
+#
+# This configuration is designed for a Laravel package that needs static analysis
+# without requiring the full Laravel framework. We use stubs and type aliases
+# to handle Laravel-specific functionality while keeping the analysis focused
+# on the package code.
+#
+# Key configuration points:
+# - Level 8: Strict analysis level for maximum type safety
+# - Bootstrap file: Provides Laravel helper function and class stubs
+# - Type aliases: Helps PHPStan understand Laravel-specific types
+# - No extensions: Avoids deprecated larastan package
+#
+# Known issues that are expected and will be addressed:
+# - Laravel Command method calls (handled via stubs)
+# - Iterable type specifications (will be improved)
+# - Function type issues (handled via bootstrap)
+
+parameters:
+    level: 8
+    paths:
+        - src
+    excludePaths:
+        - '*/vendor/*'
+        - '*/tests/*'
+    bootstrapFiles:
+        - phpstan-bootstrap.php
+        - vendor/autoload.php
+    reportUnmatchedIgnoredErrors: false
+    typeAliases:
+        LaravelApp: 'Illuminate\Foundation\Application'
+        LaravelConfig: 'array<string, mixed>'
+# Remove ignoreErrors section since we're not using extensions
+# ignoreErrors:
+#         # Ignore Laravel Command method issues
+#         - '#Call to an undefined method.*Illuminate\\\\Console\\\\Command::option#'
+#         - '#Call to an undefined method.*Illuminate\\\\Console\\\\Command::info#'
+#         - '#Call to an undefined method.*Illuminate\\\\Console\\\\Command::warn#'
+#         - '#Call to an undefined method.*Illuminate\\\\Console\\\\Command::error#'
+#         - '#Call to an undefined method.*Illuminate\\\\Console\\\\Command::newLine#'
+#         - '#Call to an undefined method.*Illuminate\\\\Console\\\\Command::output#'
+#         - '#Call to an undefined method.*Illuminate\\\\Console\\\\Command::getName#'
+#         - '#Call to an undefined method.*Illuminate\\\\Console\\\\Command::run#'
+#         - '#Call to an undefined method.*Illuminate\\\\Console\\\\Command::getFindings#'
+#         - '#Access to an undefined property.*Illuminate\\\\Console\\\\Command::\\$output#'
+#         - '#Class.*extends unknown class.*Illuminate\\\\Console\\\\Command#'
+#         - '#D.*::__construct\\(\\) calls parent::__construct\\(\\) but D.* does not extend any class#'
+#         
+#         # Ignore Laravel function issues
+#         - '#Call to function method_exists\\(\\) with.*will always evaluate to true#'
+#         - '#Parameter \\\\#1 \\\\$json of function json_decode expects string, string\\\\\\|false given#'
+#         - '#Parameter \\\\#2 \\\\$subject of function preg_match expects string, string\\\\\\|false given#'
+#         - '#Parameter \\\\#3 \\\\$subject of function preg_replace expects array<float\\\\\\|int\\\\\\|string>|string, string\\\\\\|false given#'
+# Remove ignoreErrors section since we're not using extensions
+# ignoreErrors:
+#     # Ignore json_decode issues
+#     - '#Parameter \\#1 \\$json of function json_decode expects string, string\\|false given#'
+#     # Ignore Carbon parse issues
+#     - '#Parameter \\#1 \\$time of static method Carbon.*parse.*array<string, mixed> given#'
+#     - '#Call to function method_exists\(\) with .* and.* will always evaluate to true#'
+#     - '#Method .* has parameter .* with no value type specified in iterable type array#'
+#     - '#Property .* type has no value type specified in iterable type array#'
+#     - '#Method .* return type has no value type specified in iterable type array#'

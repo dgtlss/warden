@@ -6,7 +6,10 @@ use Symfony\Component\Process\Process;
 
 class ComposerAuditService extends AbstractAuditService
 {
-    private $abandonedPackages = [];
+    /**
+     * @var array<array<string, mixed>>
+     */
+    private array $abandonedPackages = [];
 
     public function getName(): string
     {
@@ -84,6 +87,9 @@ class ComposerAuditService extends AbstractAuditService
         }
     }
 
+    /**
+     * @return array<array<string, mixed>>
+     */
     public function getAbandonedPackages(): array
     {
         return $this->abandonedPackages;

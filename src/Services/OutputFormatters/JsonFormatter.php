@@ -25,7 +25,8 @@ class JsonFormatter
             'findings' => $this->formatFindings($findings),
         ];
 
-        return json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $jsonOutput = json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        return $jsonOutput ?: '';
     }
 
     /**
@@ -48,8 +49,8 @@ class JsonFormatter
     /**
      * Generate a summary of findings by severity.
      *
-     * @param array $findings
-     * @return array
+     * @param array<array<string, mixed>> $findings
+     * @return array<string, int>
      */
     protected function generateSummary(array $findings): array
     {
@@ -74,8 +75,8 @@ class JsonFormatter
     /**
      * Format individual findings.
      *
-     * @param array $findings
-     * @return array
+     * @param array<array<string, mixed>> $findings
+     * @return array<array<string, mixed>>
      */
     protected function formatFindings(array $findings): array
     {
@@ -125,10 +126,11 @@ class JsonFormatter
             ];
         }
         
-        return json_encode([
+        $jsonOutput = json_encode([
             'annotations' => $annotations,
             'summary' => $this->generateSummary($findings),
         ], JSON_PRETTY_PRINT);
+        return $jsonOutput ?: '';
     }
 
     /**
@@ -210,10 +212,11 @@ class JsonFormatter
             ];
         }
         
-        return json_encode([
+        $jsonOutput = json_encode([
             'issues' => $issues,
             '_class' => 'io.jenkins.plugins.analysis.core.restapi.ReportApi',
         ], JSON_PRETTY_PRINT);
+        return $jsonOutput ?: '';
     }
 
     /**
@@ -223,8 +226,9 @@ class JsonFormatter
      */
     protected function getWardenVersion(): string
     {
+        $composerJsonContent = file_get_contents(__DIR__ . '/../../../composer.json');
         $composerJson = json_decode(
-            file_get_contents(__DIR__ . '/../../../composer.json'),
+            $composerJsonContent,
             true
         );
         

@@ -1,0 +1,37 @@
+name: PHPStan Static Analysis
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  phpstan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          tools: composer
+          
+      - name: Install dependencies
+        run: composer install --no-interaction --no-suggest --no-scripts
+        
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse --memory-limit=2G
+        env:
+          PHPSTAN_MEMORY_LIMIT: 2G
+          
+      - name: Upload PHPStan results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phpstan-results
+          path: phpstan-results.xml
+          retention-days: 1

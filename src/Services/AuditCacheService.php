@@ -27,10 +27,10 @@ class AuditCacheService
     }
 
     /**
-     * Get the cached audit result.
+     * Get cached audit result.
      *
      * @param string $auditName
-     * @return array|null
+     * @return array<array<string, mixed>>|null
      */
     public function getCachedResult(string $auditName): ?array
     {
@@ -100,6 +100,6 @@ class AuditCacheService
         $cachedAt = Carbon::parse($cached['timestamp']);
         $expiresAt = $cachedAt->addSeconds($this->cacheDuration);
         
-        return max(0, $expiresAt->diffInSeconds(Carbon::now()));
+        return (int) max(0, $expiresAt->diffInSeconds(Carbon::now()));
     }
 } 

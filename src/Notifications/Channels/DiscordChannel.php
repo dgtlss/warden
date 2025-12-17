@@ -23,6 +23,10 @@ class DiscordChannel implements NotificationChannel
         $appName = config('warden.app_name', 'Application');
         $embeds = $this->buildFindingsEmbeds($findings);
         
+        if ($this->webhookUrl === null) {
+            return;
+        }
+        
         Http::post($this->webhookUrl, [
             'username' => 'Warden Security',
             'avatar_url' => 'https://raw.githubusercontent.com/dgtlss/warden/main/public/warden-logo.png',
@@ -39,6 +43,10 @@ class DiscordChannel implements NotificationChannel
 
         $appName = config('warden.app_name', 'Application');
         $embed = $this->buildAbandonedPackagesEmbed($abandonedPackages);
+        
+        if ($this->webhookUrl === null) {
+            return;
+        }
         
         Http::post($this->webhookUrl, [
             'username' => 'Warden Security',
@@ -58,6 +66,10 @@ class DiscordChannel implements NotificationChannel
         return 'Discord';
     }
 
+    /**
+     * @param array<array<string, mixed>> $findings
+     * @return array<array<string, mixed>>
+     */
     protected function buildFindingsEmbeds(array $findings): array
     {
         $embeds = [];
@@ -120,6 +132,10 @@ class DiscordChannel implements NotificationChannel
         return array_slice($embeds, 0, 10); // Discord limit: 10 embeds per message
     }
 
+    /**
+     * @param array<array<string, mixed>> $abandonedPackages
+     * @return array<string, mixed>
+     */
     protected function buildAbandonedPackagesEmbed(array $abandonedPackages): array
     {
         $fields = [];
