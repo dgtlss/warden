@@ -195,10 +195,7 @@ class WardenAuditCommand extends Command
      */
     protected function displayVersion(): void
     {
-        $composerPath = __DIR__ . '/../../composer.json';
-        $composerJsonContent = file_get_contents($composerPath);
-        $composerJson = json_decode($composerJsonContent, true);
-        $this->info('Warden Audit Version ' . ($composerJson['version'] ?? 'unknown'));
+        $this->info('Warden Audit Version ' . $this->getWardenVersion());
     }
 
     /**
@@ -687,16 +684,28 @@ class WardenAuditCommand extends Command
         $jsonOutput = json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         $this->output->writeln($jsonOutput);
     }
-
     /**
      * Get the current Warden version.
      */
     protected function getWardenVersion(): string
     {
         $composerPath = __DIR__ . '/../../composer.json';
+        
+        if (!file_exists($composerPath)) {
+            return 'unknown';
+        }
+        
         $composerJsonContent = file_get_contents($composerPath);
+        if ($composerJsonContent === false) {
+            return 'unknown';
+        }
+        
         $composerJson = json_decode($composerJsonContent, true);
-        return $composerJson['version'] ?? 'unknown';
+        if (!is_array($composerJson) || !isset($composerJson['version'])) {
+            return 'unknown';
+        }
+        
+        return $composerJson['version'];
     }
 }
 

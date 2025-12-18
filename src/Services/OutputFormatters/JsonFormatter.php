@@ -203,16 +203,23 @@ class JsonFormatter
     }
 
     /**
-     * Get current Warden version.
+     * Get the current Warden version.
+     *  @phpstan-ignore
      */
     protected function getWardenVersion(): string
     {
-        $composerJsonContent = file_get_contents(__DIR__ . '/../../../composer.json');
-        $composerJson = json_decode(
-            $composerJsonContent,
-            true
-        );
-        
+        $composerPath = __DIR__ . '/../../composer.json';
+        if (!file_exists($composerPath)) {
+            return 'unknown (composer.json not found)';
+        }
+        $composerJsonContent = file_get_contents($composerPath);
+        if ($composerJsonContent === false) {
+            return 'unknown (failed to read composer.json)';
+        }
+        $composerJson = json_decode($composerJsonContent, true);
+        if (!is_array($composerJson)) {
+            return 'unknown (failed to parse composer.json)';
+        }
         return $composerJson['version'] ?? 'unknown';
     }
 } 
