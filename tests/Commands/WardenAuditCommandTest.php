@@ -18,7 +18,7 @@ class WardenAuditCommandTest extends TestCase
 
     public function testAuditCommandHandlesNoFindings()
     {
-        $this->mock(ParallelAuditExecutor::class, function (MockInterface $mock) {
+        $this->mock(ParallelAuditExecutor::class, function (MockInterface $mock): void {
             $mock->shouldReceive('execute')->once()->andReturn([]);
         });
 
@@ -38,7 +38,7 @@ class WardenAuditCommandTest extends TestCase
             ],
         ];
 
-        $this->mock(ParallelAuditExecutor::class, function (MockInterface $mock) use ($findings) {
+        $this->mock(ParallelAuditExecutor::class, function (MockInterface $mock) use ($findings): void {
             $mock->shouldReceive('execute')->once()->andReturn($findings);
         });
 

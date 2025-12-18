@@ -46,7 +46,7 @@ class TeamsChannel implements NotificationChannel
 
     public function isConfigured(): bool
     {
-        return !empty($this->webhookUrl);
+        return !in_array($this->webhookUrl, [null, '', '0'], true);
     }
 
     public function getName(): string
@@ -76,10 +76,10 @@ class TeamsChannel implements NotificationChannel
             '@type' => 'MessageCard',
             '@context' => 'http://schema.org/extensions',
             'themeColor' => $themeColor,
-            'summary' => "[{$appName}] Warden Security Alert: {$totalFindings} vulnerabilities found",
+            'summary' => sprintf('[%s] Warden Security Alert: %d vulnerabilities found', $appName, $totalFindings),
             'sections' => [
                 [
-                    'activityTitle' => "🛡️ **[{$appName}] Warden Security Audit Report**",
+                    'activityTitle' => sprintf('🛡️ **[%s] Warden Security Audit Report**', $appName),
                     'activitySubtitle' => date('F j, Y \a\t g:i A'),
                     'activityImage' => 'https://raw.githubusercontent.com/dgtlss/warden/refs/heads/main/public/warden-logo.png',
                     'facts' => [
@@ -111,71 +111,11 @@ class TeamsChannel implements NotificationChannel
                     'markdown' => true
                 ],
                 [
-                    'text' => "**{$summary}**",
+                    'text' => sprintf('**%s**', $summary),
                     'markdown' => true
                 ]
             ]
         ];
-
-        // Add detailed findings sections (limit to prevent message size issues)
-        $sectionsToAdd = [];
-        $findingsBySource = $this->groupFindingsBySource($findings);
-        $addedFindings = 0;
-        $maxFindings = 10; // Teams has message size limits
-
-        foreach ($findingsBySource as $source => $sourceFindings) {
-            if ($addedFindings >= $maxFindings) {
-                break;
-            }
-
-            $findingsText = '';
-            $remainingSpace = $maxFindings - $addedFindings;
-            $findingsToShow = array_slice($sourceFindings, 0, $remainingSpace);
-
-            foreach ($findingsToShow as $finding) {
-                $severity = ucfirst($finding['severity'] ?? 'low');
-                $severityIcon = $this->getSeverityIcon($finding['severity'] ?? 'low');
-                
-                $findingsText .= "**{$severityIcon} {$severity}** - {$finding['package']}  \n";
-                $findingsText .= "{$finding['title']}  \n";
-                
-                if (!empty($finding['cve'])) {
-                    $findingsText .= "CVE: [{$finding['cve']}](https://www.cve.org/CVERecord?id={$finding['cve']})  \n";
-                }
-                
-                $findingsText .= "  \n";
-                $addedFindings++;
-            }
-
-            if (count($sourceFindings) > count($findingsToShow)) {
-                $remaining = count($sourceFindings) - count($findingsToShow);
-                $findingsText .= "*...and {$remaining} more {$source} issues*  \n";
-            }
-
-            $sectionsToAdd[] = [
-                'activityTitle' => "📦 " . ucfirst($source) . " Issues",
-                'text' => $findingsText,
-                'markdown' => true
-            ];
-        }
-
-        $card['sections'] = array_merge($card['sections'], $sectionsToAdd);
-
-        // Add action buttons
-        $card['potentialAction'] = [
-            [
-                '@type' => 'OpenUri',
-                'name' => 'View Documentation',
-                'targets' => [
-                    [
-                        'os' => 'default',
-                        'uri' => 'https://github.com/dgtlss/warden'
-                    ]
-                ]
-            ]
-        ];
-
-        return $card;
     }
 
     /**
@@ -196,22 +136,23 @@ class TeamsChannel implements NotificationChannel
             } else {
                 $packagesText .= "→ No replacement suggested  \n";
             }
+
             $packagesText .= "  \n";
         }
 
         if (count($abandonedPackages) > 10) {
             $remaining = count($abandonedPackages) - 10;
-            $packagesText .= "*...and {$remaining} more packages*";
+            $packagesText .= sprintf('*...and %d more packages*', $remaining);
         }
 
         return [
             '@type' => 'MessageCard',
             '@context' => 'http://schema.org/extensions',
             'themeColor' => 'FF8C00', // Orange for warnings
-            'summary' => "[{$appName}] Warden Alert: {$totalPackages} abandoned packages detected",
+            'summary' => sprintf('[%s] Warden Alert: %d abandoned packages detected', $appName, $totalPackages),
             'sections' => [
                 [
-                    'activityTitle' => "⚠️ **[{$appName}] Abandoned Packages Detected**",
+                    'activityTitle' => sprintf('⚠️ **[%s] Abandoned Packages Detected**', $appName),
                     'activitySubtitle' => date('F j, Y \a\t g:i A'),
                     'activityImage' => 'https://raw.githubusercontent.com/dgtlss/warden/refs/heads/main/public/warden-logo.png',
                     'facts' => [
@@ -258,10 +199,10 @@ class TeamsChannel implements NotificationChannel
             '@type' => 'MessageCard',
             '@context' => 'http://schema.org/extensions',
             'themeColor' => '00FF00', // Green for success
-            'summary' => "[{$appName}] Warden Security Audit: All Clear",
+            'summary' => sprintf('[%s] Warden Security Audit: All Clear', $appName),
             'sections' => [
                 [
-                    'activityTitle' => "✅ **[{$appName}] Security Audit Complete**",
+                    'activityTitle' => sprintf('✅ **[%s] Security Audit Complete**', $appName),
                     'activitySubtitle' => date('F j, Y \a\t g:i A'),
                     'activityImage' => 'https://raw.githubusercontent.com/dgtlss/warden/refs/heads/main/public/warden-logo.png',
                     'text' => '**No security vulnerabilities detected!**  \nYour application dependencies are secure.',
@@ -335,6 +276,7 @@ class TeamsChannel implements NotificationChannel
             if (!isset($grouped[$source])) {
                 $grouped[$source] = [];
             }
+
             $grouped[$source][] = $finding;
         }
 
@@ -346,13 +288,13 @@ class TeamsChannel implements NotificationChannel
         $criticalAndHigh = $severityCounts['critical'] + $severityCounts['high'];
         
         if ($criticalAndHigh > 0) {
-            return "{$criticalAndHigh} critical/high severity vulnerabilities require immediate attention";
+            return $criticalAndHigh . ' critical/high severity vulnerabilities require immediate attention';
         }
 
         if ($severityCounts['medium'] > 0) {
-            return "{$severityCounts['medium']} medium severity vulnerabilities should be reviewed";
+            return $severityCounts['medium'] . ' medium severity vulnerabilities should be reviewed';
         }
 
-        return "{$severityCounts['low']} low severity vulnerabilities detected";
+        return $severityCounts['low'] . ' low severity vulnerabilities detected';
     }
 }

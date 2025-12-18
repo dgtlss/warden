@@ -73,16 +73,16 @@ class ComposerAuditService extends AbstractAuditService
             }
 
             return true;
-        } catch (\Exception $e) {
+        } catch (\Exception $exception) {
             $this->addFinding([
                 'source' => $this->getName(),
                 'package' => 'composer',
                 'title' => 'Composer audit failed with exception',
                 'severity' => 'high',
-                'error' => $e->getMessage()
+                'error' => $exception->getMessage()
             ]);
             
-            info("Composer audit exception: " . $e->getMessage());
+            info("Composer audit exception: " . $exception->getMessage());
             return false;
         }
     }

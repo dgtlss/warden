@@ -9,13 +9,11 @@ use function Laravel\Prompts\spin;
 class ParallelAuditExecutor
 {
     protected array $processes = [];
+
     protected array $results = [];
 
     /**
      * Add an audit service to be executed in parallel.
-     *
-     * @param object $auditService
-     * @return void
      */
     public function addAudit(object $auditService): void
     {
@@ -25,12 +23,11 @@ class ParallelAuditExecutor
     /**
      * Execute all audits in parallel.
      *
-     * @param bool $showProgress
      * @return array Results keyed by audit name
      */
     public function execute(bool $showProgress = true): array
     {
-        if (empty($this->processes)) {
+        if ($this->processes === []) {
             return [];
         }
 
@@ -46,8 +43,6 @@ class ParallelAuditExecutor
 
     /**
      * Run audits in parallel using concurrent processing.
-     *
-     * @return array
      */
     protected function runParallel(): array
     {
@@ -92,8 +87,6 @@ class ParallelAuditExecutor
 
     /**
      * Get all findings from executed audits.
-     *
-     * @return Collection
      */
     public function getAllFindings(): Collection
     {
@@ -105,8 +98,6 @@ class ParallelAuditExecutor
 
     /**
      * Check if any audit failed.
-     *
-     * @return bool
      */
     public function hasFailures(): bool
     {
@@ -116,8 +107,6 @@ class ParallelAuditExecutor
 
     /**
      * Get failed audits.
-     *
-     * @return Collection
      */
     public function getFailedAudits(): Collection
     {

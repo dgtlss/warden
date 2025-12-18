@@ -8,6 +8,7 @@ use Carbon\Carbon;
 class AuditCacheService
 {
     protected string $cachePrefix = 'warden:audit:';
+
     protected int $cacheDuration;
 
     public function __construct()
@@ -17,9 +18,6 @@ class AuditCacheService
 
     /**
      * Check if an audit has been recently run.
-     *
-     * @param string $auditName
-     * @return bool
      */
     public function hasRecentAudit(string $auditName): bool
     {
@@ -29,7 +27,6 @@ class AuditCacheService
     /**
      * Get cached audit result.
      *
-     * @param string $auditName
      * @return array<array<string, mixed>>|null
      */
     public function getCachedResult(string $auditName): ?array
@@ -39,10 +36,6 @@ class AuditCacheService
 
     /**
      * Store audit result in cache.
-     *
-     * @param string $auditName
-     * @param array $result
-     * @return void
      */
     public function storeResult(string $auditName, array $result): void
     {
@@ -59,9 +52,6 @@ class AuditCacheService
 
     /**
      * Clear cached audit results.
-     *
-     * @param string|null $auditName
-     * @return void
      */
     public function clearCache(?string $auditName = null): void
     {
@@ -75,9 +65,6 @@ class AuditCacheService
 
     /**
      * Get the cache key for an audit.
-     *
-     * @param string $auditName
-     * @return string
      */
     protected function getCacheKey(string $auditName): string
     {
@@ -87,7 +74,6 @@ class AuditCacheService
     /**
      * Get time until next audit is allowed.
      *
-     * @param string $auditName
      * @return int|null Seconds until next audit, null if not cached
      */
     public function getTimeUntilNextAudit(string $auditName): ?int
@@ -99,7 +85,7 @@ class AuditCacheService
 
         $cachedAt = Carbon::parse($cached['timestamp']);
         $expiresAt = $cachedAt->addSeconds($this->cacheDuration);
-        
+
         return (int) max(0, $expiresAt->diffInSeconds(Carbon::now()));
     }
 } 

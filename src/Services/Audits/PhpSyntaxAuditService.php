@@ -21,21 +21,19 @@ class PhpSyntaxAuditService extends AbstractAuditService
         $output = $process->getOutput() . $process->getErrorOutput();
         $errors = $this->parseOutput($output);
 
-        if (!empty($errors)) {
-            foreach ($errors as $error) {
-                $filePath = str_replace(base_path() . '/', '', $error['file']);
-                $this->addFinding([
-                    'package' => 'Application Code',
-                    'title' => 'PHP Syntax Error in ' . $filePath,
-                    'severity' => 'high',
-                    'description' => $error['message'],
-                    'remediation' => 'Fix the syntax error in the specified file.',
-                ]);
-            }
+        foreach ($errors as $error) {
+            $filePath = str_replace(base_path() . '/', '', $error['file']);
+            $this->addFinding([
+                'package' => 'Application Code',
+                'title' => 'PHP Syntax Error in ' . $filePath,
+                'severity' => 'high',
+                'description' => $error['message'],
+                'remediation' => 'Fix the syntax error in the specified file.',
+            ]);
         }
         
         // If the process failed for a reason other than finding lint errors (e.g., command not found).
-        if (!$process->isSuccessful() && empty($errors)) {
+        if (!$process->isSuccessful() && $errors === []) {
             $this->addFinding([
                 'package' => 'Application Code',
                 'title' => 'PHP Syntax Audit Failed to Run',
@@ -46,7 +44,7 @@ class PhpSyntaxAuditService extends AbstractAuditService
         }
 
         // The audit passes if no findings were added.
-        return empty($this->findings);
+        return $this->findings === [];
     }
 
     protected function getProcess(): Process
@@ -60,10 +58,10 @@ class PhpSyntaxAuditService extends AbstractAuditService
         ]);
 
         $pathsToPrune = collect($excludedDirs)
-            ->map(fn ($dir) => "-path './{$dir}' -prune")
+            ->map(fn ($dir) => sprintf("-path './%s' -prune", $dir))
             ->implode(' -o ');
 
-        $command = "find . {$pathsToPrune} -o -name '*.php' -print0 | xargs -0 -n1 -I{} php -l {}";
+        $command = sprintf("find . %s -o -name '*.php' -print0 | xargs -0 -n1 -I{} php -l {}", $pathsToPrune);
 
         // fromShellCommandline is used to properly handle shell piping.
         return Process::fromShellCommandline($command, base_path());
@@ -73,8 +71,9 @@ class PhpSyntaxAuditService extends AbstractAuditService
     {
         $errors = [];
         $lines = explode("\n", trim($output));
+        $counter = count($lines);
 
-        for ($i = 0; $i < count($lines); $i++) {
+        for ($i = 0; $i < $counter; $i++) {
             if (str_contains($lines[$i], 'Errors parsing')) {
                 // The filename is on the same line as "Errors parsing".
                 $file = trim(substr($lines[$i], strpos($lines[$i], 'parsing') + 7));
@@ -84,13 +83,14 @@ class PhpSyntaxAuditService extends AbstractAuditService
                 if (isset($lines[$i + 1]) && str_contains($lines[$i + 1], 'Parse error:')) {
                     $errorMessage = trim($lines[$i + 1]);
                 }
-                
+
                 $errors[] = [
                     'file' => $file,
                     'message' => $errorMessage,
                 ];
             }
         }
+
         return $errors;
     }
 } 

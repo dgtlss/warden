@@ -31,7 +31,8 @@
         }
     },
     "require-dev": {
-        "phpstan/phpstan": "^2.1"
+        "phpstan/phpstan": "^2.1",
+        "rector/rector": "^2.2"
     },
     "scripts": {
         "phpstan": "vendor/bin/phpstan analyse --memory-limit=2G"

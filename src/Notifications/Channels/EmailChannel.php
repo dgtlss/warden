@@ -9,7 +9,9 @@ use Carbon\Carbon;
 class EmailChannel implements NotificationChannel
 {
     protected ?string $recipients;
+
     protected ?string $fromAddress;
+
     protected ?string $fromName;
 
     public function __construct()
@@ -28,7 +30,7 @@ class EmailChannel implements NotificationChannel
         $recipients = $this->parseRecipients((string) $this->recipients);
         $emailData = $this->prepareEmailData($findings);
 
-        Mail::send('warden::mail.enhanced-report', $emailData, function ($message) use ($recipients, $findings) {
+        Mail::send('warden::mail.enhanced-report', $emailData, function ($message) use ($recipients, $findings): void {
             $message->to($recipients)
                     ->subject($this->generateSubject($findings))
                     ->from($this->fromAddress, $this->fromName);
@@ -44,7 +46,7 @@ class EmailChannel implements NotificationChannel
         $recipients = $this->parseRecipients((string) $this->recipients);
         $emailData = $this->prepareAbandonedPackagesData($abandonedPackages);
 
-        Mail::send('warden::mail.abandoned-packages', $emailData, function ($message) use ($recipients, $abandonedPackages) {
+        Mail::send('warden::mail.abandoned-packages', $emailData, function ($message) use ($recipients, $abandonedPackages): void {
             $message->to($recipients)
                     ->subject($this->generateAbandonedPackagesSubject($abandonedPackages))
                     ->from($this->fromAddress, $this->fromName);
@@ -53,7 +55,7 @@ class EmailChannel implements NotificationChannel
 
     public function isConfigured(): bool
     {
-        return !empty($this->recipients) && !empty($this->fromAddress);
+        return !in_array($this->recipients, [null, '', '0'], true) && !in_array($this->fromAddress, [null, '', '0'], true);
     }
 
     public function getName(): string
@@ -78,7 +80,7 @@ class EmailChannel implements NotificationChannel
         $appName = config('warden.app_name', 'Application');
         $severityCounts = $this->getSeverityCounts($findings);
         $findingsBySource = $this->groupFindingsBySource($findings);
-        
+
         return [
             'appName' => $appName,
             'scanDate' => Carbon::now(),
@@ -98,7 +100,7 @@ class EmailChannel implements NotificationChannel
     protected function prepareAbandonedPackagesData(array $abandonedPackages): array
     {
         $appName = config('warden.app_name', 'Application');
-        
+
         return [
             'appName' => $appName,
             'scanDate' => Carbon::now(),
@@ -138,12 +140,13 @@ class EmailChannel implements NotificationChannel
     protected function groupFindingsBySource(array $findings): array
     {
         $grouped = [];
-        
+
         foreach ($findings as $finding) {
             $source = $finding['source'] ?? 'unknown';
             if (!isset($grouped[$source])) {
                 $grouped[$source] = [];
             }
+
             $grouped[$source][] = $finding;
         }
 
@@ -159,7 +162,7 @@ class EmailChannel implements NotificationChannel
         foreach ($findings as $finding) {
             $severity = $finding['severity'] ?? 'low';
             $level = $severityLevels[$severity] ?? 1;
-            
+
             if ($level > $highestLevel) {
                 $highest = $severity;
                 $highestLevel = $level;
@@ -172,22 +175,22 @@ class EmailChannel implements NotificationChannel
     protected function generateSummary(array $findings, array $severityCounts): string
     {
         $totalFindings = count($findings);
-        
+
         if ($totalFindings === 0) {
             return 'No security vulnerabilities detected.';
         }
 
         $criticalAndHigh = $severityCounts['critical'] + $severityCounts['high'];
-        
+
         if ($criticalAndHigh > 0) {
-            return "⚠️ {$criticalAndHigh} critical/high severity vulnerabilities require immediate attention.";
+            return sprintf('⚠️ %s critical/high severity vulnerabilities require immediate attention.', $criticalAndHigh);
         }
 
         if ($severityCounts['medium'] > 0) {
-            return "⚠️ {$severityCounts['medium']} medium severity vulnerabilities should be reviewed.";
+            return sprintf('⚠️ %s medium severity vulnerabilities should be reviewed.', $severityCounts['medium']);
         }
 
-        return "{$severityCounts['low']} low severity vulnerabilities detected.";
+        return $severityCounts['low'] . ' low severity vulnerabilities detected.';
     }
 
     protected function generateSubject(array $findings): string
@@ -195,9 +198,9 @@ class EmailChannel implements NotificationChannel
         $appName = config('warden.app_name', 'Application');
         $count = count($findings);
         $highestSeverity = $this->getHighestSeverity($findings);
-        
+
         if ($count === 0) {
-            return "✅ [{$appName}] Warden Security Audit: No Issues Found";
+            return sprintf('✅ [%s] Warden Security Audit: No Issues Found', $appName);
         }
 
         $emoji = match($highestSeverity) {
@@ -208,16 +211,16 @@ class EmailChannel implements NotificationChannel
             default => '⚪'
         };
 
-        return "{$emoji} [{$appName}] Warden Security Alert: {$count} " . 
+        return sprintf('%s [%s] Warden Security Alert: %d ', $emoji, $appName, $count) . 
                ($count === 1 ? 'vulnerability' : 'vulnerabilities') . 
-               " found ({$highestSeverity} severity)";
+               sprintf(' found (%s severity)', $highestSeverity);
     }
 
     protected function generateAbandonedPackagesSubject(array $abandonedPackages): string
     {
         $appName = config('warden.app_name', 'Application');
         $count = count($abandonedPackages);
-        return "⚠️ [{$appName}] Warden Alert: {$count} abandoned " . 
+        return sprintf('⚠️ [%s] Warden Alert: %d abandoned ', $appName, $count) . 
                ($count === 1 ? 'package' : 'packages') . " detected";
     }
 }

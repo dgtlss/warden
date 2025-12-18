@@ -28,22 +28,16 @@ interface CustomAudit
 
     /**
      * Get the name of this audit.
-     *
-     * @return string
      */
     public function getName(): string;
 
     /**
      * Get the description of what this audit checks.
-     *
-     * @return string
      */
     public function getDescription(): string;
 
     /**
      * Determine if this audit should be run.
-     *
-     * @return bool
      */
     public function shouldRun(): bool;
 } 

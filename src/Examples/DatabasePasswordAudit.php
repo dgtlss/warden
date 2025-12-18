@@ -33,7 +33,7 @@ class DatabasePasswordAudit implements CustomAudit
         // Check for passwords in version control
         $this->checkPasswordsInVersionControl();
         
-        return empty($this->findings);
+        return $this->findings === [];
     }
     
     /**
@@ -149,9 +149,9 @@ class DatabasePasswordAudit implements CustomAudit
             'docker-compose.yaml',
         ];
         
-        foreach ($suspiciousFiles as $file) {
-            if (file_exists(base_path($file))) {
-                $content = file_get_contents(base_path($file));
+        foreach ($suspiciousFiles as $suspiciouFile) {
+            if (file_exists(base_path($suspiciouFile))) {
+                $content = file_get_contents(base_path($suspiciouFile));
                 
                 // Look for actual passwords (not placeholders)
                 if (preg_match('/DB_PASSWORD\s*=\s*["\']?(?!your-password|password|secret|<[^>]+>|\$\{[^}]+\})[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};:\'",.<>?\\/]+["\']?/i', $content, $matches)) {
@@ -159,7 +159,7 @@ class DatabasePasswordAudit implements CustomAudit
                         'package' => 'configuration',
                         'title' => 'Potential Password in Version Control',
                         'severity' => 'high',
-                        'description' => sprintf('File "%s" may contain an actual database password instead of a placeholder.', $file),
+                        'description' => sprintf('File "%s" may contain an actual database password instead of a placeholder.', $suspiciouFile),
                         'remediation' => 'Ensure only placeholder values are committed to version control. Use environment variables for actual passwords.',
                     ];
                 }

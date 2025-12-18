@@ -8,10 +8,6 @@ class JsonFormatter
 {
     /**
      * Format audit findings as JSON.
-     *
-     * @param array $findings
-     * @param array $metadata
-     * @return string
      */
     public function format(array $findings, array $metadata = []): string
     {
@@ -31,10 +27,6 @@ class JsonFormatter
 
     /**
      * Format audit results for specific CI/CD systems.
-     *
-     * @param array $findings
-     * @param string $format
-     * @return string
      */
     public function formatForCI(array $findings, string $format = 'generic'): string
     {
@@ -88,7 +80,7 @@ class JsonFormatter
                 'severity' => $finding['severity'] ?? 'low',
                 'cve' => $finding['cve'] ?? null,
                 'cve_url' => isset($finding['cve']) 
-                    ? "https://www.cve.org/CVERecord?id={$finding['cve']}" 
+                    ? 'https://www.cve.org/CVERecord?id=' . $finding['cve'] 
                     : null,
                 'affected_versions' => $finding['affected_versions'] ?? null,
                 'description' => $finding['description'] ?? null,
@@ -99,9 +91,6 @@ class JsonFormatter
 
     /**
      * Format for GitHub Actions.
-     *
-     * @param array $findings
-     * @return string
      */
     protected function formatForGitHub(array $findings): string
     {
@@ -135,9 +124,6 @@ class JsonFormatter
 
     /**
      * Format for GitLab CI.
-     *
-     * @param array $findings
-     * @return string
      */
     protected function formatForGitLab(array $findings): string
     {
@@ -167,7 +153,7 @@ class JsonFormatter
                         'type' => 'cve',
                         'name' => $finding['cve'],
                         'value' => $finding['cve'],
-                        'url' => "https://www.cve.org/CVERecord?id={$finding['cve']}",
+                        'url' => 'https://www.cve.org/CVERecord?id=' . $finding['cve'],
                     ] : null,
                 ]),
             ];
@@ -181,9 +167,6 @@ class JsonFormatter
 
     /**
      * Format for Jenkins.
-     *
-     * @param array $findings
-     * @return string
      */
     protected function formatForJenkins(array $findings): string
     {
@@ -221,8 +204,6 @@ class JsonFormatter
 
     /**
      * Get current Warden version.
-     *
-     * @return string
      */
     protected function getWardenVersion(): string
     {

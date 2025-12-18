@@ -17,7 +17,7 @@
 # - Function type issues (handled via bootstrap)
 
 parameters:
-    level: 8
+    level: 5
     paths:
         - src
     excludePaths:

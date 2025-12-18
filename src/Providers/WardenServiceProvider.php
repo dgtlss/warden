@@ -50,7 +50,7 @@ class WardenServiceProvider extends ServiceProvider
 
             // Schedule the command if enabled
             if (config('warden.schedule.enabled', false)) {
-                $this->app->booted(function () {
+                $this->app->booted(function (): void {
                     $schedule = $this->app->make(Schedule::class);
                     $frequency = config('warden.schedule.frequency', 'daily');
                     $time = config('warden.schedule.time', '03:00');

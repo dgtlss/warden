@@ -40,10 +40,10 @@ class DebugModeAuditService extends AbstractAuditService
                     array_keys($composerJson['require-dev'] ?? [])
                 );
 
-                foreach ($this->devPackages as $package) {
-                    if (in_array($package, $installedPackages)) {
+                foreach ($this->devPackages as $devPackage) {
+                    if (in_array($devPackage, $installedPackages)) {
                         $this->addFinding([
-                            'package' => $package,
+                            'package' => $devPackage,
                             'title' => 'Development package detected in production',
                             'severity' => 'high',
                             'cve' => null,
@@ -116,6 +116,7 @@ class DebugModeAuditService extends AbstractAuditService
                 if (!config('app.debug') && !$this->hasProtectiveMiddleware($route)) {
                     return true;
                 }
+
                 continue;
             }
             
@@ -126,8 +127,8 @@ class DebugModeAuditService extends AbstractAuditService
                 '_dusk',
             ];
             
-            foreach ($testingRoutes as $testRoute) {
-                if (str_starts_with($uri, $testRoute)) {
+            foreach ($testingRoutes as $testingRoute) {
+                if (str_starts_with($uri, $testingRoute)) {
                     return true;
                 }
             }
@@ -175,8 +176,8 @@ class DebugModeAuditService extends AbstractAuditService
             'CIRCLECI'
         ];
 
-        foreach ($ciEnvironments as $env) {
-            if (getenv($env) !== false) {
+        foreach ($ciEnvironments as $ciEnvironment) {
+            if (getenv($ciEnvironment) !== false) {
                 return false;
             }
         }

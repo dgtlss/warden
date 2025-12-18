@@ -8,10 +8,11 @@ abstract class AbstractAuditService
      * @var array<array<string, mixed>>
      */
     protected array $findings = [];
-    
+
     abstract public function run(): bool;
+
     abstract public function getName(): string;
-    
+
     /**
      * @return array<array<string, mixed>>
      */

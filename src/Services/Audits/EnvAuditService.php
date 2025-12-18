@@ -42,11 +42,11 @@ class EnvAuditService extends AbstractAuditService
         }
 
         // Check for missing sensitive variables
-        foreach ($this->sensitiveKeys as $key) {
-            if (empty(env($key))) {
+        foreach ($this->sensitiveKeys as $sensitiveKey) {
+            if (empty(env($sensitiveKey))) {
                 $this->addFinding([
                     'package' => 'environment',
-                    'title' => "Missing sensitive environment variable: {$key}",
+                    'title' => 'Missing sensitive environment variable: ' . $sensitiveKey,
                     'severity' => 'medium',
                     'cve' => null,
                     'affected_versions' => null

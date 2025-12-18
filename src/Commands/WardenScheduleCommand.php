@@ -86,18 +86,18 @@ class WardenScheduleCommand extends Command
         
         $this->info('');
         $this->info('Schedule Configuration:');
-        $this->info("  Frequency: <fg=yellow>{$frequency}</>");
+        $this->info(sprintf('  Frequency: <fg=yellow>%s</>', $frequency));
         
         if (in_array($frequency, ['daily', 'weekly', 'monthly'])) {
-            $this->info("  Time: <fg=yellow>{$time}</>");
+            $this->info(sprintf('  Time: <fg=yellow>%s</>', $time));
         }
         
-        $this->info("  Timezone: <fg=yellow>{$timezone}</>");
+        $this->info(sprintf('  Timezone: <fg=yellow>%s</>', $timezone));
         $this->info('');
         
         // Show next run time
         $nextRun = $this->calculateNextRunTime($frequency, $time);
-        $this->info("Next audit will run: <fg=green>{$nextRun}</>");
+        $this->info(sprintf('Next audit will run: <fg=green>%s</>', $nextRun));
         
         $this->info('');
         $this->info('Note: Make sure your Laravel scheduler is running:');
@@ -117,6 +117,7 @@ class WardenScheduleCommand extends Command
                 if ($scheduledTime->isPast()) {
                     $scheduledTime->addDay();
                 }
+
                 return $scheduledTime->format('Y-m-d H:i:s T');
                 
             case 'weekly':
@@ -124,6 +125,7 @@ class WardenScheduleCommand extends Command
                 if ($scheduledTime->isPast()) {
                     $scheduledTime->addWeek();
                 }
+
                 return $scheduledTime->startOfWeek()->format('Y-m-d H:i:s T');
                 
             case 'monthly':
@@ -131,6 +133,7 @@ class WardenScheduleCommand extends Command
                 if ($scheduledTime->isPast()) {
                     $scheduledTime->addMonth();
                 }
+
                 return $scheduledTime->startOfMonth()->format('Y-m-d H:i:s T');
                 
             default:
@@ -149,16 +152,16 @@ class WardenScheduleCommand extends Command
         $content = file_get_contents($path);
         
         // Check if key exists
-        if (preg_match("/^{$key}=.*/m", $content)) {
+        if (preg_match(sprintf('/^%s=.*/m', $key), $content)) {
             // Update existing key
             $content = preg_replace(
-                "/^{$key}=.*/m",
-                "{$key}={$value}",
+                sprintf('/^%s=.*/m', $key),
+                sprintf('%s=%s', $key, $value),
                 $content
             );
         } else {
             // Add new key
-            $content .= "\n{$key}={$value}\n";
+            $content .= sprintf('%s%s=%s%s', PHP_EOL, $key, $value, PHP_EOL);
         }
         
         file_put_contents($path, $content);

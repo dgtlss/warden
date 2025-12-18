@@ -58,7 +58,7 @@ class DiscordChannel implements NotificationChannel
 
     public function isConfigured(): bool
     {
-        return !empty($this->webhookUrl);
+        return !in_array($this->webhookUrl, [null, '', '0'], true);
     }
 
     public function getName(): string
@@ -74,17 +74,17 @@ class DiscordChannel implements NotificationChannel
     {
         $embeds = [];
         $findingsBySource = [];
-        
+
         // Group findings by source
         foreach ($findings as $finding) {
             $source = $finding['source'] ?? 'Unknown';
             $findingsBySource[$source][] = $finding;
         }
-        
+
         // Create embeds for each source
         foreach ($findingsBySource as $source => $sourceFindings) {
             $fields = [];
-            
+
             foreach (array_slice($sourceFindings, 0, 10) as $finding) { // Discord limit: 25 fields per embed
                 $severity = ucfirst($finding['severity'] ?? 'low');
                 $severityEmoji = match($finding['severity'] ?? 'low') {
@@ -94,19 +94,19 @@ class DiscordChannel implements NotificationChannel
                     'low' => '🟢',
                     default => '⚪'
                 };
-                
+
                 $value = $finding['title'] ?? 'Unknown vulnerability';
                 if (!empty($finding['cve'])) {
                     $value .= sprintf("\n[CVE: %s](https://www.cve.org/CVERecord?id=%s)", $finding['cve'], $finding['cve']);
                 }
-                
+
                 $fields[] = [
                     'name' => sprintf('%s %s - %s', $severityEmoji, $severity, $finding['package'] ?? 'Unknown'),
                     'value' => $value,
                     'inline' => false
                 ];
             }
-            
+
             if (count($sourceFindings) > 10) {
                 $fields[] = [
                     'name' => '➕ More',
@@ -114,9 +114,9 @@ class DiscordChannel implements NotificationChannel
                     'inline' => false
                 ];
             }
-            
+
             $appName = config('warden.app_name', 'Application');
-            
+
             $embeds[] = [
                 'title' => sprintf('[%s] %s Audit Results', $appName, $source),
                 'color' => $this->getSeverityColor($sourceFindings),
@@ -128,7 +128,7 @@ class DiscordChannel implements NotificationChannel
                 ]
             ];
         }
-        
+
         return array_slice($embeds, 0, 10); // Discord limit: 10 embeds per message
     }
 
@@ -180,7 +180,7 @@ class DiscordChannel implements NotificationChannel
         $hasCritical = false;
         $hasHigh = false;
         $hasMedium = false;
-        
+
         foreach ($findings as $finding) {
             switch ($finding['severity'] ?? 'low') {
                 case 'critical':
@@ -194,7 +194,7 @@ class DiscordChannel implements NotificationChannel
                     break;
             }
         }
-        
+
         if ($hasCritical) {
             return 0xFF0000; // Red
         } elseif ($hasHigh) {
@@ -202,7 +202,7 @@ class DiscordChannel implements NotificationChannel
         } elseif ($hasMedium) {
             return 0xFFD700; // Yellow
         }
-        
+
         return 0x00FF00; // Green
     }
 } 
