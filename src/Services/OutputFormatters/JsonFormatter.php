@@ -211,14 +211,17 @@ class JsonFormatter
         if (!file_exists($composerPath)) {
             return 'unknown (composer.json not found)';
         }
+
         $composerJsonContent = file_get_contents($composerPath);
         if ($composerJsonContent === false) {
             return 'unknown (failed to read composer.json)';
         }
+
         $composerJson = json_decode($composerJsonContent, true);
         if (!is_array($composerJson)) {
             return 'unknown (failed to parse composer.json)';
         }
+
         return $composerJson['version'] ?? 'unknown';
     }
 } 

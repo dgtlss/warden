@@ -228,7 +228,7 @@ class WardenAuditCommand extends Command
             try {
                 $customAudit = app()->make($customAuditClass);
                 if (!$customAudit instanceof CustomAudit) {
-                    $this->warn("Custom audit {$customAuditClass} must implement " . CustomAudit::class);
+                    $this->warn(sprintf('Custom audit %s must implement ', $customAuditClass) . CustomAudit::class);
                     continue;
                 }
 
@@ -685,27 +685,28 @@ class WardenAuditCommand extends Command
         $jsonOutput = json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         $this->output->writeln($jsonOutput);
     }
+
     /**
      * Get the current Warden version.
      */
     protected function getWardenVersion(): string
     {
         $composerPath = __DIR__ . '/../../composer.json';
-        
+
         if (!file_exists($composerPath)) {
             return 'unknown';
         }
-        
+
         $composerJsonContent = file_get_contents($composerPath);
         if ($composerJsonContent === false) {
             return 'unknown';
         }
-        
+
         $composerJson = json_decode($composerJsonContent, true);
         if (!is_array($composerJson) || !isset($composerJson['version'])) {
             return 'unknown';
         }
-        
+
         return $composerJson['version'];
     }
 }
