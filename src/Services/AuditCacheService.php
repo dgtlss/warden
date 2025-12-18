@@ -29,9 +29,28 @@ class AuditCacheService
      *
      * @return array<array<string, mixed>>|null
      */
+    /**
+     * @return array{result: array<array<string, mixed>>, timestamp: string, cached: bool}|null
+     */
     public function getCachedResult(string $auditName): ?array
     {
-        return Cache::get($this->getCacheKey($auditName));
+        $cached = Cache::get($this->getCacheKey($auditName));
+
+        if (!is_array($cached)) {
+            return null;
+        }
+
+        if (!isset($cached['timestamp']) || !is_string($cached['timestamp'])) {
+            return null;
+        }
+
+        if (!isset($cached['result']) || !is_array($cached['result'])) {
+            return null;
+        }
+
+        $cached['cached'] = (bool) ($cached['cached'] ?? false);
+
+        return $cached;
     }
 
     /**
@@ -79,7 +98,7 @@ class AuditCacheService
     public function getTimeUntilNextAudit(string $auditName): ?int
     {
         $cached = $this->getCachedResult($auditName);
-        if (!$cached || !isset($cached['timestamp'])) {
+        if ($cached === null) {
             return null;
         }
 

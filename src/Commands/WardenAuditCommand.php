@@ -20,6 +20,7 @@ use Dgtlss\Warden\Notifications\Channels\DiscordChannel;
 use Dgtlss\Warden\Notifications\Channels\EmailChannel;
 use Dgtlss\Warden\Notifications\Channels\TeamsChannel;
 use Dgtlss\Warden\Contracts\CustomAudit;
+use Dgtlss\Warden\Contracts\NotificationChannel;
 use function Laravel\Prompts\info;
 use function Laravel\Prompts\table;
 
@@ -219,22 +220,26 @@ class WardenAuditCommand extends Command
         // Load custom audits from configuration
         $customAudits = config('warden.custom_audits', []);
         foreach ($customAudits as $customAuditClass) {
-            if (class_exists($customAuditClass)) {
-                try {
-                    $customAudit = app()->make($customAuditClass);
-                    if (is_object($customAudit) && method_exists($customAudit, 'shouldRun') && !$customAudit->shouldRun()) {
-                        continue;
-                    }
-
-                    $services[] = new CustomAuditWrapper($customAudit);
-                    if (is_object($customAudit) && method_exists($customAudit, 'getName')) {
-                        $this->info('Loaded custom audit: ' . $customAudit->getName());
-                    }
-                } catch (\Exception $e) {
-                    $this->warn(sprintf('Failed to load custom audit %s: %s', $customAuditClass, $e->getMessage()));
-                }
-            } else {
+            if (!class_exists($customAuditClass)) {
                 $this->warn('Custom audit class not found: ' . $customAuditClass);
+                continue;
+            }
+
+            try {
+                $customAudit = app()->make($customAuditClass);
+                if (!$customAudit instanceof CustomAudit) {
+                    $this->warn("Custom audit {$customAuditClass} must implement " . CustomAudit::class);
+                    continue;
+                }
+
+                if (!$customAudit->shouldRun()) {
+                    continue;
+                }
+
+                $services[] = new CustomAuditWrapper($customAudit);
+                $this->info('Loaded custom audit: ' . $customAudit->getName());
+            } catch (\Exception $e) {
+                $this->warn(sprintf('Failed to load custom audit %s: %s', $customAuditClass, $e->getMessage()));
             }
         }
 
@@ -376,7 +381,7 @@ class WardenAuditCommand extends Command
     /**
      * Get configured notification channels.
      *
-     * @return array<DiscordChannel|EmailChannel|SlackChannel|TeamsChannel>
+     * @return array<NotificationChannel>
      */
     protected function getNotificationChannels(): array
     {
@@ -491,14 +496,10 @@ class WardenAuditCommand extends Command
 
         foreach ($channels as $channel) {
             try {
-                $channelName = method_exists($channel, 'getName') ? $channel->getName() : 'Unknown channel';
-                if (method_exists($channel, 'sendAbandonedPackages')) {
-                    $channel->sendAbandonedPackages($abandonedPackages);
-                    $this->info('Abandoned packages notification sent via ' . $channelName);
-                }
+                $channel->sendAbandonedPackages($abandonedPackages);
+                $this->info('Abandoned packages notification sent via ' . $channel->getName());
             } catch (\Exception $e) {
-                $channelName = method_exists($channel, 'getName') ? $channel->getName() : 'Unknown channel';
-                $this->warn(sprintf('Failed to send abandoned packages notification via %s: %s', $channelName, $e->getMessage()));
+                $this->warn(sprintf('Failed to send abandoned packages notification via %s: %s', $channel->getName(), $e->getMessage()));
             }
         }
 
@@ -749,10 +750,6 @@ class CustomAuditWrapper
 
     public function shouldRun(): bool
     {
-        if (method_exists($this->customAudit, 'shouldRun')) {
-            return $this->customAudit->shouldRun();
-        }
-
-        return true;
+        return $this->customAudit->shouldRun();
     }
 }

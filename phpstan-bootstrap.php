@@ -1,69 +1,158 @@
 <?php
 
-/**
- * PHPStan Bootstrap for Warden Laravel Package
- *
- * This file provides stub implementations for Laravel-specific functions and classes
- * to allow PHPStan to analyze the package code without requiring the full Laravel
- * framework. The stubs handle common Laravel functionality like console commands,
- * configuration, and helper functions.
- *
- * Key stubs provided:
- * - Laravel Application and Console Command classes
- * - Laravel Facades (Facade, Log, Queue, Route, Session, View)
- * - Laravel helper functions (app, config, base_path, etc.)
- * - Laravel version constant
- *
- * These stubs allow PHPStan to understand the code structure while ignoring
- * the actual Laravel framework dependencies.
- */
+use Carbon\Carbon;
+use Illuminate\Container\Container;
+use Illuminate\Contracts\Events\Dispatcher as DispatcherContract;
+use Illuminate\Events\Dispatcher;
 
-if (!function_exists('app')) {
-    function app() {
+// Minimal Laravel stubs so PHPStan can analyse the package without the full framework.
+// These are intentionally lightweight and only cover the pieces used by the package.
+
+class WardenPHPStanFakeApplication extends Container
+{
+    public function version(): string
+    {
+        return 'fake-laravel-version';
+    }
+}
+
+if (!class_exists(\Illuminate\Foundation\Application::class)) {
+    class_alias(WardenPHPStanFakeApplication::class, \Illuminate\Foundation\Application::class);
+}
+
+class WardenPHPStanFakeCommand extends stdClass
+{
+    public function option($key = null) { return null; }
+    public function info($message) { return null; }
+    public function warn($message) { return null; }
+    public function error($message) { return null; }
+    public function newLine() { return null; }
+    public function output() {
         return new class() {
-            public function make($abstract) {
-                return new stdClass();
-            }
-            public function offsetGet($key) {
-                return new stdClass();
-            }
+            public function write($message) {}
+            public function writeln($message) {}
         };
     }
 }
 
+if (!class_exists(\Illuminate\Console\Command::class)) {
+    class_alias(WardenPHPStanFakeCommand::class, \Illuminate\Console\Command::class);
+}
+
+class WardenPHPStanFakeRouteDefinition
+{
+    public function uri(): string { return ''; }
+    public function middleware(): array { return []; }
+}
+
+class WardenPHPStanFakeRouteFacade
+{
+    /** @return array<int, WardenPHPStanFakeRouteDefinition> */
+    public static function getRoutes(): array
+    {
+        return [new WardenPHPStanFakeRouteDefinition()];
+    }
+}
+
+if (!class_exists('Route')) {
+    class_alias(WardenPHPStanFakeRouteFacade::class, 'Route');
+}
+if (!class_exists(\Illuminate\Support\Facades\Route::class)) {
+    class_alias(WardenPHPStanFakeRouteFacade::class, \Illuminate\Support\Facades\Route::class);
+}
+
+$facadeStubs = [
+    \Illuminate\Support\Facades\Facade::class,
+    \Illuminate\Support\Facades\Date::class,
+    \Illuminate\Support\Facades\Log::class,
+    \Illuminate\Support\Facades\Queue::class,
+    \Illuminate\Support\Facades\Session::class,
+    \Illuminate\Support\Facades\View::class,
+];
+
+foreach ($facadeStubs as $facadeClass) {
+    if (!class_exists($facadeClass)) {
+        class_alias(stdClass::class, $facadeClass);
+    }
+}
+
+if (!class_exists(\Illuminate\Support\Str::class)) { class_alias(stdClass::class, \Illuminate\Support\Str::class); }
+if (!class_exists(\Illuminate\Support\Collection::class)) { class_alias(stdClass::class, \Illuminate\Support\Collection::class); }
+
+if (!defined('LARAVEL_VERSION')) {
+    define('LARAVEL_VERSION', '10.0');
+}
+
+if (!function_exists('app')) {
+    /**
+     * @param string|null $abstract
+     * @return Container|stdClass
+     */
+    function app($abstract = null) {
+        static $app;
+
+        if ($app === null) {
+            $app = new \Illuminate\Foundation\Application();
+        }
+
+        if ($abstract === null) {
+            return $app;
+        }
+
+        if ($abstract === \Illuminate\Contracts\Container\Container::class) {
+            return $app;
+        }
+
+        if ($abstract === DispatcherContract::class) {
+            if (! $app->bound($abstract)) {
+                $app->instance($abstract, class_exists(Dispatcher::class) ? new Dispatcher($app) : new stdClass());
+            }
+
+            return $app->make($abstract);
+        }
+
+        return $app->bound($abstract) ? $app->make($abstract) : new stdClass();
+    }
+}
+
 if (!function_exists('config')) {
-    function config($key, $default = null) {
+    /**
+     * @param string|null $key
+     * @param mixed $default
+     * @return mixed
+     */
+    function config($key = null, $default = null) {
         return $default;
     }
 }
 
 if (!function_exists('base_path')) {
     function base_path($path = '') {
-        return __DIR__ . '/../' . ltrim($path, '/');
+        return __DIR__ . '/../' . ltrim((string) $path, '/');
     }
 }
 
 if (!function_exists('storage_path')) {
     function storage_path($path = '') {
-        return __DIR__ . '/../storage/' . ltrim($path, '/');
+        return __DIR__ . '/../storage/' . ltrim((string) $path, '/');
     }
 }
 
 if (!function_exists('resource_path')) {
     function resource_path($path = '') {
-        return __DIR__ . '/../resources/' . ltrim($path, '/');
+        return __DIR__ . '/../resources/' . ltrim((string) $path, '/');
     }
 }
 
 if (!function_exists('database_path')) {
     function database_path($path = '') {
-        return __DIR__ . '/../database/' . ltrim($path, '/');
+        return __DIR__ . '/../database/' . ltrim((string) $path, '/');
     }
 }
 
 if (!function_exists('public_path')) {
     function public_path($path = '') {
-        return __DIR__ . '/../public/' . ltrim($path, '/');
+        return __DIR__ . '/../public/' . ltrim((string) $path, '/');
     }
 }
 
@@ -75,131 +164,24 @@ if (!function_exists('env')) {
 
 if (!function_exists('now')) {
     function now() {
-        return new stdClass();
+        return Carbon::now();
     }
 }
 
 if (!function_exists('today')) {
     function today() {
-        return new stdClass();
+        return Carbon::today();
     }
 }
 
-if (!class_exists('Illuminate\Foundation\Application')) {
-    class Application extends stdClass {}
-}
-
-if (!class_exists('Illuminate\Console\Command')) {
-    class Command extends stdClass {
-        public function option($key = null) {
-            return null;
-        }
-        public function info($message) {
-            return null;
-        }
-        public function warn($message) {
-            return null;
-        }
-        public function error($message) {
-            return null;
-        }
-        public function newLine() {
-            return null;
-        }
-        public function output() {
-            return new class() {
-                public function write($message) {}
-                public function writeln($message) {}
-            };
-        }
+if (!function_exists('config_path')) {
+    function config_path($path = null) {
+        return __DIR__ . '/../config' . ($path ? '/' . ltrim((string) $path, '/') : '');
     }
 }
 
-if (!class_exists('Illuminate\Support\Facades\Facade')) {
-    class Facade extends stdClass {}
-}
-
-if (!class_exists('Illuminate\Support\Str')) {
-    class Str extends stdClass {}
-}
-
-if (!class_exists('Illuminate\Support\Collection')) {
-    class Collection extends stdClass {}
-}
-
-if (!class_exists('Illuminate\Support\Facades\Date')) {
-    class Date extends stdClass {}
-}
-
-if (!class_exists('Illuminate\Support\Facades\Log')) {
-    class Log extends stdClass {}
-}
-
-if (!class_exists('Illuminate\Support\Facades\Queue')) {
-    class Queue extends stdClass {}
-}
-
-if (!class_exists('Illuminate\Support\Facades\Route')) {
-    class Route extends stdClass {}
-}
-
-if (!class_exists('Illuminate\Support\Facades\Session')) {
-    class Session extends stdClass {}
-}
-
-if (!class_exists('Illuminate\Support\Facades\View')) {
-    class View extends stdClass {}
-}
-
-if (!defined('LARAVEL_VERSION')) {
-    define('LARAVEL_VERSION', '10.0');
-}
-
-/**
- * @param string|null $key
- * @param mixed $default
- * @return mixed
- */
-function config($key = null, $default = null) {
-    return null;
-}
-
-/**
- * @param string|null $abstract
- * @return mixed
- */
-function app($abstract = null) {
-    return null;
-}
-
-/**
- * @param string|null $path
- * @return string
- */
-function base_path($path = null) {
-    return __DIR__;
-}
-
-/**
- * @param string|null $path
- * @return string
- */
-function database_path($path = null) {
-    return __DIR__ . '/database';
-}
-
-/**
- * @param string|null $path
- * @return string
- */
-function config_path($path = null) {
-    return __DIR__ . '/config';
-}
-
-/**
- * @param string $expression
- * @return void
- */
-function info($expression) {
-    // stub
+if (!function_exists('info')) {
+    function info($expression) {
+        // stub
+    }
 }

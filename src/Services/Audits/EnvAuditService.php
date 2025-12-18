@@ -43,6 +43,7 @@ class EnvAuditService extends AbstractAuditService
 
         // Check for missing sensitive variables
         foreach ($this->sensitiveKeys as $sensitiveKey) {
+            /** @phpstan-ignore-next-line Calling env is intentional inside audit */
             if (empty(env($sensitiveKey))) {
                 $this->addFinding([
                     'package' => 'environment',

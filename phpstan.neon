@@ -26,6 +26,9 @@ parameters:
     excludePaths:
         - '*/vendor/*'
         - '*/tests/*'
+        - '*/config/*'
+        - '*/examples/*'
+        - '*/Examples/*'
 
     bootstrapFiles:
         - phpstan-bootstrap.php

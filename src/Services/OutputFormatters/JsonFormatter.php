@@ -204,7 +204,6 @@ class JsonFormatter
 
     /**
      * Get the current Warden version.
-     *  @phpstan-ignore
      */
     protected function getWardenVersion(): string
     {
