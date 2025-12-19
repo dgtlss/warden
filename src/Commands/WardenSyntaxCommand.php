@@ -11,16 +11,17 @@ use function Laravel\Prompts\spin;
 class WardenSyntaxCommand extends Command
 {
     protected $signature = 'warden:syntax';
+
     protected $description = 'Performs a PHP syntax audit on your application code.';
 
     public function handle(): int
     {
         $this->info('Warden PHP Syntax Audit');
-        
-        $auditService = new PhpSyntaxAuditService();
+
+        $phpSyntaxAuditService = new PhpSyntaxAuditService();
 
         $result = spin(
-            fn() => $auditService->run(),
+            fn() => $phpSyntaxAuditService->run(),
             'Running PHP syntax check...'
         );
 
@@ -29,7 +30,7 @@ class WardenSyntaxCommand extends Command
             return 0;
         }
 
-        $findings = $auditService->getFindings();
+        $findings = $phpSyntaxAuditService->getFindings();
         $this->displayFindings($findings);
 
         // Check if the audit itself failed to run.
@@ -43,7 +44,7 @@ class WardenSyntaxCommand extends Command
     protected function displayFindings(array $findings): void
     {
         $this->error(count($findings) . ' syntax errors found.');
-        
+
         $headers = ['File', 'Error Description'];
         $rows = [];
 

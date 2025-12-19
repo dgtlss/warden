@@ -13,26 +13,26 @@ return new class extends Migration
     {
         $tableName = config('warden.history.table', 'warden_audit_history');
         
-        Schema::create($tableName, function (Blueprint $table) {
-            $table->id();
-            $table->string('audit_type', 50);
-            $table->integer('total_findings')->default(0);
-            $table->integer('critical_findings')->default(0);
-            $table->integer('high_findings')->default(0);
-            $table->integer('medium_findings')->default(0);
-            $table->integer('low_findings')->default(0);
-            $table->json('findings')->nullable();
-            $table->json('metadata')->nullable();
-            $table->boolean('has_failures')->default(false);
-            $table->string('trigger', 50)->default('manual'); // manual, scheduled, api
-            $table->string('triggered_by')->nullable();
-            $table->integer('duration_ms')->nullable();
-            $table->timestamps();
+        Schema::create($tableName, function (Blueprint $blueprint): void {
+            $blueprint->id();
+            $blueprint->string('audit_type', 50);
+            $blueprint->integer('total_findings')->default(0);
+            $blueprint->integer('critical_findings')->default(0);
+            $blueprint->integer('high_findings')->default(0);
+            $blueprint->integer('medium_findings')->default(0);
+            $blueprint->integer('low_findings')->default(0);
+            $blueprint->json('findings')->nullable();
+            $blueprint->json('metadata')->nullable();
+            $blueprint->boolean('has_failures')->default(false);
+            $blueprint->string('trigger', 50)->default('manual'); // manual, scheduled, api
+            $blueprint->string('triggered_by')->nullable();
+            $blueprint->integer('duration_ms')->nullable();
+            $blueprint->timestamps();
             
             // Indexes for performance
-            $table->index('audit_type');
-            $table->index('created_at');
-            $table->index(['audit_type', 'created_at']);
+            $blueprint->index('audit_type');
+            $blueprint->index('created_at');
+            $blueprint->index(['audit_type', 'created_at']);
         });
     }
 

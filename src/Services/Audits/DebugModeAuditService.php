@@ -40,10 +40,10 @@ class DebugModeAuditService extends AbstractAuditService
                     array_keys($composerJson['require-dev'] ?? [])
                 );
 
-                foreach ($this->devPackages as $package) {
-                    if (in_array($package, $installedPackages)) {
+                foreach ($this->devPackages as $devPackage) {
+                    if (in_array($devPackage, $installedPackages)) {
                         $this->addFinding([
-                            'package' => $package,
+                            'package' => $devPackage,
                             'title' => 'Development package detected in production',
                             'severity' => 'high',
                             'cve' => null,
@@ -90,6 +90,9 @@ class DebugModeAuditService extends AbstractAuditService
         return true;
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     private function getComposerJson(): ?array
     {
         $composerPath = base_path('composer.json');
@@ -97,7 +100,8 @@ class DebugModeAuditService extends AbstractAuditService
             return null;
         }
 
-        return json_decode(file_get_contents($composerPath), true);
+        $composerJsonContent = file_get_contents($composerPath);
+        return json_decode($composerJsonContent, true);
     }
 
     private function hasExposedTestingRoutes(): bool
@@ -112,6 +116,7 @@ class DebugModeAuditService extends AbstractAuditService
                 if (!config('app.debug') && !$this->hasProtectiveMiddleware($route)) {
                     return true;
                 }
+
                 continue;
             }
             
@@ -122,8 +127,8 @@ class DebugModeAuditService extends AbstractAuditService
                 '_dusk',
             ];
             
-            foreach ($testingRoutes as $testRoute) {
-                if (str_starts_with($uri, $testRoute)) {
+            foreach ($testingRoutes as $testingRoute) {
+                if (str_starts_with($uri, $testingRoute)) {
                     return true;
                 }
             }
@@ -132,6 +137,9 @@ class DebugModeAuditService extends AbstractAuditService
         return false;
     }
 
+    /**
+     * @param object $route
+     */
     private function hasProtectiveMiddleware($route): bool
     {
         $middleware = $route->middleware();
@@ -168,8 +176,8 @@ class DebugModeAuditService extends AbstractAuditService
             'CIRCLECI'
         ];
 
-        foreach ($ciEnvironments as $env) {
-            if (getenv($env) !== false) {
+        foreach ($ciEnvironments as $ciEnvironment) {
+            if (getenv($ciEnvironment) !== false) {
                 return false;
             }
         }

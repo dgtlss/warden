@@ -8,10 +8,6 @@ class JsonFormatter
 {
     /**
      * Format audit findings as JSON.
-     *
-     * @param array $findings
-     * @param array $metadata
-     * @return string
      */
     public function format(array $findings, array $metadata = []): string
     {
@@ -25,15 +21,12 @@ class JsonFormatter
             'findings' => $this->formatFindings($findings),
         ];
 
-        return json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $jsonOutput = json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        return $jsonOutput ?: '';
     }
 
     /**
      * Format audit results for specific CI/CD systems.
-     *
-     * @param array $findings
-     * @param string $format
-     * @return string
      */
     public function formatForCI(array $findings, string $format = 'generic'): string
     {
@@ -48,8 +41,8 @@ class JsonFormatter
     /**
      * Generate a summary of findings by severity.
      *
-     * @param array $findings
-     * @return array
+     * @param array<array<string, mixed>> $findings
+     * @return array<string, int>
      */
     protected function generateSummary(array $findings): array
     {
@@ -74,8 +67,8 @@ class JsonFormatter
     /**
      * Format individual findings.
      *
-     * @param array $findings
-     * @return array
+     * @param array<array<string, mixed>> $findings
+     * @return array<array<string, mixed>>
      */
     protected function formatFindings(array $findings): array
     {
@@ -87,7 +80,7 @@ class JsonFormatter
                 'severity' => $finding['severity'] ?? 'low',
                 'cve' => $finding['cve'] ?? null,
                 'cve_url' => isset($finding['cve']) 
-                    ? "https://www.cve.org/CVERecord?id={$finding['cve']}" 
+                    ? 'https://www.cve.org/CVERecord?id=' . $finding['cve'] 
                     : null,
                 'affected_versions' => $finding['affected_versions'] ?? null,
                 'description' => $finding['description'] ?? null,
@@ -98,9 +91,6 @@ class JsonFormatter
 
     /**
      * Format for GitHub Actions.
-     *
-     * @param array $findings
-     * @return string
      */
     protected function formatForGitHub(array $findings): string
     {
@@ -125,17 +115,15 @@ class JsonFormatter
             ];
         }
         
-        return json_encode([
+        $jsonOutput = json_encode([
             'annotations' => $annotations,
             'summary' => $this->generateSummary($findings),
         ], JSON_PRETTY_PRINT);
+        return $jsonOutput ?: '';
     }
 
     /**
      * Format for GitLab CI.
-     *
-     * @param array $findings
-     * @return string
      */
     protected function formatForGitLab(array $findings): string
     {
@@ -165,7 +153,7 @@ class JsonFormatter
                         'type' => 'cve',
                         'name' => $finding['cve'],
                         'value' => $finding['cve'],
-                        'url' => "https://www.cve.org/CVERecord?id={$finding['cve']}",
+                        'url' => 'https://www.cve.org/CVERecord?id=' . $finding['cve'],
                     ] : null,
                 ]),
             ];
@@ -179,9 +167,6 @@ class JsonFormatter
 
     /**
      * Format for Jenkins.
-     *
-     * @param array $findings
-     * @return string
      */
     protected function formatForJenkins(array $findings): string
     {
@@ -210,24 +195,33 @@ class JsonFormatter
             ];
         }
         
-        return json_encode([
+        $jsonOutput = json_encode([
             'issues' => $issues,
             '_class' => 'io.jenkins.plugins.analysis.core.restapi.ReportApi',
         ], JSON_PRETTY_PRINT);
+        return $jsonOutput ?: '';
     }
 
     /**
-     * Get current Warden version.
-     *
-     * @return string
+     * Get the current Warden version.
      */
     protected function getWardenVersion(): string
     {
-        $composerJson = json_decode(
-            file_get_contents(__DIR__ . '/../../../composer.json'),
-            true
-        );
-        
+        $composerPath = __DIR__ . '/../../composer.json';
+        if (!file_exists($composerPath)) {
+            return 'unknown (composer.json not found)';
+        }
+
+        $composerJsonContent = file_get_contents($composerPath);
+        if ($composerJsonContent === false) {
+            return 'unknown (failed to read composer.json)';
+        }
+
+        $composerJson = json_decode($composerJsonContent, true);
+        if (!is_array($composerJson)) {
+            return 'unknown (failed to parse composer.json)';
+        }
+
         return $composerJson['version'] ?? 'unknown';
     }
 } 

@@ -26,7 +26,7 @@ class WardenServiceProvider extends ServiceProvider
         });
     }
 
-    public function boot()
+    public function boot(): void
     {
         // Publish configuration
         $this->publishes([
@@ -50,32 +50,32 @@ class WardenServiceProvider extends ServiceProvider
 
             // Schedule the command if enabled
             if (config('warden.schedule.enabled', false)) {
-                $this->app->booted(function () {
+                $this->app->booted(function (): void {
                     $schedule = $this->app->make(Schedule::class);
                     $frequency = config('warden.schedule.frequency', 'daily');
                     $time = config('warden.schedule.time', '03:00');
                     
-                    $scheduledCommand = $schedule->command('warden:audit --silent');
+                    $event = $schedule->command('warden:audit --silent');
                     
                     switch ($frequency) {
                         case 'hourly':
-                            $scheduledCommand->hourly();
+                            $event->hourly();
                             break;
                         case 'daily':
-                            $scheduledCommand->dailyAt($time);
+                            $event->dailyAt($time);
                             break;
                         case 'weekly':
-                            $scheduledCommand->weeklyOn(1, $time); // Monday
+                            $event->weeklyOn(1, $time); // Monday
                             break;
                         case 'monthly':
-                            $scheduledCommand->monthlyOn(1, $time); // 1st of month
+                            $event->monthlyOn(1, $time); // 1st of month
                             break;
                         default:
-                            $scheduledCommand->daily();
+                            $event->daily();
                     }
                     
                     if ($timezone = config('warden.schedule.timezone')) {
-                        $scheduledCommand->timezone($timezone);
+                        $event->timezone($timezone);
                     }
                 });
             }

@@ -42,11 +42,12 @@ class EnvAuditService extends AbstractAuditService
         }
 
         // Check for missing sensitive variables
-        foreach ($this->sensitiveKeys as $key) {
-            if (empty(env($key))) {
+        foreach ($this->sensitiveKeys as $sensitiveKey) {
+            /** @phpstan-ignore-next-line Calling env is intentional inside audit */
+            if (empty(env($sensitiveKey))) {
                 $this->addFinding([
                     'package' => 'environment',
-                    'title' => "Missing sensitive environment variable: {$key}",
+                    'title' => 'Missing sensitive environment variable: ' . $sensitiveKey,
                     'severity' => 'medium',
                     'cve' => null,
                     'affected_versions' => null
@@ -65,6 +66,6 @@ class EnvAuditService extends AbstractAuditService
         }
         
         $gitignore = file_get_contents($gitignorePath);
-        return strpos($gitignore, '.env') !== false;
+        return strpos((string) $gitignore, '.env') !== false;
     }
 }

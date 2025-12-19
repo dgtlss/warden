@@ -1,0 +1,48 @@
+# PHPStan Configuration for Warden Laravel Package
+#
+# This configuration provides static analysis for the Warden security audit package.
+# It uses Larastan for Laravel-specific functionality and maintains strict type checking
+# to ensure code quality and reliability.
+#
+# Configuration highlights:
+# - Level 5: Balanced strictness for production code
+# - Larastan integration: Proper Laravel framework understanding
+# - Carbon extension: Enhanced DateTime analysis
+# - Focused analysis: Only src directory, excluding vendor and tests
+#
+# The configuration handles Laravel-specific patterns while maintaining
+# strict type safety for the security-focused nature of this package.
+
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/nesbot/carbon/extension.neon
+
+parameters:
+    level: 5
+
+    paths:
+        - src
+
+    excludePaths:
+        - '*/vendor/*'
+        - '*/tests/*'
+        - '*/config/*'
+        - '*/examples/*'
+        - '*/Examples/*'
+
+    bootstrapFiles:
+        - phpstan-bootstrap.php
+        - vendor/autoload.php
+
+    reportUnmatchedIgnoredErrors: false
+
+    ignoreErrors:
+        - message: '#^Internal error:\s*Call to a member function version\(\) on null#'
+          path: src/Commands/WardenAuditCommand.php
+
+        - message: '#^Internal error:\s*Class Illuminate\\Cache\\CacheManager was not found while trying to analyse it#'
+          path: src/Services/AuditCacheService.php
+
+    typeAliases:
+        LaravelApp: 'Illuminate\Foundation\Application'
+        LaravelConfig: 'array<string, mixed>'

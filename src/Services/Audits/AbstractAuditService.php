@@ -4,11 +4,18 @@ namespace Dgtlss\Warden\Services\Audits;
 
 abstract class AbstractAuditService
 {
-    protected $findings = [];
-    
+    /**
+     * @var array<array<string, mixed>>
+     */
+    protected array $findings = [];
+
     abstract public function run(): bool;
+
     abstract public function getName(): string;
-    
+
+    /**
+     * @return array<array<string, mixed>>
+     */
     public function getFindings(): array
     {
         return $this->findings;

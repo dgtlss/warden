@@ -48,7 +48,7 @@ Perfect for continuous security monitoring and DevOps pipelines.
 
 ## 🚀 Installation
 
-Install via Composer:
+To install Warden, use Composer:
 
 ```bash
 composer require dgtlss/warden

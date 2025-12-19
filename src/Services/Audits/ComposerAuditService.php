@@ -6,7 +6,10 @@ use Symfony\Component\Process\Process;
 
 class ComposerAuditService extends AbstractAuditService
 {
-    private $abandonedPackages = [];
+    /**
+     * @var array<array<string, mixed>>
+     */
+    private array $abandonedPackages = [];
 
     public function getName(): string
     {
@@ -70,20 +73,23 @@ class ComposerAuditService extends AbstractAuditService
             }
 
             return true;
-        } catch (\Exception $e) {
+        } catch (\Exception $exception) {
             $this->addFinding([
                 'source' => $this->getName(),
                 'package' => 'composer',
                 'title' => 'Composer audit failed with exception',
                 'severity' => 'high',
-                'error' => $e->getMessage()
+                'error' => $exception->getMessage()
             ]);
             
-            info("Composer audit exception: " . $e->getMessage());
+            info("Composer audit exception: " . $exception->getMessage());
             return false;
         }
     }
 
+    /**
+     * @return array<array<string, mixed>>
+     */
     public function getAbandonedPackages(): array
     {
         return $this->abandonedPackages;

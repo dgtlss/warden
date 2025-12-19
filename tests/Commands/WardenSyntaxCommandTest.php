@@ -16,7 +16,7 @@ class WardenSyntaxCommandTest extends TestCase
 
     public function testSyntaxCommandHandlesNoFindings()
     {
-        $this->mock(PhpSyntaxAuditService::class, function (MockInterface $mock) {
+        $this->mock(PhpSyntaxAuditService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('run')->once()->andReturn(true);
         });
 
@@ -35,7 +35,7 @@ class WardenSyntaxCommandTest extends TestCase
             ],
         ];
 
-        $this->mock(PhpSyntaxAuditService::class, function (MockInterface $mock) use ($findings) {
+        $this->mock(PhpSyntaxAuditService::class, function (MockInterface $mock) use ($findings): void {
             $mock->shouldReceive('run')->once()->andReturn(false);
             $mock->shouldReceive('getFindings')->once()->andReturn($findings);
         });
@@ -56,7 +56,7 @@ class WardenSyntaxCommandTest extends TestCase
             ],
         ];
 
-        $this->mock(PhpSyntaxAuditService::class, function (MockInterface $mock) use ($findings) {
+        $this->mock(PhpSyntaxAuditService::class, function (MockInterface $mock) use ($findings): void {
             $mock->shouldReceive('run')->once()->andReturn(false);
             $mock->shouldReceive('getFindings')->once()->andReturn($findings);
         });

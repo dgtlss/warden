@@ -104,14 +104,14 @@ class NpmAuditService extends AbstractAuditService
             }
 
             return true;
-        } catch (\Exception $e) {
+        } catch (\Exception $exception) {
             $this->addFinding([
                 'package' => 'npm',
                 'title' => 'npm audit failed with exception',
                 'severity' => 'high',
                 'cve' => null,
                 'affected_versions' => null,
-                'error' => $e->getMessage()
+                'error' => $exception->getMessage()
             ]);
             return false;
         }

@@ -24,6 +24,10 @@ class SlackChannel implements NotificationChannel
         
         $appName = config('warden.app_name', 'Application');
         
+        if ($this->webhookUrl === null) {
+            return;
+        }
+        
         Http::post($this->webhookUrl, [
             'blocks' => $blocks,
             'text' => sprintf('🚨 [%s] Warden Security Audit: %d vulnerabilities found', $appName, count($findings))
@@ -40,6 +44,10 @@ class SlackChannel implements NotificationChannel
         
         $appName = config('warden.app_name', 'Application');
         
+        if ($this->webhookUrl === null) {
+            return;
+        }
+        
         Http::post($this->webhookUrl, [
             'blocks' => $blocks,
             'text' => sprintf('⚠️ [%s] Warden Audit: %d abandoned packages found', $appName, count($abandonedPackages))
@@ -48,7 +56,7 @@ class SlackChannel implements NotificationChannel
 
     public function isConfigured(): bool
     {
-        return !empty($this->webhookUrl);
+        return !in_array($this->webhookUrl, [null, '', '0'], true);
     }
 
     public function getName(): string
@@ -56,6 +64,10 @@ class SlackChannel implements NotificationChannel
         return 'Slack';
     }
 
+    /**
+     * @param array<array<string, mixed>> $findings
+     * @return array<array<string, mixed>>
+     */
     protected function buildFindingsBlocks(array $findings): array
     {
         $appName = config('warden.app_name', 'Application');
@@ -113,7 +125,7 @@ class SlackChannel implements NotificationChannel
                             'type' => 'mrkdwn',
                             'text' => sprintf(
                                 '*CVE:* <%s|%s>',
-                                "https://www.cve.org/CVERecord?id={$finding['cve']}",
+                                'https://www.cve.org/CVERecord?id=' . $finding['cve'],
                                 $finding['cve']
                             )
                         ]
@@ -125,6 +137,10 @@ class SlackChannel implements NotificationChannel
         return $blocks;
     }
 
+    /**
+     * @param array<array<string, mixed>> $abandonedPackages
+     * @return array<array<string, mixed>>
+     */
     protected function buildAbandonedPackagesBlocks(array $abandonedPackages): array
     {
         $appName = config('warden.app_name', 'Application');
@@ -150,10 +166,10 @@ class SlackChannel implements NotificationChannel
             ]
         ];
 
-        foreach ($abandonedPackages as $package) {
-            $text = sprintf('• `%s`', $package['package']);
-            if (!empty($package['replacement'])) {
-                $text .= sprintf(' → Recommended: `%s`', $package['replacement']);
+        foreach ($abandonedPackages as $abandonedPackage) {
+            $text = sprintf('• `%s`', $abandonedPackage['package']);
+            if (!empty($abandonedPackage['replacement'])) {
+                $text .= sprintf(' → Recommended: `%s`', $abandonedPackage['replacement']);
             }
 
             $blocks[] = [
