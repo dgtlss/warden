@@ -84,20 +84,6 @@ class DebugModeAuditService extends AbstractAuditService
         return true;
     }
 
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function getComposerJson(): ?array
-    {
-        $composerPath = base_path('composer.json');
-        if (!file_exists($composerPath)) {
-            return null;
-        }
-
-        $composerJsonContent = file_get_contents($composerPath);
-        return json_decode($composerJsonContent, true);
-    }
-
     private function getInstalledPackagesNames(): array
     {
         $installedPackages = $this->getInstalledPackages();
