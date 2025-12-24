@@ -6,7 +6,7 @@
 [![PHP Version Require](https://img.shields.io/packagist/php-v/dgtlss/warden.svg?style=flat-square)](https://packagist.org/packages/dgtlss/warden)
 ![GitHub repo size](https://img.shields.io/github/repo-size/dgtlss/warden)
 
-**Warden** is a comprehensive Laravel security audit package that proactively monitors your dependencies and application configuration for security vulnerabilities. Built for enterprise-grade security scanning, Warden provides powerful features for modern Laravel applications.
+**Warden** is a comprehensive Laravel security audit package that proactively monitors your dependencies and application configuration for security vulnerabilities. Built for enterprise-grade security scanning, Warden provides powerful features for modern Laravel applications, ensuring your projects remain secure from development to production.
 
 ## 🚀 Key Features
 
@@ -43,6 +43,7 @@ Perfect for continuous security monitoring and DevOps pipelines.
 - [Scheduling](#scheduling)
 - [CI/CD Integration](#cicd-integration)
 - [Advanced Features](#advanced-features)
+- [FAQ](#faq)
 
 ---
 
@@ -62,26 +63,34 @@ php artisan vendor:publish --tag="warden-config"
 
 This creates `config/warden.php` with all available options.
 
+**Note**: The package includes `.idea` in `.gitignore` for improved support with IntelliJ IDEA and JetBrains IDEs.
+
 ---
 
 ## ⚡ Quick Start
 
+Dive into Warden's powerful security auditing capabilities with these simple commands:
+
 ### Basic Security Audit
+Run a comprehensive security scan of your Laravel application:
 ```bash
 php artisan warden:audit
 ```
 
 ### With NPM Dependencies
+Include JavaScript vulnerabilities in your audit:
 ```bash
 php artisan warden:audit --npm
 ```
 
 ### JSON Output for CI/CD
+Generate machine-readable reports for automated pipelines:
 ```bash
 php artisan warden:audit --output=json --severity=high
 ```
 
 ### Silent Mode (No Notifications)
+Perform audits without triggering notifications:
 ```bash
 php artisan warden:audit --silent
 ```
@@ -163,7 +172,7 @@ Warden performs comprehensive security analysis across multiple areas:
 - Identifies missing or misconfigured paths
 
 ### 5. **Laravel Configuration**
-- Debug mode status verification
+- **Enhanced debug mode auditing**: Accurately detects development packages in production by scanning `vendor/composer/installed.json`
 - Session security settings
 - CSRF protection validation
 - General security misconfigurations
@@ -489,20 +498,6 @@ pipeline {
 
 ---
 
-## 🆕 What's New in v1.3.0
-
-- ✅ **Parallel audit execution** for 5x faster performance
-- ✅ **Complete notification suite** (Slack, Discord, Teams, Enhanced Email) 
-- ✅ **Professional email templates** with severity colors and statistics
-- ✅ **Microsoft Teams integration** with Adaptive Cards
-- ✅ **CI/CD output formats** (GitHub Actions, GitLab CI, Jenkins)
-- ✅ **Automated scheduling** via Laravel scheduler
-- ✅ **Custom audit rules** for organization-specific policies
-- ✅ **Intelligent caching** with force refresh capability
-- ✅ **Severity filtering** to focus on critical issues
-
----
-
 ## 📈 Roadmap
 
 ### Coming Soon
@@ -510,6 +505,25 @@ pipeline {
 - 🔍 **Additional audit types** (Docker, Git, API security)
 - 📋 **Web dashboard** for audit management
 - 🤖 **AI-powered vulnerability analysis** and recommendations
+
+---
+
+## ❓ FAQ
+
+### How does Warden differ from built-in Composer audit?
+Warden extends beyond Composer audit with NPM scanning, environment checks, storage permissions, Laravel-specific configurations, and custom audit rules for comprehensive security monitoring.
+
+### Can Warden run in CI/CD without notifications?
+Yes! Use the `--silent` flag to suppress notifications while still generating reports for your pipeline.
+
+### What are the performance impacts?
+Minimal! Parallel execution and intelligent caching ensure audits complete in seconds, with configurable timeouts and retry logic.
+
+### How do I handle false positives?
+Use severity filtering (`--severity=high`) and custom audits to tune findings for your organization's security policies.
+
+### Is my data secure?
+Absolutely. Warden processes everything locally - no external data transmission except for configured notification webhooks.
 
 ---
 
