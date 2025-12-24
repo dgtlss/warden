@@ -32,21 +32,18 @@ class DebugModeAuditService extends AbstractAuditService
 
         // Only check for development packages if we're actually running in production
         if ($this->isActuallyProduction()) {
-            // Check for development packages in composer.json
-            $composerJson = $this->getComposerJson();
-            if ($composerJson) {
-                $installedPackagesNames = $this->getInstalledPackagesNames();
+            // Check for development packages in vendor/composer/installed.json
+            $installedPackagesNames = $this->getInstalledPackagesNames();
 
-                foreach ($this->devPackages as $devPackage) {
-                    if (in_array($devPackage, $installedPackagesNames)) {
-                        $this->addFinding([
-                            'package' => $devPackage,
-                            'title' => 'Development package detected in production',
-                            'severity' => 'high',
-                            'cve' => null,
-                            'affected_versions' => null
-                        ]);
-                    }
+            foreach ($this->devPackages as $devPackage) {
+                if (in_array($devPackage, $installedPackagesNames)) {
+                    $this->addFinding([
+                        'package' => $devPackage,
+                        'title' => 'Development package detected in production',
+                        'severity' => 'high',
+                        'cve' => null,
+                        'affected_versions' => null
+                    ]);
                 }
             }
 
@@ -125,7 +122,7 @@ class DebugModeAuditService extends AbstractAuditService
     private function hasExposedTestingRoutes(): bool
     {
         $routeCollection = \Route::getRoutes();
-        
+
         // Check debugbar routes separately as they're allowed when APP_DEBUG is true
         foreach ($routeCollection as $route) {
             $uri = $route->uri();
@@ -137,14 +134,14 @@ class DebugModeAuditService extends AbstractAuditService
 
                 continue;
             }
-            
+
             // Check other testing routes that should never be exposed in production
             $testingRoutes = [
                 'telescope',
                 'horizon',
                 '_dusk',
             ];
-            
+
             foreach ($testingRoutes as $testingRoute) {
                 if (str_starts_with($uri, $testingRoute)) {
                     return true;
@@ -169,7 +166,7 @@ class DebugModeAuditService extends AbstractAuditService
             'role:',
             'Barryvdh\Debugbar\Middleware\DebugbarEnabled'
         ];
-        
+
         foreach ($middleware as $m) {
             foreach ($protectiveMiddleware as $protect) {
                 if (str_starts_with($m, $protect)) {
@@ -177,7 +174,7 @@ class DebugModeAuditService extends AbstractAuditService
                 }
             }
         }
-        
+
         return false;
     }
 
