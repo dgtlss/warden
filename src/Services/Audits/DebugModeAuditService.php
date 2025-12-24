@@ -35,13 +35,10 @@ class DebugModeAuditService extends AbstractAuditService
             // Check for development packages in composer.json
             $composerJson = $this->getComposerJson();
             if ($composerJson) {
-                $installedPackages = array_merge(
-                    array_keys($composerJson['require'] ?? []),
-                    array_keys($composerJson['require-dev'] ?? [])
-                );
+                $installedPackagesNames = $this->getInstalledPackagesNames();
 
                 foreach ($this->devPackages as $devPackage) {
-                    if (in_array($devPackage, $installedPackages)) {
+                    if (in_array($devPackage, $installedPackagesNames)) {
                         $this->addFinding([
                             'package' => $devPackage,
                             'title' => 'Development package detected in production',
@@ -102,6 +99,27 @@ class DebugModeAuditService extends AbstractAuditService
 
         $composerJsonContent = file_get_contents($composerPath);
         return json_decode($composerJsonContent, true);
+    }
+
+    private function getInstalledPackagesNames(): array
+    {
+        $installedPackages = $this->getInstalledPackages();
+
+        return isset($installedPackages['packages'])
+            ? array_column($installedPackages['packages'], 'name')
+            : [];
+    }
+
+    private function getInstalledPackages(): array
+    {
+        $installedPath = base_path('vendor/composer/installed.json');
+
+        if (!file_exists($installedPath)) {
+            return [];
+        }
+
+        $installedContents = file_get_contents($installedPath);
+        return json_decode($installedContents, true);
     }
 
     private function hasExposedTestingRoutes(): bool
