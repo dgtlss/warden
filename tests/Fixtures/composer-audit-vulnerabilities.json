@@ -1,0 +1,28 @@
+{
+  "advisories": {
+    "symfony/http-kernel": [
+      {
+        "advisoryId": "GHSA-1234-5678-abcd",
+        "title": "Security vulnerability in Symfony HttpKernel",
+        "packageName": "symfony/http-kernel",
+        "affectedVersions": "<5.4.31 || >=6.0.0,<6.3.8",
+        "cve": "CVE-2023-1234",
+        "link": "https://github.com/advisories/GHSA-1234-5678-abcd"
+      }
+    ],
+    "laravel/framework": [
+      {
+        "advisoryId": "GHSA-5678-9012-efgh",
+        "title": "Mass assignment vulnerability in Laravel",
+        "packageName": "laravel/framework",
+        "affectedVersions": "<9.52.16 || >=10.0.0,<10.26.2",
+        "cve": "CVE-2023-5678",
+        "link": "https://github.com/advisories/GHSA-5678-9012-efgh"
+      }
+    ]
+  },
+  "abandoned": {
+    "swiftmailer/swiftmailer": "symfony/mailer",
+    "phpunit/php-token-stream": null
+  }
+}

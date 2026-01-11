@@ -9,6 +9,11 @@
             "Dgtlss\\Warden\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Dgtlss\\Warden\\Tests\\": "tests/"
+        }
+    },
     "authors": [
         {
             "name": "Nathan Langer",
@@ -34,7 +39,10 @@
     "require-dev": {
         "phpstan/phpstan": "^2.1",
         "rector/rector": "^2.2",
-        "larastan/larastan": "^3.0"
+        "larastan/larastan": "^3.0",
+        "phpunit/phpunit": "^10.5|^11.0",
+        "orchestra/testbench": "^8.0|^9.0",
+        "mockery/mockery": "^1.6"
     },
     "scripts": {
         "phpstan": "vendor/bin/phpstan analyse --memory-limit=2G"

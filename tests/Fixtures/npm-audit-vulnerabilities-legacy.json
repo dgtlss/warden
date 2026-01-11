@@ -1,0 +1,57 @@
+{
+  "actions": [],
+  "advisories": {
+    "1065": {
+      "findings": [
+        {
+          "version": "4.17.15",
+          "paths": ["lodash"]
+        }
+      ],
+      "id": 1065,
+      "created": "2019-07-15T00:00:00.000Z",
+      "updated": "2021-02-01T00:00:00.000Z",
+      "deleted": null,
+      "title": "Prototype Pollution in lodash",
+      "found_by": {
+        "link": "",
+        "name": "Snyk Security Team"
+      },
+      "reported_by": {
+        "link": "",
+        "name": "Snyk Security Team"
+      },
+      "module_name": "lodash",
+      "cves": ["CVE-2019-10744"],
+      "vulnerable_versions": "<4.17.21",
+      "patched_versions": ">=4.17.21",
+      "overview": "Versions of lodash before 4.17.21 are vulnerable to Prototype Pollution.",
+      "recommendation": "Update to version 4.17.21 or later.",
+      "references": "- [Snyk Report](https://snyk.io/vuln/SNYK-JS-LODASH-1040724)",
+      "access": "public",
+      "severity": "high",
+      "cwe": "CWE-1321",
+      "metadata": {
+        "module_type": "",
+        "exploitability": 3,
+        "affected_components": ""
+      },
+      "url": "https://github.com/advisories/GHSA-p6mc-m468-83gw"
+    }
+  },
+  "muted": [],
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 1,
+      "critical": 0
+    },
+    "dependencies": 1000,
+    "devDependencies": 500,
+    "optionalDependencies": 0,
+    "totalDependencies": 1500
+  },
+  "runId": "test-run-id"
+}

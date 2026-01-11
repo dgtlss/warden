@@ -1,0 +1,4 @@
+{
+  "error": "composer.json not found",
+  "message": "The audit command requires a valid composer.json file"
+}

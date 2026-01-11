@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "ENOAUDIT",
+    "summary": "No package.json found",
+    "detail": "The audit command requires a package.json file"
+  }
+}
