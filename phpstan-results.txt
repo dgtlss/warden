@@ -1,0 +1,1171 @@
+ ------ ----------------------------------------------------------------------- 
+  Line   Commands/WardenAuditCommand.php                                        
+ ------ ----------------------------------------------------------------------- 
+  93     Cannot access offset 'success' on mixed.                               
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  94     Cannot access offset 'service' on mixed.                               
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  94     Parameter #1 $service of method                                        
+         Dgtlss\Warden\Commands\WardenAuditCommand::handleAuditFailure()        
+         expects object, mixed given.                                           
+         🪪  argument.type                                                      
+  99     Cannot access offset 'findings' on mixed.                              
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  100    Parameter #2 ...$arrays of function array_merge expects array, mixed   
+         given.                                                                 
+         🪪  argument.type                                                      
+  104    Cannot access offset 'service' on mixed.                               
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  109    Parameter #1 $allFindings of method                                    
+         Dgtlss\Warden\Commands\WardenAuditCommand::processResults() expects    
+         array<int, array<string, mixed>>, array given.                         
+         🪪  argument.type                                                      
+  109    Parameter #2 $abandonedPackages of method                              
+         Dgtlss\Warden\Commands\WardenAuditCommand::processResults() expects    
+         array<int, array<string, mixed>>, array<array<string, mixed>> given.   
+         🪪  argument.type                                                      
+  120    Call to an undefined method object::getName().                         
+         🪪  method.notFound                                                    
+  123    Parameter #1 $auditName of method                                      
+         Dgtlss\Warden\Services\AuditCacheService::hasRecentAudit() expects     
+         string, mixed given.                                                   
+         🪪  argument.type                                                      
+  124    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  125    Parameter #1 $auditName of method                                      
+         Dgtlss\Warden\Services\AuditCacheService::getCachedResult() expects    
+         string, mixed given.                                                   
+         🪪  argument.type                                                      
+  133    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  135    Call to an undefined method object::run().                             
+         🪪  method.notFound                                                    
+  141    Call to an undefined method object::getFindings().                     
+         🪪  method.notFound                                                    
+  143    Parameter #2 ...$arrays of function array_merge expects array, mixed   
+         given.                                                                 
+         🪪  argument.type                                                      
+  145    Parameter #1 $auditName of method                                      
+         Dgtlss\Warden\Services\AuditCacheService::storeResult() expects        
+         string, mixed given.                                                   
+         🪪  argument.type                                                      
+  145    Parameter #2 $result of method                                         
+         Dgtlss\Warden\Services\AuditCacheService::storeResult() expects        
+         array, mixed given.                                                    
+         🪪  argument.type                                                      
+  154    Parameter #1 $allFindings of method                                    
+         Dgtlss\Warden\Commands\WardenAuditCommand::processResults() expects    
+         array<int, array<string, mixed>>, array<mixed> given.                  
+         🪪  argument.type                                                      
+  154    Parameter #2 $abandonedPackages of method                              
+         Dgtlss\Warden\Commands\WardenAuditCommand::processResults() expects    
+         array<int, array<string, mixed>>, array<array<string, mixed>> given.   
+         🪪  argument.type                                                      
+  179    Cannot cast non-empty-array|non-falsy-string|true to string.           
+         🪪  cast.string                                                        
+  179    Parameter #2 $format of method                                         
+         Dgtlss\Warden\Commands\WardenAuditCommand::outputFormattedResults()    
+         expects string, mixed given.                                           
+         🪪  argument.type                                                      
+  185    Parameter #1 $findings of method                                       
+         Dgtlss\Warden\Commands\WardenAuditCommand::displayFindings() expects   
+         array<int, array<string, mixed>>, array<array<string, mixed>> given.   
+         🪪  argument.type                                                      
+  228    Argument of an invalid type mixed supplied for foreach, only           
+         iterables are supported.                                               
+         🪪  foreach.nonIterable                                                
+  229    Parameter #1 $class of function class_exists expects string, mixed     
+         given.                                                                 
+         🪪  argument.type                                                      
+  230    Binary operation "." between 'Custom audit class…' and mixed results   
+         in an error.                                                           
+         🪪  binaryOp.invalid                                                   
+  263    Binary operation "." between mixed and ' audit failed to…' results in  
+         an error.                                                              
+         🪪  binaryOp.invalid                                                   
+  267    Binary operation "." between 'Error: ' and mixed results in an error.  
+         🪪  binaryOp.invalid                                                   
+  301    Parameter $rows of function Laravel\Prompts\table expects array<int,   
+         array<int, string>>|Illuminate\Support\Collection<int, array<int, str  
+         ing>>|null, non-empty-list<array{mixed, mixed}> given.                 
+         🪪  argument.type                                                      
+  328    Binary operation "." between 'https://www.cve.org…' and mixed results  
+         in an error.                                                           
+         🪪  binaryOp.invalid                                                   
+  335    Parameter $rows of function Laravel\Prompts\table expects array<int,   
+         array<int, string>>|Illuminate\Support\Collection<int, array<int, str  
+         ing>>|null, list<array{mixed, mixed, mixed, mixed, mixed, non-falsy-s  
+         tring, mixed}> given.                                                  
+         🪪  argument.type                                                      
+  354    Binary operation "." between 'https://www.cve.org…' and mixed results  
+         in an error.                                                           
+         🪪  binaryOp.invalid                                                   
+  434    Parameter #1 $webhookUrl of method                                     
+         Dgtlss\Warden\Commands\WardenAuditCommand::sendWebhookNotification()   
+         expects string, mixed given.                                           
+         🪪  argument.type                                                      
+  439    Parameter #2 $emailRecipients of method                                
+         Dgtlss\Warden\Commands\WardenAuditCommand::sendEmailReport() expects   
+         array<string>, mixed given.                                            
+         🪪  argument.type                                                      
+  469    Part $finding['package'] (mixed) of encapsed string cannot be cast to  
+         string.                                                                
+         🪪  encapsedStringPart.nonString                                       
+  469    Part $finding['severity'] (mixed) of encapsed string cannot be cast    
+         to string.                                                             
+         🪪  encapsedStringPart.nonString                                       
+  469    Part $finding['title'] (mixed) of encapsed string cannot be cast to    
+         string.                                                                
+         🪪  encapsedStringPart.nonString                                       
+  471    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  471    Parameter #3 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  489    Cannot call method subject() on mixed.                                 
+         🪪  method.nonObject                                                   
+  489    Cannot call method to() on mixed.                                      
+         🪪  method.nonObject                                                   
+  528    Binary operation "." between '- ' and mixed results in an error.       
+         🪪  binaryOp.invalid                                                   
+  530    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  537    Parameter #1 $url of static method                                     
+         Illuminate\Http\Client\PendingRequest<false>::post() expects string,   
+         mixed given.                                                           
+         🪪  argument.type                                                      
+  543    Cannot call method subject() on mixed.                                 
+         🪪  method.nonObject                                                   
+  543    Cannot call method to() on mixed.                                      
+         🪪  method.nonObject                                                   
+  569    Possibly invalid array key type mixed.                                 
+         🪪  offsetAccess.invalidOffset                                         
+  617    Parameter #1 $messages of method                                       
+         Illuminate\Console\OutputStyle::writeln() expects iterable|string,     
+         string|false given.                                                    
+         🪪  argument.type                                                      
+  632    Parameter #3 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  632    Parameter #4 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  632    Parameter #5 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  651    Parameter #1 $string of function strtoupper expects string, mixed      
+         given.                                                                 
+         🪪  argument.type                                                      
+  673    Parameter #1 $messages of method                                       
+         Illuminate\Console\OutputStyle::writeln() expects iterable|string,     
+         string|false given.                                                    
+         🪪  argument.type                                                      
+  692    Parameter #1 $messages of method                                       
+         Illuminate\Console\OutputStyle::writeln() expects iterable|string,     
+         string|false given.                                                    
+         🪪  argument.type                                                      
+  716    Method Dgtlss\Warden\Commands\WardenAuditCommand::getWardenVersion()   
+         should return string but returns mixed.                                
+         🪪  return.type                                                        
+  727    Property Dgtlss\Warden\Commands\CustomAuditWrapper::$findings type     
+         has no value type specified in iterable type array.                    
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  755    Method Dgtlss\Warden\Commands\CustomAuditWrapper::getFindings()        
+         should return array<array<string, mixed>> but returns array.           
+         🪪  return.type                                                        
+ ------ ----------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   Commands/WardenScheduleCommand.php                                     
+ ------ ----------------------------------------------------------------------- 
+  89     Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  92     Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  95     Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  99     Parameter #1 $frequency of method                                      
+         Dgtlss\Warden\Commands\WardenScheduleCommand::calculateNextRunTime()   
+         expects string, mixed given.                                           
+         🪪  argument.type                                                      
+  99     Parameter #2 $time of method                                           
+         Dgtlss\Warden\Commands\WardenScheduleCommand::calculateNextRunTime()   
+         expects string, mixed given.                                           
+         🪪  argument.type                                                      
+  155    Parameter #2 $subject of function preg_match expects string,           
+         string|false given.                                                    
+         🪪  argument.type                                                      
+  160    Parameter #3 $subject of function preg_replace expects array<float|in  
+         t|string>|string, string|false given.                                  
+         🪪  argument.type                                                      
+ ------ ----------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   Commands/WardenSyntaxCommand.php                                       
+ ------ ----------------------------------------------------------------------- 
+  44     Method Dgtlss\Warden\Commands\WardenSyntaxCommand::displayFindings()   
+         has parameter $findings with no value type specified in iterable type  
+         array.                                                                 
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  53     Cannot access offset 'title' on mixed.                                 
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  54     Cannot access offset 'description' on mixed.                           
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  60     Parameter $rows of function Laravel\Prompts\table expects array<int,   
+         array<int, string>>|Illuminate\Support\Collection<int, array<int, str  
+         ing>>|null, list<array{mixed, mixed}> given.                           
+         🪪  argument.type                                                      
+ ------ ----------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   Contracts/CustomAudit.php                                              
+ ------ ----------------------------------------------------------------------- 
+  27     Method Dgtlss\Warden\Contracts\CustomAudit::getFindings() return type  
+         has no value type specified in iterable type array.                    
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+ ------ ----------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   Contracts/NotificationChannel.php                                      
+ ------ ----------------------------------------------------------------------- 
+  10     Method Dgtlss\Warden\Contracts\NotificationChannel::send() has         
+         parameter $findings with no value type specified in iterable type      
+         array.                                                                 
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  15     Method                                                                 
+         Dgtlss\Warden\Contracts\NotificationChannel::sendAbandonedPackages()   
+         has parameter $abandonedPackages with no value type specified in       
+         iterable type array.                                                   
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+ ------ ----------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   Notifications/Channels/DiscordChannel.php                              
+ ------ ----------------------------------------------------------------------- 
+  14     Property                                                               
+         Dgtlss\Warden\Notifications\Channels\DiscordChannel::$webhookUrl       
+         (string|null) does not accept mixed.                                   
+         🪪  assign.propertyType                                                
+  17     Method Dgtlss\Warden\Notifications\Channels\DiscordChannel::send()     
+         has parameter $findings with no value type specified in iterable type  
+         array.                                                                 
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  24     Parameter #1 $findings of method                                       
+         Dgtlss\Warden\Notifications\Channels\DiscordChannel::buildFindingsEmb  
+         eds() expects array<array<string, mixed>>, array given.                
+         🪪  argument.type                                                      
+  33     Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  38     Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\DiscordChannel::sendAbandonedPac  
+         kages() has parameter $abandonedPackages with no value type specified  
+         in iterable type array.                                                
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  45     Parameter #1 $abandonedPackages of method                              
+         Dgtlss\Warden\Notifications\Channels\DiscordChannel::buildAbandonedPa  
+         ckagesEmbed() expects array<array<string, mixed>>, array given.        
+         🪪  argument.type                                                      
+  54     Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  81     Possibly invalid array key type mixed.                                 
+         🪪  offsetAccess.invalidOffset                                         
+  89     Parameter #1 $string of function ucfirst expects string, mixed given.  
+         🪪  argument.type                                                      
+  100    Binary operation ".=" between mixed and non-falsy-string results in    
+         an error.                                                              
+         🪪  assignOp.invalid                                                   
+  100    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  100    Parameter #3 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  104    Parameter #4 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  121    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  145    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  166    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  178    Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\DiscordChannel::getSeverityColor  
+         () has parameter $findings with no value type specified in iterable    
+         type array.                                                            
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  185    Cannot access offset 'severity' on mixed.                              
+         🪪  offsetAccess.nonOffsetAccessible                                   
+ ------ ----------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   Notifications/Channels/EmailChannel.php                                
+ ------ ----------------------------------------------------------------------- 
+  19     Property                                                               
+         Dgtlss\Warden\Notifications\Channels\EmailChannel::$recipients         
+         (string|null) does not accept mixed.                                   
+         🪪  assign.propertyType                                                
+  20     Property                                                               
+         Dgtlss\Warden\Notifications\Channels\EmailChannel::$fromAddress        
+         (string|null) does not accept mixed.                                   
+         🪪  assign.propertyType                                                
+  21     Property Dgtlss\Warden\Notifications\Channels\EmailChannel::$fromName  
+         (string|null) does not accept mixed.                                   
+         🪪  assign.propertyType                                                
+  24     Method Dgtlss\Warden\Notifications\Channels\EmailChannel::send() has   
+         parameter $findings with no value type specified in iterable type      
+         array.                                                                 
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  31     Parameter #1 $findings of method                                       
+         Dgtlss\Warden\Notifications\Channels\EmailChannel::prepareEmailData()  
+         expects array<array<string, mixed>>, array given.                      
+         🪪  argument.type                                                      
+  34     Cannot call method from() on mixed.                                    
+         🪪  method.nonObject                                                   
+  34     Cannot call method subject() on mixed.                                 
+         🪪  method.nonObject                                                   
+  34     Cannot call method to() on mixed.                                      
+         🪪  method.nonObject                                                   
+  40     Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\EmailChannel::sendAbandonedPacka  
+         ges() has parameter $abandonedPackages with no value type specified    
+         in iterable type array.                                                
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  47     Parameter #1 $abandonedPackages of method                              
+         Dgtlss\Warden\Notifications\Channels\EmailChannel::prepareAbandonedPa  
+         ckagesData() expects array<array<string, mixed>>, array given.         
+         🪪  argument.type                                                      
+  50     Cannot call method from() on mixed.                                    
+         🪪  method.nonObject                                                   
+  50     Cannot call method subject() on mixed.                                 
+         🪪  method.nonObject                                                   
+  50     Cannot call method to() on mixed.                                      
+         🪪  method.nonObject                                                   
+  128    Possibly invalid array key type mixed.                                 
+         🪪  offsetAccess.invalidOffset                                         
+  146    Possibly invalid array key type mixed.                                 
+         🪪  offsetAccess.invalidOffset                                         
+  147    Possibly invalid array key type mixed.                                 
+         🪪  offsetAccess.invalidOffset                                         
+  150    Possibly invalid array key type mixed.                                 
+         🪪  offsetAccess.invalidOffset                                         
+  153    Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\EmailChannel::groupFindingsBySou  
+         rce() should return array<string, array<array<string, mixed>>> but re  
+         turns array<list<array<string, mixed>>>.                               
+         🪪  return.type                                                        
+  156    Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\EmailChannel::getHighestSeverity  
+         () has parameter $findings with no value type specified in iterable    
+         type array.                                                            
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  163    Cannot access offset 'severity' on mixed.                              
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  164    Possibly invalid array key type mixed.                                 
+         🪪  offsetAccess.invalidOffset                                         
+  172    Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\EmailChannel::getHighestSeverity  
+         () should return string but returns mixed.                             
+         🪪  return.type                                                        
+  175    Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\EmailChannel::generateSummary()   
+         has parameter $findings with no value type specified in iterable type  
+         array.                                                                 
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  175    Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\EmailChannel::generateSummary()   
+         has parameter $severityCounts with no value type specified in          
+         iterable type array.                                                   
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  183    Binary operation "+" between mixed and mixed results in an error.      
+         🪪  binaryOp.invalid                                                   
+  190    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  193    Binary operation "." between mixed and ' low severity…' results in an  
+         error.                                                                 
+         🪪  binaryOp.invalid                                                   
+  196    Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\EmailChannel::generateSubject()   
+         has parameter $findings with no value type specified in iterable type  
+         array.                                                                 
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  203    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  214    Parameter #3 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  219    Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\EmailChannel::generateAbandonedP  
+         ackagesSubject() has parameter $abandonedPackages with no value type   
+         specified in iterable type array.                                      
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  223    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+ ------ ----------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   Notifications/Channels/SlackChannel.php                                
+ ------ ----------------------------------------------------------------------- 
+  14     Property                                                               
+         Dgtlss\Warden\Notifications\Channels\SlackChannel::$webhookUrl         
+         (string|null) does not accept mixed.                                   
+         🪪  assign.propertyType                                                
+  17     Method Dgtlss\Warden\Notifications\Channels\SlackChannel::send() has   
+         parameter $findings with no value type specified in iterable type      
+         array.                                                                 
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  23     Parameter #1 $findings of method                                       
+         Dgtlss\Warden\Notifications\Channels\SlackChannel::buildFindingsBlock  
+         s() expects array<array<string, mixed>>, array given.                  
+         🪪  argument.type                                                      
+  33     Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  37     Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\SlackChannel::sendAbandonedPacka  
+         ges() has parameter $abandonedPackages with no value type specified    
+         in iterable type array.                                                
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  43     Parameter #1 $abandonedPackages of method                              
+         Dgtlss\Warden\Notifications\Channels\SlackChannel::buildAbandonedPack  
+         agesBlocks() expects array<array<string, mixed>>, array given.         
+         🪪  argument.type                                                      
+  53     Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  80     Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  112    Parameter #1 $string of function ucfirst expects string, mixed given.  
+         🪪  argument.type                                                      
+  113    Parameter #4 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  114    Parameter #5 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  115    Parameter #6 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  128    Binary operation "." between 'https://www.cve.org…' and mixed results  
+         in an error.                                                           
+         🪪  binaryOp.invalid                                                   
+  129    Parameter #3 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  153    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  170    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  172    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+ ------ ----------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   Notifications/Channels/TeamsChannel.php                                
+ ------ ----------------------------------------------------------------------- 
+  14     Property                                                               
+         Dgtlss\Warden\Notifications\Channels\TeamsChannel::$webhookUrl         
+         (string|null) does not accept mixed.                                   
+         🪪  assign.propertyType                                                
+  17     Method Dgtlss\Warden\Notifications\Channels\TeamsChannel::send() has   
+         parameter $findings with no value type specified in iterable type      
+         array.                                                                 
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  23     Parameter #1 $findings of method                                       
+         Dgtlss\Warden\Notifications\Channels\TeamsChannel::buildFindingsCard(  
+         ) expects array<array<string, mixed>>, array given.                    
+         🪪  argument.type                                                      
+  32     Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\TeamsChannel::sendAbandonedPacka  
+         ges() has parameter $abandonedPackages with no value type specified    
+         in iterable type array.                                                
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  38     Parameter #1 $abandonedPackages of method                              
+         Dgtlss\Warden\Notifications\Channels\TeamsChannel::buildAbandonedPack  
+         agesCard() expects array<array<string, mixed>>, array given.           
+         🪪  argument.type                                                      
+  79     Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  82     Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  96     Cannot cast mixed to string.                                           
+         🪪  cast.string                                                        
+  100    Cannot cast mixed to string.                                           
+         🪪  cast.string                                                        
+  104    Cannot cast mixed to string.                                           
+         🪪  cast.string                                                        
+  108    Cannot cast mixed to string.                                           
+         🪪  cast.string                                                        
+  133    Part $package['package'] (mixed) of encapsed string cannot be cast to  
+         string.                                                                
+         🪪  encapsedStringPart.nonString                                       
+  135    Part $package['replacement'] (mixed) of encapsed string cannot be      
+         cast to string.                                                        
+         🪪  encapsedStringPart.nonString                                       
+  152    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  155    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  202    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  205    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  215    Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\TeamsChannel::getSeverityCounts(  
+         ) has parameter $findings with no value type specified in iterable     
+         type array.                                                            
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  215    Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\TeamsChannel::getSeverityCounts(  
+         ) return type has no value type specified in iterable type array.      
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  220    Cannot access offset 'severity' on mixed.                              
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  221    Possibly invalid array key type mixed.                                 
+         🪪  offsetAccess.invalidOffset                                         
+  229    Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\TeamsChannel::getHighestSeverity  
+         () has parameter $findings with no value type specified in iterable    
+         type array.                                                            
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  236    Cannot access offset 'severity' on mixed.                              
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  237    Possibly invalid array key type mixed.                                 
+         🪪  offsetAccess.invalidOffset                                         
+  245    Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\TeamsChannel::getHighestSeverity  
+         () should return string but returns mixed.                             
+         🪪  return.type                                                        
+  270    Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\TeamsChannel::groupFindingsBySou  
+         rce() has parameter $findings with no value type specified in          
+         iterable type array.                                                   
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  270    Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\TeamsChannel::groupFindingsBySou  
+         rce() return type has no value type specified in iterable type array.  
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  275    Cannot access offset 'source' on mixed.                                
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  276    Possibly invalid array key type mixed.                                 
+         🪪  offsetAccess.invalidOffset                                         
+  277    Possibly invalid array key type mixed.                                 
+         🪪  offsetAccess.invalidOffset                                         
+  280    Possibly invalid array key type mixed.                                 
+         🪪  offsetAccess.invalidOffset                                         
+  286    Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\TeamsChannel::generateSummary()   
+         has parameter $findings with no value type specified in iterable type  
+         array.                                                                 
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  286    Method                                                                 
+         Dgtlss\Warden\Notifications\Channels\TeamsChannel::generateSummary()   
+         has parameter $severityCounts with no value type specified in          
+         iterable type array.                                                   
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  288    Binary operation "+" between mixed and mixed results in an error.      
+         🪪  binaryOp.invalid                                                   
+  295    Binary operation "." between mixed and ' medium severity…' results in  
+         an error.                                                              
+         🪪  binaryOp.invalid                                                   
+  298    Binary operation "." between mixed and ' low severity…' results in an  
+         error.                                                                 
+         🪪  binaryOp.invalid                                                   
+ ------ ----------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   Providers/WardenServiceProvider.php                                    
+ ------ ----------------------------------------------------------------------- 
+  65     Parameter #1 $time of method                                           
+         Illuminate\Console\Scheduling\Event::dailyAt() expects string, mixed   
+         given.                                                                 
+         🪪  argument.type                                                      
+  68     Parameter #2 $time of method                                           
+         Illuminate\Console\Scheduling\Event::weeklyOn() expects string, mixed  
+         given.                                                                 
+         🪪  argument.type                                                      
+  71     Parameter #2 $time of method                                           
+         Illuminate\Console\Scheduling\Event::monthlyOn() expects string,       
+         mixed given.                                                           
+         🪪  argument.type                                                      
+  78     Parameter #1 $timezone of method                                       
+         Illuminate\Console\Scheduling\Event::timezone() expects                
+         DateTimeZone|string, mixed given.                                      
+         🪪  argument.type                                                      
+ ------ ----------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   Services/AuditCacheService.php                                         
+ ------ ----------------------------------------------------------------------- 
+  16     Property Dgtlss\Warden\Services\AuditCacheService::$cacheDuration      
+         (int) does not accept mixed.                                           
+         🪪  assign.propertyType                                                
+  53     Method Dgtlss\Warden\Services\AuditCacheService::getCachedResult()     
+         should return array{result: array<array<string, mixed>>, timestamp: s  
+         tring, cached: bool}|null but returns non-empty-array.                 
+         🪪  return.type                                                        
+  59     Method Dgtlss\Warden\Services\AuditCacheService::storeResult() has     
+         parameter $result with no value type specified in iterable type        
+         array.                                                                 
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+ ------ ----------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   Services/Audits/AbstractAuditService.php                               
+ ------ ----------------------------------------------------------------------- 
+  24     Method                                                                 
+         Dgtlss\Warden\Services\Audits\AbstractAuditService::addFinding() has   
+         parameter $finding with no value type specified in iterable type       
+         array.                                                                 
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  26     Property                                                               
+         Dgtlss\Warden\Services\Audits\AbstractAuditService::$findings          
+         (array<array<string, mixed>>) does not accept array<array>.            
+         🪪  assign.propertyType                                                
+ ------ ----------------------------------------------------------------------- 
+
+ ------ -------------------------------------------------------------- 
+  Line   Services/Audits/ComposerAuditService.php                      
+ ------ -------------------------------------------------------------- 
+  50     Cannot access offset 'abandoned' on mixed.                    
+         🪪  offsetAccess.nonOffsetAccessible                          
+  51     Argument of an invalid type mixed supplied for foreach, only  
+         iterables are supported.                                      
+         🪪  foreach.nonIterable                                       
+  60     Cannot access offset 'advisories' on mixed.                   
+         🪪  offsetAccess.nonOffsetAccessible                          
+  61     Argument of an invalid type mixed supplied for foreach, only  
+         iterables are supported.                                      
+         🪪  foreach.nonIterable                                       
+  62     Argument of an invalid type mixed supplied for foreach, only  
+         iterables are supported.                                      
+         🪪  foreach.nonIterable                                       
+  66     Cannot access offset 'title' on mixed.                        
+         🪪  offsetAccess.nonOffsetAccessible                          
+  67     Cannot access offset 'severity' on mixed.                     
+         🪪  offsetAccess.nonOffsetAccessible                          
+  68     Cannot access offset 'cve' on mixed.                          
+         🪪  offsetAccess.nonOffsetAccessible                          
+  69     Cannot access offset 'affectedVersions' on mixed.             
+         🪪  offsetAccess.nonOffsetAccessible                          
+ ------ -------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------ 
+  Line   Services/Audits/ConfigAuditService.php                            
+ ------ ------------------------------------------------------------------ 
+  37     Parameter #2 $haystack of function in_array expects array, mixed  
+         given.                                                            
+         🪪  argument.type                                                 
+ ------ ------------------------------------------------------------------ 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   Services/Audits/DebugModeAuditService.php                              
+ ------ ----------------------------------------------------------------------- 
+  7      Property                                                               
+         Dgtlss\Warden\Services\Audits\DebugModeAuditService::$devPackages      
+         type has no value type specified in iterable type array.               
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  87     Method                                                                 
+         Dgtlss\Warden\Services\Audits\DebugModeAuditService::getInstalledPack  
+         agesNames() return type has no value type specified in iterable type   
+         array.                                                                 
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  92     Parameter #1 $array of function array_column expects array, mixed      
+         given.                                                                 
+         🪪  argument.type                                                      
+  96     Method                                                                 
+         Dgtlss\Warden\Services\Audits\DebugModeAuditService::getInstalledPack  
+         ages() return type has no value type specified in iterable type        
+         array.                                                                 
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  105    Method                                                                 
+         Dgtlss\Warden\Services\Audits\DebugModeAuditService::getInstalledPack  
+         ages() should return array but returns mixed.                          
+         🪪  return.type                                                        
+  105    Parameter #1 $json of function json_decode expects string,             
+         string|false given.                                                    
+         🪪  argument.type                                                      
+  113    Argument of an invalid type                                            
+         Illuminate\Routing\RouteCollectionInterface supplied for foreach,      
+         only iterables are supported.                                          
+         🪪  foreach.nonIterable                                                
+  114    Cannot call method uri() on mixed.                                     
+         🪪  method.nonObject                                                   
+  115    Parameter #1 $haystack of function str_starts_with expects string,     
+         mixed given.                                                           
+         🪪  argument.type                                                      
+  117    Parameter #1 $route of method                                          
+         Dgtlss\Warden\Services\Audits\DebugModeAuditService::hasProtectiveMid  
+         dleware() expects object, mixed given.                                 
+         🪪  argument.type                                                      
+  132    Parameter #1 $haystack of function str_starts_with expects string,     
+         mixed given.                                                           
+         🪪  argument.type                                                      
+  146    Call to an undefined method object::middleware().                      
+         🪪  method.notFound                                                    
+  156    Argument of an invalid type mixed supplied for foreach, only           
+         iterables are supported.                                               
+         🪪  foreach.nonIterable                                                
+  158    Parameter #1 $haystack of function str_starts_with expects string,     
+         mixed given.                                                           
+         🪪  argument.type                                                      
+ ------ ----------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   Services/Audits/EnvAuditService.php                                    
+ ------ ----------------------------------------------------------------------- 
+  7      Property                                                               
+         Dgtlss\Warden\Services\Audits\EnvAuditService::$sensitiveKeys type     
+         has no value type specified in iterable type array.                    
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  11     Property                                                               
+         Dgtlss\Warden\Services\Audits\EnvAuditService::$sensitiveKeys (array)  
+         does not accept mixed.                                                 
+         🪪  assign.propertyType                                                
+  50     Binary operation "." between 'Missing sensitive…' and mixed results    
+         in an error.                                                           
+         🪪  binaryOp.invalid                                                   
+ ------ ----------------------------------------------------------------------- 
+
+ ------ --------------------------------------------------------------------- 
+  Line   Services/Audits/NpmAuditService.php                                  
+ ------ --------------------------------------------------------------------- 
+  40     Parameter #1 $timeout of method                                      
+         Symfony\Component\Process\Process::setTimeout() expects float|null,  
+         mixed given.                                                         
+         🪪  argument.type                                                    
+  64     Cannot access offset 'vulnerabilities' on mixed.                     
+         🪪  offsetAccess.nonOffsetAccessible                                 
+  65     Argument of an invalid type mixed supplied for foreach, only         
+         iterables are supported.                                             
+         🪪  foreach.nonIterable                                              
+  67     Cannot access offset 'via' on mixed.                                 
+         🪪  offsetAccess.nonOffsetAccessible                                 
+  76     Cannot access offset 'range' on mixed.                               
+         🪪  offsetAccess.nonOffsetAccessible                                 
+  84     Cannot access offset 'title' on mixed.                               
+         🪪  offsetAccess.nonOffsetAccessible                                 
+  85     Cannot access offset 'severity' on mixed.                            
+         🪪  offsetAccess.nonOffsetAccessible                                 
+  86     Cannot access offset 'url' on mixed.                                 
+         🪪  offsetAccess.nonOffsetAccessible                                 
+  87     Cannot access offset 'range' on mixed.                               
+         🪪  offsetAccess.nonOffsetAccessible                                 
+  94     Cannot access offset 'advisories' on mixed.                          
+         🪪  offsetAccess.nonOffsetAccessible                                 
+  95     Argument of an invalid type mixed supplied for foreach, only         
+         iterables are supported.                                             
+         🪪  foreach.nonIterable                                              
+  97     Cannot access offset 'module_name' on mixed.                         
+         🪪  offsetAccess.nonOffsetAccessible                                 
+  98     Cannot access offset 'title' on mixed.                               
+         🪪  offsetAccess.nonOffsetAccessible                                 
+  99     Cannot access offset 'severity' on mixed.                            
+         🪪  offsetAccess.nonOffsetAccessible                                 
+  100    Cannot access offset 'cves' on mixed.                                
+         🪪  offsetAccess.nonOffsetAccessible                                 
+  100    Cannot access offset 'url' on mixed.                                 
+         🪪  offsetAccess.nonOffsetAccessible                                 
+  100    Cannot access offset 0 on mixed.                                     
+         🪪  offsetAccess.nonOffsetAccessible                                 
+  101    Cannot access offset 'vulnerable_versions' on mixed.                 
+         🪪  offsetAccess.nonOffsetAccessible                                 
+ ------ --------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   Services/Audits/PhpSyntaxAuditService.php                              
+ ------ ----------------------------------------------------------------------- 
+  17     Parameter #1 $timeout of method                                        
+         Symfony\Component\Process\Process::setTimeout() expects float|null,    
+         mixed given.                                                           
+         🪪  argument.type                                                      
+  25     Cannot access offset 'file' on mixed.                                  
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  25     Parameter #3 $subject of function str_replace expects array<string>|s  
+         tring, mixed given.                                                    
+         🪪  argument.type                                                      
+  30     Cannot access offset 'message' on mixed.                               
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  60     Parameter #1 $value of function collect expects                        
+         Illuminate\Contracts\Support\Arrayable<(int|string),                   
+         mixed>|iterable<(int|string), mixed>|null, mixed given.                
+         🪪  argument.type                                                      
+  60     Unable to resolve the template type TKey in call to function collect   
+         🪪  argument.templateType                                              
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-error-unable-to-resolve-temp  
+         late-type                                                              
+  60     Unable to resolve the template type TValue in call to function         
+         collect                                                                
+         🪪  argument.templateType                                              
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-error-unable-to-resolve-temp  
+         late-type                                                              
+  61     Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  70     Method                                                                 
+         Dgtlss\Warden\Services\Audits\PhpSyntaxAuditService::parseOutput()     
+         return type has no value type specified in iterable type array.        
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+ ------ ----------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   Services/OutputFormatters/JsonFormatter.php                            
+ ------ ----------------------------------------------------------------------- 
+  12     Method                                                                 
+         Dgtlss\Warden\Services\OutputFormatters\JsonFormatter::format() has    
+         parameter $findings with no value type specified in iterable type      
+         array.                                                                 
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  12     Method                                                                 
+         Dgtlss\Warden\Services\OutputFormatters\JsonFormatter::format() has    
+         parameter $metadata with no value type specified in iterable type      
+         array.                                                                 
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  20     Parameter #1 $findings of method                                       
+         Dgtlss\Warden\Services\OutputFormatters\JsonFormatter::generateSummar  
+         y() expects array<array<string, mixed>>, array given.                  
+         🪪  argument.type                                                      
+  21     Parameter #1 $findings of method                                       
+         Dgtlss\Warden\Services\OutputFormatters\JsonFormatter::formatFindings  
+         () expects array<array<string, mixed>>, array given.                   
+         🪪  argument.type                                                      
+  31     Method                                                                 
+         Dgtlss\Warden\Services\OutputFormatters\JsonFormatter::formatForCI()   
+         has parameter $findings with no value type specified in iterable type  
+         array.                                                                 
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  59     Possibly invalid array key type mixed.                                 
+         🪪  offsetAccess.invalidOffset                                         
+  83     Binary operation "." between 'https://www.cve.org…' and mixed results  
+         in an error.                                                           
+         🪪  binaryOp.invalid                                                   
+  95     Method                                                                 
+         Dgtlss\Warden\Services\OutputFormatters\JsonFormatter::formatForGitHu  
+         b() has parameter $findings with no value type specified in iterable   
+         type array.                                                            
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  100    Cannot access offset 'severity' on mixed.                              
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  110    Cannot access offset 'package' on mixed.                               
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  110    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  111    Cannot access offset 'title' on mixed.                                 
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  111    Parameter #3 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  112    Cannot access offset 'severity' on mixed.                              
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  112    Parameter #4 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  120    Parameter #1 $findings of method                                       
+         Dgtlss\Warden\Services\OutputFormatters\JsonFormatter::generateSummar  
+         y() expects array<array<string, mixed>>, array given.                  
+         🪪  argument.type                                                      
+  128    Method                                                                 
+         Dgtlss\Warden\Services\OutputFormatters\JsonFormatter::formatForGitLa  
+         b() has parameter $findings with no value type specified in iterable   
+         type array.                                                            
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  135    Cannot access offset 'title' on mixed.                                 
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  136    Cannot access offset 'description' on mixed.                           
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  136    Cannot access offset 'title' on mixed.                                 
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  137    Cannot access offset 'severity' on mixed.                              
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  137    Parameter #1 $string of function ucfirst expects string, mixed given.  
+         🪪  argument.type                                                      
+  146    Cannot access offset 'package' on mixed.                               
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  148    Cannot access offset 'affected_versions' on mixed.                     
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  152    Cannot access offset 'cve' on mixed.                                   
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  156    Binary operation "." between 'https://www.cve.org…' and mixed results  
+         in an error.                                                           
+         🪪  binaryOp.invalid                                                   
+  162    Method                                                                 
+         Dgtlss\Warden\Services\OutputFormatters\JsonFormatter::formatForGitLa  
+         b() should return string but returns string|false.                     
+         🪪  return.type                                                        
+  171    Method                                                                 
+         Dgtlss\Warden\Services\OutputFormatters\JsonFormatter::formatForJenki  
+         ns() has parameter $findings with no value type specified in iterable  
+         type array.                                                            
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  176    Cannot access offset 'severity' on mixed.                              
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  189    Cannot access offset 'package' on mixed.                               
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  189    Parameter #2 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  190    Cannot access offset 'title' on mixed.                                 
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  190    Parameter #3 ...$values of function sprintf expects                    
+         bool|float|int|string|null, mixed given.                               
+         🪪  argument.type                                                      
+  192    Cannot access offset 'source' on mixed.                                
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  194    Cannot access offset 'description' on mixed.                           
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  225    Method                                                                 
+         Dgtlss\Warden\Services\OutputFormatters\JsonFormatter::getWardenVersi  
+         on() should return string but returns mixed.                           
+         🪪  return.type                                                        
+ ------ ----------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   Services/ParallelAuditExecutor.php                                     
+ ------ ----------------------------------------------------------------------- 
+  11     Property Dgtlss\Warden\Services\ParallelAuditExecutor::$processes      
+         type has no value type specified in iterable type array.               
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  13     Property Dgtlss\Warden\Services\ParallelAuditExecutor::$results type   
+         has no value type specified in iterable type array.                    
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  20     Call to an undefined method object::getName().                         
+         🪪  method.notFound                                                    
+  20     Possibly invalid array key type mixed.                                 
+         🪪  offsetAccess.invalidOffset                                         
+  28     Method Dgtlss\Warden\Services\ParallelAuditExecutor::execute() return  
+         type has no value type specified in iterable type array.               
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  47     Method Dgtlss\Warden\Services\ParallelAuditExecutor::runParallel()     
+         return type has no value type specified in iterable type array.        
+         🪪  missingType.iterableValue                                          
+         💡  See:                                                               
+         https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-i  
+         terable-type                                                           
+  55     Parameter #1 $object_or_class of function method_exists expects        
+         object|string, mixed given.                                            
+         🪪  argument.type                                                      
+  56     Cannot call method runAsync() on class-string|object.                  
+         🪪  method.nonObject                                                   
+  59     Cannot call method run() on mixed.                                     
+         🪪  method.nonObject                                                   
+  62     Cannot call method getFindings() on mixed.                             
+         🪪  method.nonObject                                                   
+  75     Cannot call method wait() on mixed.                                    
+         🪪  method.nonObject                                                   
+  80     Cannot call method getFindings() on mixed.                             
+         🪪  method.nonObject                                                   
+  91     Method Dgtlss\Warden\Services\ParallelAuditExecutor::getAllFindings()  
+         return type with generic class Illuminate\Support\Collection does not  
+         specify its types: TKey, TValue                                        
+         🪪  missingType.generics                                               
+  94     Cannot access offset 'findings' on mixed.                              
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  105    Cannot access offset 'success' on mixed.                               
+         🪪  offsetAccess.nonOffsetAccessible                                   
+  111    Method                                                                 
+         Dgtlss\Warden\Services\ParallelAuditExecutor::getFailedAudits()        
+         return type with generic class Illuminate\Support\Collection does not  
+         specify its types: TKey, TValue                                        
+         🪪  missingType.generics                                               
+  114    Cannot access offset 'success' on mixed.                               
+         🪪  offsetAccess.nonOffsetAccessible                                   
+ ------ ----------------------------------------------------------------------- 
+
+ ------ --------------------------------------------------------------------- 
+  Line   ValueObjects/Finding.php                                             
+ ------ --------------------------------------------------------------------- 
+  31     Parameter $source of class Dgtlss\Warden\ValueObjects\Finding        
+         constructor expects string, mixed given.                             
+         🪪  argument.type                                                    
+  32     Parameter $package of class Dgtlss\Warden\ValueObjects\Finding       
+         constructor expects string, mixed given.                             
+         🪪  argument.type                                                    
+  33     Parameter $title of class Dgtlss\Warden\ValueObjects\Finding         
+         constructor expects string, mixed given.                             
+         🪪  argument.type                                                    
+  36     Parameter #1 $value of static method                                 
+         Dgtlss\Warden\Enums\Severity::fromString() expects string, mixed     
+         given.                                                               
+         🪪  argument.type                                                    
+  37     Parameter $cve of class Dgtlss\Warden\ValueObjects\Finding           
+         constructor expects string|null, mixed given.                        
+         🪪  argument.type                                                    
+  38     Parameter $affectedVersions of class                                 
+         Dgtlss\Warden\ValueObjects\Finding constructor expects string|null,  
+         mixed given.                                                         
+         🪪  argument.type                                                    
+  39     Parameter $error of class Dgtlss\Warden\ValueObjects\Finding         
+         constructor expects string|null, mixed given.                        
+         🪪  argument.type                                                    
+ ------ --------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------- 
+  Line   database/migrations/2024_01_01_000000_create_warden_audit_history_tab  
+         le.php                                                                 
+ ------ ----------------------------------------------------------------------- 
+  16     Parameter #1 $table of static method                                   
+         Illuminate\Support\Facades\Schema::create() expects string, mixed      
+         given.                                                                 
+         🪪  argument.type                                                      
+  45     Parameter #1 $table of static method                                   
+         Illuminate\Support\Facades\Schema::dropIfExists() expects string,      
+         mixed given.                                                           
+         🪪  argument.type                                                      
+ ------ ----------------------------------------------------------------------- 
+
+ [ERROR] Found 299 errors                                                       
+
