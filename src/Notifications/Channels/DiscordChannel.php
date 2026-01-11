@@ -11,16 +11,20 @@ class DiscordChannel implements NotificationChannel
 
     public function __construct()
     {
-        $this->webhookUrl = config('warden.notifications.discord.webhook_url');
+        $webhookUrl = config('warden.notifications.discord.webhook_url');
+        $this->webhookUrl = is_string($webhookUrl) && $webhookUrl !== '' ? $webhookUrl : null;
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $findings
+     */
     public function send(array $findings): void
     {
         if (!$this->isConfigured()) {
             return;
         }
 
-        $appName = config('warden.app_name', 'Application');
+        $appName = (string) config('warden.app_name', 'Application');
         $embeds = $this->buildFindingsEmbeds($findings);
         
         if ($this->webhookUrl === null) {
@@ -35,13 +39,16 @@ class DiscordChannel implements NotificationChannel
         ]);
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $abandonedPackages
+     */
     public function sendAbandonedPackages(array $abandonedPackages): void
     {
         if (!$this->isConfigured()) {
             return;
         }
 
-        $appName = config('warden.app_name', 'Application');
+        $appName = (string) config('warden.app_name', 'Application');
         $embed = $this->buildAbandonedPackagesEmbed($abandonedPackages);
         
         if ($this->webhookUrl === null) {
@@ -67,8 +74,8 @@ class DiscordChannel implements NotificationChannel
     }
 
     /**
-     * @param array<array<string, mixed>> $findings
-     * @return array<array<string, mixed>>
+     * @param array<int, array<string, mixed>> $findings
+     * @return array<int, array<string, mixed>>
      */
     protected function buildFindingsEmbeds(array $findings): array
     {
@@ -77,17 +84,25 @@ class DiscordChannel implements NotificationChannel
 
         // Group findings by source
         foreach ($findings as $finding) {
-            $source = $finding['source'] ?? 'Unknown';
+            if (!is_array($finding)) {
+                continue;
+            }
+
+            $source = isset($finding['source']) ? (string) $finding['source'] : 'Unknown';
             $findingsBySource[$source][] = $finding;
         }
 
-        // Create embeds for each source
         foreach ($findingsBySource as $source => $sourceFindings) {
             $fields = [];
 
-            foreach (array_slice($sourceFindings, 0, 10) as $finding) { // Discord limit: 25 fields per embed
-                $severity = ucfirst($finding['severity'] ?? 'low');
-                $severityEmoji = match($finding['severity'] ?? 'low') {
+            foreach (array_slice($sourceFindings, 0, 10) as $finding) {
+                if (!is_array($finding)) {
+                    continue;
+                }
+
+                $severityValue = isset($finding['severity']) ? (string) $finding['severity'] : 'low';
+                $severity = ucfirst($severityValue);
+                $severityEmoji = match($severityValue) {
                     'critical' => '🔴',
                     'high' => '🟠',
                     'medium' => '🟡',
@@ -95,13 +110,16 @@ class DiscordChannel implements NotificationChannel
                     default => '⚪'
                 };
 
-                $value = $finding['title'] ?? 'Unknown vulnerability';
-                if (!empty($finding['cve'])) {
-                    $value .= sprintf("\n[CVE: %s](https://www.cve.org/CVERecord?id=%s)", $finding['cve'], $finding['cve']);
+                $value = isset($finding['title']) ? (string) $finding['title'] : 'Unknown vulnerability';
+                $cve = isset($finding['cve']) && is_string($finding['cve']) ? $finding['cve'] : null;
+                if ($cve) {
+                    $value .= sprintf("\n[CVE: %s](https://www.cve.org/CVERecord?id=%s)", $cve, $cve);
                 }
 
+                $package = isset($finding['package']) ? (string) $finding['package'] : 'Unknown';
+
                 $fields[] = [
-                    'name' => sprintf('%s %s - %s', $severityEmoji, $severity, $finding['package'] ?? 'Unknown'),
+                    'name' => sprintf('%s %s - %s', $severityEmoji, $severity, $package),
                     'value' => $value,
                     'inline' => false
                 ];
@@ -133,7 +151,7 @@ class DiscordChannel implements NotificationChannel
     }
 
     /**
-     * @param array<array<string, mixed>> $abandonedPackages
+     * @param array<int, array<string, mixed>> $abandonedPackages
      * @return array<string, mixed>
      */
     protected function buildAbandonedPackagesEmbed(array $abandonedPackages): array
@@ -141,12 +159,21 @@ class DiscordChannel implements NotificationChannel
         $fields = [];
         
         foreach (array_slice($abandonedPackages, 0, 20) as $package) {
-            $value = $package['replacement'] 
-                ? sprintf('Recommended: `%s`', $package['replacement'])
+            if (!is_array($package)) {
+                continue;
+            }
+
+            $replacement = isset($package['replacement']) && is_string($package['replacement'])
+                ? $package['replacement']
+                : null;
+            $value = $replacement
+                ? sprintf('Recommended: `%s`', $replacement)
                 : 'No replacement suggested';
-                
+
+            $packageName = isset($package['package']) ? (string) $package['package'] : 'unknown';
+
             $fields[] = [
-                'name' => $package['package'],
+                'name' => $packageName,
                 'value' => $value,
                 'inline' => true
             ];
@@ -175,6 +202,9 @@ class DiscordChannel implements NotificationChannel
         ];
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $findings
+     */
     protected function getSeverityColor(array $findings): int
     {
         $hasCritical = false;
@@ -182,6 +212,10 @@ class DiscordChannel implements NotificationChannel
         $hasMedium = false;
 
         foreach ($findings as $finding) {
+            if (!is_array($finding)) {
+                continue;
+            }
+
             switch ($finding['severity'] ?? 'low') {
                 case 'critical':
                     $hasCritical = true;

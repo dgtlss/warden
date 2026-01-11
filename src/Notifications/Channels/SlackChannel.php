@@ -11,9 +11,13 @@ class SlackChannel implements NotificationChannel
 
     public function __construct()
     {
-        $this->webhookUrl = config('warden.notifications.slack.webhook_url');
+        $webhookUrl = config('warden.notifications.slack.webhook_url');
+        $this->webhookUrl = is_string($webhookUrl) && $webhookUrl !== '' ? $webhookUrl : null;
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $findings
+     */
     public function send(array $findings): void
     {
         if (!$this->isConfigured()) {
@@ -22,7 +26,7 @@ class SlackChannel implements NotificationChannel
 
         $blocks = $this->buildFindingsBlocks($findings);
         
-        $appName = config('warden.app_name', 'Application');
+        $appName = (string) config('warden.app_name', 'Application');
         
         if ($this->webhookUrl === null) {
             return;
@@ -34,6 +38,9 @@ class SlackChannel implements NotificationChannel
         ]);
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $abandonedPackages
+     */
     public function sendAbandonedPackages(array $abandonedPackages): void
     {
         if (!$this->isConfigured()) {
@@ -42,7 +49,7 @@ class SlackChannel implements NotificationChannel
 
         $blocks = $this->buildAbandonedPackagesBlocks($abandonedPackages);
         
-        $appName = config('warden.app_name', 'Application');
+        $appName = (string) config('warden.app_name', 'Application');
         
         if ($this->webhookUrl === null) {
             return;
@@ -65,8 +72,8 @@ class SlackChannel implements NotificationChannel
     }
 
     /**
-     * @param array<array<string, mixed>> $findings
-     * @return array<array<string, mixed>>
+     * @param array<int, array<string, mixed>> $findings
+     * @return array<int, array<string, mixed>>
      */
     protected function buildFindingsBlocks(array $findings): array
     {
@@ -94,13 +101,23 @@ class SlackChannel implements NotificationChannel
         ];
 
         foreach ($findings as $finding) {
-            $severityEmoji = match($finding['severity']) {
+            if (!is_array($finding)) {
+                continue;
+            }
+
+            $severity = isset($finding['severity']) ? (string) $finding['severity'] : 'low';
+            $severityEmoji = match($severity) {
                 'critical' => '🔴',
                 'high' => '🟠',
                 'medium' => '🟡',
                 'low' => '🟢',
                 default => '⚪'
             };
+
+            $title = isset($finding['title']) ? (string) $finding['title'] : 'Security issue';
+            $package = isset($finding['package']) ? (string) $finding['package'] : 'unknown';
+            $source = isset($finding['source']) ? (string) $finding['source'] : 'unknown';
+            $cve = isset($finding['cve']) && is_string($finding['cve']) ? $finding['cve'] : null;
 
             $blocks[] = [
                 'type' => 'section',
@@ -109,15 +126,15 @@ class SlackChannel implements NotificationChannel
                     'text' => sprintf(
                         "%s *%s* - %s\n*Package:* `%s`\n*Source:* %s",
                         $severityEmoji,
-                        ucfirst($finding['severity']),
-                        $finding['title'],
-                        $finding['package'],
-                        $finding['source']
+                        ucfirst($severity),
+                        $title,
+                        $package,
+                        $source
                     )
                 ]
             ];
 
-            if (!empty($finding['cve'])) {
+            if ($cve) {
                 $blocks[] = [
                     'type' => 'context',
                     'elements' => [
@@ -125,8 +142,8 @@ class SlackChannel implements NotificationChannel
                             'type' => 'mrkdwn',
                             'text' => sprintf(
                                 '*CVE:* <%s|%s>',
-                                'https://www.cve.org/CVERecord?id=' . $finding['cve'],
-                                $finding['cve']
+                                'https://www.cve.org/CVERecord?id=' . $cve,
+                                $cve
                             )
                         ]
                     ]
@@ -138,8 +155,8 @@ class SlackChannel implements NotificationChannel
     }
 
     /**
-     * @param array<array<string, mixed>> $abandonedPackages
-     * @return array<array<string, mixed>>
+     * @param array<int, array<string, mixed>> $abandonedPackages
+     * @return array<int, array<string, mixed>>
      */
     protected function buildAbandonedPackagesBlocks(array $abandonedPackages): array
     {
@@ -167,9 +184,18 @@ class SlackChannel implements NotificationChannel
         ];
 
         foreach ($abandonedPackages as $abandonedPackage) {
-            $text = sprintf('• `%s`', $abandonedPackage['package']);
-            if (!empty($abandonedPackage['replacement'])) {
-                $text .= sprintf(' → Recommended: `%s`', $abandonedPackage['replacement']);
+            if (!is_array($abandonedPackage)) {
+                continue;
+            }
+
+            $package = isset($abandonedPackage['package']) ? (string) $abandonedPackage['package'] : 'unknown';
+            $replacement = isset($abandonedPackage['replacement']) && is_string($abandonedPackage['replacement'])
+                ? $abandonedPackage['replacement']
+                : null;
+
+            $text = sprintf('• `%s`', $package);
+            if ($replacement) {
+                $text .= sprintf(' → Recommended: `%s`', $replacement);
             }
 
             $blocks[] = [

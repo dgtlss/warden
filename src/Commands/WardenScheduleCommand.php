@@ -80,22 +80,26 @@ class WardenScheduleCommand extends Command
 
     protected function showScheduleInfo(): void
     {
-        $frequency = config('warden.schedule.frequency', 'daily');
-        $time = config('warden.schedule.time', '03:00');
-        $timezone = config('warden.schedule.timezone', config('app.timezone'));
+        $frequencyConfig = config('warden.schedule.frequency', 'daily');
+        $timeConfig = config('warden.schedule.time', '03:00');
+        $timezoneConfig = config('warden.schedule.timezone', config('app.timezone'));
+
+        $frequency = is_string($frequencyConfig) ? $frequencyConfig : 'daily';
+        $time = is_string($timeConfig) ? $timeConfig : '03:00';
+        $timezoneFallback = config('app.timezone', 'UTC');
+        $timezone = is_string($timezoneConfig) ? $timezoneConfig : (is_string($timezoneFallback) ? $timezoneFallback : 'UTC');
         
         $this->info('');
         $this->info('Schedule Configuration:');
         $this->info(sprintf('  Frequency: <fg=yellow>%s</>', $frequency));
         
-        if (in_array($frequency, ['daily', 'weekly', 'monthly'])) {
+        if (in_array($frequency, ['daily', 'weekly', 'monthly'], true)) {
             $this->info(sprintf('  Time: <fg=yellow>%s</>', $time));
         }
         
         $this->info(sprintf('  Timezone: <fg=yellow>%s</>', $timezone));
         $this->info('');
         
-        // Show next run time
         $nextRun = $this->calculateNextRunTime($frequency, $time);
         $this->info(sprintf('Next audit will run: <fg=green>%s</>', $nextRun));
         
@@ -150,20 +154,22 @@ class WardenScheduleCommand extends Command
         }
         
         $content = file_get_contents($path);
+        if ($content === false) {
+            return;
+        }
         
-        // Check if key exists
-        if (preg_match(sprintf('/^%s=.*/m', $key), $content)) {
-            // Update existing key
+        $pattern = sprintf('/^%s=.*/m', $key);
+        
+        if (preg_match($pattern, $content)) {
             $content = preg_replace(
-                sprintf('/^%s=.*/m', $key),
+                $pattern,
                 sprintf('%s=%s', $key, $value),
                 $content
             );
         } else {
-            // Add new key
             $content .= sprintf('%s%s=%s%s', PHP_EOL, $key, $value, PHP_EOL);
         }
         
         file_put_contents($path, $content);
     }
-} 
+}

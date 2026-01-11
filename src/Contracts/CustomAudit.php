@@ -14,7 +14,7 @@ interface CustomAudit
     /**
      * Get the findings from the audit.
      *
-     * @return array Array of findings with structure:
+     * @return array<int, array<string, mixed>> Array of findings with structure:
      *               [
      *                   'package' => 'package-name',
      *                   'title' => 'Issue title',

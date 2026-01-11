@@ -11,7 +11,8 @@ class TeamsChannel implements NotificationChannel
 
     public function __construct()
     {
-        $this->webhookUrl = config('warden.notifications.teams.webhook_url');
+        $webhookUrl = config('warden.notifications.teams.webhook_url');
+        $this->webhookUrl = is_string($webhookUrl) && $webhookUrl !== '' ? $webhookUrl : null;
     }
 
     public function send(array $findings): void
@@ -58,9 +59,14 @@ class TeamsChannel implements NotificationChannel
      * @param array<array<string, mixed>> $findings
      * @return array<string, mixed>
      */
+    /**
+     * @param array<int, array<string, mixed>> $findings
+     * @return array<string, mixed>
+     */
     protected function buildFindingsCard(array $findings): array
     {
-        $appName = config('warden.app_name', 'Application');
+        $findings = $this->normalizeArrayItems($findings);
+        $appName = (string) config('warden.app_name', 'Application');
         $totalFindings = count($findings);
         $severityCounts = $this->getSeverityCounts($findings);
         $highestSeverity = $this->getHighestSeverity($findings);
@@ -122,17 +128,29 @@ class TeamsChannel implements NotificationChannel
      * @param array<array<string, mixed>> $abandonedPackages
      * @return array<string, mixed>
      */
+    /**
+     * @param array<int, array<string, mixed>> $abandonedPackages
+     * @return array<string, mixed>
+     */
     protected function buildAbandonedPackagesCard(array $abandonedPackages): array
     {
-        $appName = config('warden.app_name', 'Application');
+        $abandonedPackages = $this->normalizeArrayItems($abandonedPackages);
+        $appName = (string) config('warden.app_name', 'Application');
         $totalPackages = count($abandonedPackages);
-        $packagesWithReplacements = array_filter($abandonedPackages, fn($pkg) => !empty($pkg['replacement']));
+        $packagesWithReplacements = array_filter($abandonedPackages, fn($pkg) => is_array($pkg) && !empty($pkg['replacement']));
 
         $packagesText = '';
         foreach (array_slice($abandonedPackages, 0, 10) as $package) { // Limit to prevent size issues
-            $packagesText .= "**{$package['package']}**  \n";
-            if (!empty($package['replacement'])) {
-                $packagesText .= "→ Recommended: {$package['replacement']}  \n";
+            if (!is_array($package)) {
+                continue;
+            }
+
+            $packageName = isset($package['package']) ? (string) $package['package'] : 'unknown';
+            $replacement = isset($package['replacement']) && is_string($package['replacement']) ? $package['replacement'] : null;
+
+            $packagesText .= sprintf('**%s**  %s', $packageName, PHP_EOL);
+            if ($replacement !== null) {
+                $packagesText .= sprintf('→ Recommended: %s  %s', $replacement, PHP_EOL);
             } else {
                 $packagesText .= "→ No replacement suggested  \n";
             }
@@ -193,7 +211,7 @@ class TeamsChannel implements NotificationChannel
      */
     protected function buildSuccessCard(): array
     {
-        $appName = config('warden.app_name', 'Application');
+        $appName = (string) config('warden.app_name', 'Application');
         
         return [
             '@type' => 'MessageCard',
@@ -212,11 +230,19 @@ class TeamsChannel implements NotificationChannel
         ];
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $findings
+     * @return array{critical:int,high:int,medium:int,low:int}
+     */
     protected function getSeverityCounts(array $findings): array
     {
         $counts = ['critical' => 0, 'high' => 0, 'medium' => 0, 'low' => 0];
         
         foreach ($findings as $finding) {
+            if (!is_array($finding)) {
+                continue;
+            }
+
             $severity = $finding['severity'] ?? 'low';
             if (isset($counts[$severity])) {
                 $counts[$severity]++;
@@ -226,6 +252,9 @@ class TeamsChannel implements NotificationChannel
         return $counts;
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $findings
+     */
     protected function getHighestSeverity(array $findings): string
     {
         $severityLevels = ['critical' => 4, 'high' => 3, 'medium' => 2, 'low' => 1];
@@ -233,6 +262,10 @@ class TeamsChannel implements NotificationChannel
         $highestLevel = 1;
 
         foreach ($findings as $finding) {
+            if (!is_array($finding)) {
+                continue;
+            }
+
             $severity = $finding['severity'] ?? 'low';
             $level = $severityLevels[$severity] ?? 1;
             
@@ -267,11 +300,19 @@ class TeamsChannel implements NotificationChannel
         };
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $findings
+     * @return array<string, array<int, array<string, mixed>>>
+     */
     protected function groupFindingsBySource(array $findings): array
     {
         $grouped = [];
         
         foreach ($findings as $finding) {
+            if (!is_array($finding)) {
+                continue;
+            }
+
             $source = $finding['source'] ?? 'unknown';
             if (!isset($grouped[$source])) {
                 $grouped[$source] = [];
@@ -283,6 +324,10 @@ class TeamsChannel implements NotificationChannel
         return $grouped;
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $findings
+     * @param array{critical:int,high:int,medium:int,low:int} $severityCounts
+     */
     protected function generateSummary(array $findings, array $severityCounts): string
     {
         $criticalAndHigh = $severityCounts['critical'] + $severityCounts['high'];
@@ -296,5 +341,23 @@ class TeamsChannel implements NotificationChannel
         }
 
         return $severityCounts['low'] . ' low severity vulnerabilities detected';
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $items
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeArrayItems(array $items): array
+    {
+        $normalized = [];
+
+        foreach ($items as $item) {
+            if (is_array($item)) {
+                /** @var array<string, mixed> $item */
+                $normalized[] = $item;
+            }
+        }
+
+        return $normalized;
     }
 }

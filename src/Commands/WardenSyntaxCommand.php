@@ -41,6 +41,9 @@ class WardenSyntaxCommand extends Command
         return 1;
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $findings
+     */
     protected function displayFindings(array $findings): void
     {
         $this->error(count($findings) . ' syntax errors found.');
@@ -49,9 +52,13 @@ class WardenSyntaxCommand extends Command
         $rows = [];
 
         foreach ($findings as $finding) {
+            if (!is_array($finding)) {
+                continue;
+            }
+
             $rows[] = [
-                $finding['title'],
-                $finding['description'],
+                isset($finding['title']) ? (string) $finding['title'] : 'Unknown file',
+                isset($finding['description']) ? (string) $finding['description'] : 'Unknown error',
             ];
         }
 
@@ -60,4 +67,4 @@ class WardenSyntaxCommand extends Command
             rows: $rows
         );
     }
-} 
+}
