@@ -2,6 +2,7 @@
 
 namespace Dgtlss\Warden\Tests\Unit\Services;
 
+use Dgtlss\Warden\Contracts\AuditService;
 use Dgtlss\Warden\Services\ParallelAuditExecutor;
 use Dgtlss\Warden\Tests\TestCase;
 use Mockery;
@@ -12,7 +13,7 @@ class ParallelAuditExecutorTest extends TestCase
     {
         $executor = new ParallelAuditExecutor();
 
-        $auditService = Mockery::mock();
+        $auditService = Mockery::mock(AuditService::class);
         $auditService->shouldReceive('getName')->andReturn('test-audit');
 
         $executor->addAudit($auditService);
@@ -41,7 +42,7 @@ class ParallelAuditExecutorTest extends TestCase
     {
         $executor = new ParallelAuditExecutor();
 
-        $auditService = Mockery::mock();
+        $auditService = Mockery::mock(AuditService::class);
         $auditService->shouldReceive('getName')->andReturn('test-audit');
         $auditService->shouldReceive('run')->andReturn(true);
         $auditService->shouldReceive('getFindings')->andReturn([]);
@@ -61,7 +62,7 @@ class ParallelAuditExecutorTest extends TestCase
     {
         $executor = new ParallelAuditExecutor();
 
-        $auditService = Mockery::mock();
+        $auditService = Mockery::mock(AuditService::class);
         $auditService->shouldReceive('getName')->andReturn('failing-audit');
         $auditService->shouldReceive('run')->andReturn(false);
         $auditService->shouldReceive('getFindings')->andReturn([
@@ -87,12 +88,12 @@ class ParallelAuditExecutorTest extends TestCase
     {
         $executor = new ParallelAuditExecutor();
 
-        $audit1 = Mockery::mock();
+        $audit1 = Mockery::mock(AuditService::class);
         $audit1->shouldReceive('getName')->andReturn('audit-1');
         $audit1->shouldReceive('run')->andReturn(true);
         $audit1->shouldReceive('getFindings')->andReturn([]);
 
-        $audit2 = Mockery::mock();
+        $audit2 = Mockery::mock(AuditService::class);
         $audit2->shouldReceive('getName')->andReturn('audit-2');
         $audit2->shouldReceive('run')->andReturn(true);
         $audit2->shouldReceive('getFindings')->andReturn([
@@ -127,7 +128,7 @@ class ParallelAuditExecutorTest extends TestCase
     {
         $executor = new ParallelAuditExecutor();
 
-        $auditService = Mockery::mock();
+        $auditService = Mockery::mock(AuditService::class);
         $auditService->shouldReceive('getName')->andReturn('success-audit');
         $auditService->shouldReceive('run')->andReturn(true);
         $auditService->shouldReceive('getFindings')->andReturn([]);
@@ -162,7 +163,7 @@ class ParallelAuditExecutorTest extends TestCase
             'failed-audit' => [
                 'success' => false,
                 'findings' => [['error' => 'test']],
-                'service' => Mockery::mock()
+                'service' => Mockery::mock(AuditService::class)
             ]
         ]);
 
@@ -178,9 +179,9 @@ class ParallelAuditExecutorTest extends TestCase
         $property = $reflection->getProperty('results');
         $property->setAccessible(true);
         $property->setValue($executor, [
-            'success-audit' => ['success' => true, 'findings' => [], 'service' => Mockery::mock()],
-            'failed-audit-1' => ['success' => false, 'findings' => [], 'service' => Mockery::mock()],
-            'failed-audit-2' => ['success' => false, 'findings' => [], 'service' => Mockery::mock()],
+            'success-audit' => ['success' => true, 'findings' => [], 'service' => Mockery::mock(AuditService::class)],
+            'failed-audit-1' => ['success' => false, 'findings' => [], 'service' => Mockery::mock(AuditService::class)],
+            'failed-audit-2' => ['success' => false, 'findings' => [], 'service' => Mockery::mock(AuditService::class)],
         ]);
 
         $failed = $executor->getFailedAudits();

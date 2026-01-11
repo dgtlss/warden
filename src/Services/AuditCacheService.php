@@ -13,7 +13,8 @@ class AuditCacheService
 
     public function __construct()
     {
-        $this->cacheDuration = config('warden.cache.duration', 3600); // Default 1 hour
+        $duration = config('warden.cache.duration', 3600);
+        $this->cacheDuration = is_int($duration) ? $duration : 3600; // Default 1 hour
     }
 
     /**
@@ -27,10 +28,7 @@ class AuditCacheService
     /**
      * Get cached audit result.
      *
-     * @return array<array<string, mixed>>|null
-     */
-    /**
-     * @return array{result: array<array<string, mixed>>, timestamp: string, cached: bool}|null
+     * @return array{result: array<int, array<string, mixed>>, timestamp: string, cached: bool}|null
      */
     public function getCachedResult(string $auditName): ?array
     {
@@ -48,13 +46,20 @@ class AuditCacheService
             return null;
         }
 
-        $cached['cached'] = (bool) ($cached['cached'] ?? false);
+        /** @var array<int, array<string, mixed>> $result */
+        $result = $cached['result'];
 
-        return $cached;
+        return [
+            'result' => $result,
+            'timestamp' => $cached['timestamp'],
+            'cached' => (bool) ($cached['cached'] ?? false)
+        ];
     }
 
     /**
      * Store audit result in cache.
+     *
+     * @param array<int, array<string, mixed>> $result
      */
     public function storeResult(string $auditName, array $result): void
     {

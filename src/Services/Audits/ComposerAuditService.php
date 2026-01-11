@@ -31,10 +31,10 @@ class ComposerAuditService extends AbstractAuditService
             // Exit code 1 from composer audit means vulnerabilities were found, which is okay
             // Only treat it as an error if we can't parse the output as JSON
             $output = json_decode($process->getOutput(), true);
-            if ($output === null) {
+            if (!is_array($output)) {
                 $errorOutput = $process->getErrorOutput() ?: $process->getOutput() ?: 'No error output available';
                 $exitCode = $process->getExitCode();
-                
+
                 $this->addFinding([
                     'source' => $this->getName(),
                     'package' => 'composer',
@@ -42,13 +42,16 @@ class ComposerAuditService extends AbstractAuditService
                     'severity' => 'high',
                     'error' => "Exit Code: {$exitCode}\nError: {$errorOutput}"
                 ]);
-                
+
                 return false;
             }
 
             // Handle abandoned packages (but don't fail the audit)
-            if (isset($output['abandoned']) && !empty($output['abandoned'])) {
+            if (isset($output['abandoned']) && is_array($output['abandoned']) && !empty($output['abandoned'])) {
                 foreach ($output['abandoned'] as $package => $replacement) {
+                    if (!is_string($package)) {
+                        continue;
+                    }
                     $this->abandonedPackages[] = [
                         'package' => $package,
                         'replacement' => is_string($replacement) ? $replacement : null
@@ -57,16 +60,22 @@ class ComposerAuditService extends AbstractAuditService
             }
 
             // Handle security advisories
-            if (isset($output['advisories']) && !empty($output['advisories'])) {
+            if (isset($output['advisories']) && is_array($output['advisories']) && !empty($output['advisories'])) {
                 foreach ($output['advisories'] as $package => $issues) {
+                    if (!is_string($package) || !is_array($issues)) {
+                        continue;
+                    }
                     foreach ($issues as $issue) {
+                        if (!is_array($issue)) {
+                            continue;
+                        }
                         $this->addFinding([
                             'source' => $this->getName(),
                             'package' => $package,
-                            'title' => $issue['title'],
-                            'severity' => $issue['severity'] ?? 'unknown',
-                            'cve' => $issue['cve'] ?? null,
-                            'affected_versions' => $issue['affectedVersions'] ?? null
+                            'title' => is_string($issue['title'] ?? null) ? $issue['title'] : 'Unknown vulnerability',
+                            'severity' => is_string($issue['severity'] ?? null) ? $issue['severity'] : 'unknown',
+                            'cve' => is_string($issue['cve'] ?? null) ? $issue['cve'] : null,
+                            'affected_versions' => is_string($issue['affectedVersions'] ?? null) ? $issue['affectedVersions'] : null
                         ]);
                     }
                 }

@@ -2,20 +2,27 @@
 
 namespace Dgtlss\Warden\Services;
 
+use Dgtlss\Warden\Contracts\AuditService;
 use Illuminate\Support\Collection;
 use Symfony\Component\Process\Process;
 use function Laravel\Prompts\spin;
 
 class ParallelAuditExecutor
 {
+    /**
+     * @var array<string, AuditService>
+     */
     protected array $processes = [];
 
+    /**
+     * @var array<string, array{success: bool, findings: array<int, array<string, mixed>>, service: AuditService}>
+     */
     protected array $results = [];
 
     /**
      * Add an audit service to be executed in parallel.
      */
-    public function addAudit(object $auditService): void
+    public function addAudit(AuditService $auditService): void
     {
         $this->processes[$auditService->getName()] = $auditService;
     }
@@ -23,7 +30,7 @@ class ParallelAuditExecutor
     /**
      * Execute all audits in parallel.
      *
-     * @return array Results keyed by audit name
+     * @return array<string, array{success: bool, findings: array<int, array<string, mixed>>, service: AuditService}>
      */
     public function execute(bool $showProgress = true): array
     {
@@ -43,6 +50,8 @@ class ParallelAuditExecutor
 
     /**
      * Run audits in parallel using concurrent processing.
+     *
+     * @return array<string, array{success: bool, findings: array<int, array<string, mixed>>, service: AuditService}>
      */
     protected function runParallel(): array
     {

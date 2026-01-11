@@ -208,7 +208,7 @@ class WardenAuditCommand extends Command
     /**
      * Initialize and return all audit services based on command options.
      *
-     * @return array<int, object> Array of audit service instances
+     * @return array<int, \Dgtlss\Warden\Contracts\AuditService> Array of audit service instances
      */
     protected function initializeAuditServices(): array
     {
