@@ -4,6 +4,8 @@ namespace Dgtlss\Warden\Tests\Unit\Notifications\Channels;
 
 use Dgtlss\Warden\Notifications\Channels\EmailChannel;
 use Dgtlss\Warden\Tests\TestCase;
+use Dgtlss\Warden\ValueObjects\Finding;
+use Dgtlss\Warden\Enums\Severity;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
 
@@ -68,14 +70,13 @@ class EmailChannelTest extends TestCase
         Mail::fake();
 
         $findings = [
-            [
-                'source' => 'composer',
-                'package' => 'test/package',
-                'title' => 'High severity vulnerability',
-                'severity' => 'high',
-                'cve' => null,
-                'affected_versions' => '<1.0',
-            ],
+            new Finding(
+                source: 'composer',
+                package: 'test/package',
+                title: 'High severity vulnerability',
+                severity: Severity::HIGH,
+                affectedVersions: '<1.0',
+            ),
         ];
 
         $channel = new EmailChannel();
@@ -94,14 +95,13 @@ class EmailChannelTest extends TestCase
         Mail::fake();
 
         $findings = [
-            [
-                'source' => 'composer',
-                'package' => 'test/package',
-                'title' => 'Vulnerability',
-                'severity' => 'high',
-                'cve' => null,
-                'affected_versions' => '<1.0',
-            ],
+            new Finding(
+                source: 'composer',
+                package: 'test/package',
+                title: 'Vulnerability',
+                severity: Severity::HIGH,
+                affectedVersions: '<1.0',
+            ),
         ];
 
         $channel = new EmailChannel();
@@ -118,18 +118,17 @@ class EmailChannelTest extends TestCase
 
         Mail::fake();
 
-        $severities = ['critical', 'high', 'medium', 'low'];
+        $severities = [Severity::CRITICAL, Severity::HIGH, Severity::MEDIUM, Severity::LOW];
 
         foreach ($severities as $severity) {
             $findings = [
-                [
-                    'source' => 'composer',
-                    'package' => 'test/package',
-                    'title' => $severity . ' vulnerability',
-                    'severity' => $severity,
-                    'cve' => null,
-                    'affected_versions' => '<1.0',
-                ],
+                new Finding(
+                    source: 'composer',
+                    package: 'test/package',
+                    title: $severity->value . ' vulnerability',
+                    severity: $severity,
+                    affectedVersions: '<1.0',
+                ),
             ];
 
             $channel = new EmailChannel();

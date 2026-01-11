@@ -14,7 +14,8 @@ class PhpSyntaxAuditService extends AbstractAuditService
     public function run(): bool
     {
         $process = $this->getProcess();
-        $process->setTimeout(config('warden.audits.timeout', 300));
+        $timeout = config('warden.audits.timeout', 300);
+        $process->setTimeout(is_numeric($timeout) ? (float) $timeout : 300.0);
         $process->run();
 
         // The command's output can be on stdout or stderr, so we combine them.
@@ -49,7 +50,7 @@ class PhpSyntaxAuditService extends AbstractAuditService
 
     protected function getProcess(): Process
     {
-        $excludedDirs = config('warden.audits.php_syntax.exclude', [
+        $excludedDirsConfig = config('warden.audits.php_syntax.exclude', [
             'vendor',
             'node_modules',
             'storage',
@@ -57,8 +58,11 @@ class PhpSyntaxAuditService extends AbstractAuditService
             '.git',
         ]);
 
+        /** @var array<int, string> $excludedDirs */
+        $excludedDirs = is_array($excludedDirsConfig) ? array_values(array_filter($excludedDirsConfig, 'is_string')) : [];
+
         $pathsToPrune = collect($excludedDirs)
-            ->map(fn ($dir) => sprintf("-path './%s' -prune", $dir))
+            ->map(fn (string $dir) => sprintf("-path './%s' -prune", $dir))
             ->implode(' -o ');
 
         $command = sprintf("find . %s -o -name '*.php' -print0 | xargs -0 -n1 -I{} php -l {}", $pathsToPrune);
@@ -67,6 +71,9 @@ class PhpSyntaxAuditService extends AbstractAuditService
         return Process::fromShellCommandline($command, base_path());
     }
 
+    /**
+     * @return array<int, array{file: string, message: string}>
+     */
     protected function parseOutput(string $output): array
     {
         $errors = [];
@@ -76,7 +83,7 @@ class PhpSyntaxAuditService extends AbstractAuditService
         for ($i = 0; $i < $counter; $i++) {
             if (str_contains($lines[$i], 'Errors parsing')) {
                 // The filename is on the same line as "Errors parsing".
-                $file = trim(substr($lines[$i], strpos($lines[$i], 'parsing') + 7));
+                $file = trim(substr($lines[$i], (int) strpos($lines[$i], 'parsing') + 7));
                 $errorMessage = 'Syntax error detected.';
 
                 // The detailed parse error message is usually on the next line.

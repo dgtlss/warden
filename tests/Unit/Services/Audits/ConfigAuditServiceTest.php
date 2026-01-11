@@ -29,14 +29,14 @@ class ConfigAuditServiceTest extends TestCase
         $this->assertNotEmpty($findings);
 
         $debugFindings = array_filter($findings, function ($finding) {
-            return str_contains($finding['title'], 'Debug mode');
+            return str_contains($finding->title, 'Debug mode');
         });
 
         $this->assertCount(1, $debugFindings);
 
         $debugFinding = reset($debugFindings);
-        $this->assertEquals('config', $debugFinding['package']);
-        $this->assertEquals('high', $debugFinding['severity']);
+        $this->assertEquals('config', $debugFinding->package);
+        $this->assertEquals('high', $debugFinding->severity->value);
     }
 
     public function testRunPassesWithDebugModeDisabled(): void
@@ -52,7 +52,7 @@ class ConfigAuditServiceTest extends TestCase
         $findings = $service->getFindings();
 
         $debugFindings = array_filter($findings, function ($finding) {
-            return str_contains($finding['title'], 'Debug mode');
+            return str_contains($finding->title, 'Debug mode');
         });
 
         $this->assertEmpty($debugFindings);
@@ -72,14 +72,14 @@ class ConfigAuditServiceTest extends TestCase
         $this->assertNotEmpty($findings);
 
         $sessionFindings = array_filter($findings, function ($finding) {
-            return str_contains($finding['title'], 'Session cookies');
+            return str_contains($finding->title, 'Session cookies');
         });
 
         $this->assertCount(1, $sessionFindings);
 
         $sessionFinding = reset($sessionFindings);
-        $this->assertEquals('config', $sessionFinding['package']);
-        $this->assertEquals('low', $sessionFinding['severity']);
+        $this->assertEquals('config', $sessionFinding->package);
+        $this->assertEquals('low', $sessionFinding->severity->value);
     }
 
     public function testRunPassesWithSecureSessionCookies(): void
@@ -95,7 +95,7 @@ class ConfigAuditServiceTest extends TestCase
         $findings = $service->getFindings();
 
         $sessionFindings = array_filter($findings, function ($finding) {
-            return str_contains($finding['title'], 'Session cookies');
+            return str_contains($finding->title, 'Session cookies');
         });
 
         $this->assertEmpty($sessionFindings);
@@ -116,11 +116,11 @@ class ConfigAuditServiceTest extends TestCase
 
         // Should have both debug mode and session security findings
         $debugFindings = array_filter($findings, function ($finding) {
-            return str_contains($finding['title'], 'Debug mode');
+            return str_contains($finding->title, 'Debug mode');
         });
 
         $sessionFindings = array_filter($findings, function ($finding) {
-            return str_contains($finding['title'], 'Session cookies');
+            return str_contains($finding->title, 'Session cookies');
         });
 
         $this->assertNotEmpty($debugFindings);
@@ -152,10 +152,10 @@ class ConfigAuditServiceTest extends TestCase
         $this->assertValidFindings($findings);
 
         foreach ($findings as $finding) {
-            $this->assertEquals('config', $finding['source']);
-            $this->assertEquals('config', $finding['package']);
-            $this->assertNull($finding['cve']);
-            $this->assertNull($finding['affected_versions']);
+            $this->assertEquals('config', $finding->source);
+            $this->assertEquals('config', $finding->package);
+            $this->assertNull($finding->cve);
+            $this->assertNull($finding->affectedVersions);
         }
     }
 }

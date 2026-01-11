@@ -4,11 +4,13 @@ namespace Dgtlss\Warden\Services\Audits;
 
 class EnvAuditService extends AbstractAuditService
 {
+    /** @var array<int, string> */
     private array $sensitiveKeys;
 
     public function __construct()
     {
-        $this->sensitiveKeys = config('warden.sensitive_keys');
+        $keys = config('warden.sensitive_keys');
+        $this->sensitiveKeys = is_array($keys) ? array_values(array_filter($keys, 'is_string')) : [];
     }
 
     public function getName(): string

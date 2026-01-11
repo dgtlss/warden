@@ -29,14 +29,14 @@ class DebugModeAuditServiceTest extends TestCase
         $this->assertNotEmpty($findings);
 
         $debugFindings = array_filter($findings, function ($finding) {
-            return str_contains($finding['title'], 'Debug mode is enabled in production');
+            return str_contains($finding->title, 'Debug mode is enabled in production');
         });
 
         $this->assertCount(1, $debugFindings);
 
         $debugFinding = reset($debugFindings);
-        $this->assertEquals('app-config', $debugFinding['package']);
-        $this->assertEquals('critical', $debugFinding['severity']);
+        $this->assertEquals('app-config', $debugFinding->package);
+        $this->assertEquals('critical', $debugFinding->severity->value);
     }
 
     public function testRunPassesWithDebugModeDisabledInProduction(): void
@@ -52,7 +52,7 @@ class DebugModeAuditServiceTest extends TestCase
         $findings = $service->getFindings();
 
         $debugFindings = array_filter($findings, function ($finding) {
-            return str_contains($finding['title'], 'Debug mode is enabled in production');
+            return str_contains($finding->title, 'Debug mode is enabled in production');
         });
 
         $this->assertEmpty($debugFindings);
@@ -71,7 +71,7 @@ class DebugModeAuditServiceTest extends TestCase
         $findings = $service->getFindings();
 
         $debugFindings = array_filter($findings, function ($finding) {
-            return str_contains($finding['title'], 'Debug mode is enabled in production');
+            return str_contains($finding->title, 'Debug mode is enabled in production');
         });
 
         $this->assertEmpty($debugFindings);
@@ -100,13 +100,12 @@ class DebugModeAuditServiceTest extends TestCase
 
         if (!empty($findings)) {
             foreach ($findings as $finding) {
-                $this->assertArrayHasKey('package', $finding);
-                $this->assertArrayHasKey('title', $finding);
-                $this->assertArrayHasKey('severity', $finding);
-                $this->assertArrayHasKey('source', $finding);
-                $this->assertEquals('debug-mode', $finding['source']);
-                $this->assertNull($finding['cve']);
-                $this->assertNull($finding['affected_versions']);
+                $this->assertNotEmpty($finding->package);
+                $this->assertNotEmpty($finding->title);
+                $this->assertNotEmpty($finding->severity->value);
+                $this->assertEquals('debug-mode', $finding->source);
+                $this->assertNull($finding->cve);
+                $this->assertNull($finding->affectedVersions);
             }
         }
     }

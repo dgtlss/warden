@@ -7,7 +7,7 @@ use Symfony\Component\Process\Process;
 class ComposerAuditService extends AbstractAuditService
 {
     /**
-     * @var array<array<string, mixed>>
+     * @var array<int, array<string, mixed>>
      */
     private array $abandonedPackages = [];
 
@@ -30,9 +30,10 @@ class ComposerAuditService extends AbstractAuditService
             
             // Exit code 1 from composer audit means vulnerabilities were found, which is okay
             // Only treat it as an error if we can't parse the output as JSON
-            $output = json_decode($process->getOutput(), true);
+            $rawOutput = $process->getOutput();
+            $output = json_decode($rawOutput, true);
             if (!is_array($output)) {
-                $errorOutput = $process->getErrorOutput() ?: $process->getOutput() ?: 'No error output available';
+                $errorOutput = $process->getErrorOutput() ?: ($rawOutput ?: 'No error output available');
                 $exitCode = $process->getExitCode();
 
                 $this->addFinding([
@@ -48,10 +49,9 @@ class ComposerAuditService extends AbstractAuditService
 
             // Handle abandoned packages (but don't fail the audit)
             if (isset($output['abandoned']) && is_array($output['abandoned']) && !empty($output['abandoned'])) {
-                foreach ($output['abandoned'] as $package => $replacement) {
-                    if (!is_string($package)) {
-                        continue;
-                    }
+                /** @var array<string, string|true> $abandoned */
+                $abandoned = $output['abandoned'];
+                foreach ($abandoned as $package => $replacement) {
                     $this->abandonedPackages[] = [
                         'package' => $package,
                         'replacement' => is_string($replacement) ? $replacement : null
@@ -61,14 +61,10 @@ class ComposerAuditService extends AbstractAuditService
 
             // Handle security advisories
             if (isset($output['advisories']) && is_array($output['advisories']) && !empty($output['advisories'])) {
-                foreach ($output['advisories'] as $package => $issues) {
-                    if (!is_string($package) || !is_array($issues)) {
-                        continue;
-                    }
+                /** @var array<string, array<int, array<string, mixed>>> $advisories */
+                $advisories = $output['advisories'];
+                foreach ($advisories as $package => $issues) {
                     foreach ($issues as $issue) {
-                        if (!is_array($issue)) {
-                            continue;
-                        }
                         $this->addFinding([
                             'source' => $this->getName(),
                             'package' => $package,
@@ -97,7 +93,7 @@ class ComposerAuditService extends AbstractAuditService
     }
 
     /**
-     * @return array<array<string, mixed>>
+     * @return array<int, array<string, mixed>>
      */
     public function getAbandonedPackages(): array
     {

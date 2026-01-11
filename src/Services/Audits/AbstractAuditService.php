@@ -3,11 +3,12 @@
 namespace Dgtlss\Warden\Services\Audits;
 
 use Dgtlss\Warden\Contracts\AuditService;
+use Dgtlss\Warden\ValueObjects\Finding;
 
 abstract class AbstractAuditService implements AuditService
 {
     /**
-     * @var array<array<string, mixed>>
+     * @var array<int, Finding>
      */
     protected array $findings = [];
 
@@ -16,7 +17,7 @@ abstract class AbstractAuditService implements AuditService
     abstract public function getName(): string;
 
     /**
-     * @return array<array<string, mixed>>
+     * @return array<int, Finding>
      */
     public function getFindings(): array
     {
@@ -26,12 +27,16 @@ abstract class AbstractAuditService implements AuditService
     /**
      * Add a finding to the findings list.
      *
-     * @param array<string, mixed> $finding
+     * @param Finding|array<string, mixed> $finding
      */
-    protected function addFinding(array $finding): void
+    protected function addFinding(Finding|array $finding): void
     {
-        $this->findings[] = array_merge($finding, [
-            'source' => $this->getName()
-        ]);
+        if (is_array($finding)) {
+            $finding = Finding::fromArray(array_merge($finding, [
+                'source' => $this->getName()
+            ]));
+        }
+
+        $this->findings[] = $finding;
     }
 }

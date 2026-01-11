@@ -128,9 +128,9 @@ class PhpSyntaxAuditServiceTest extends TestCase
         $findings = $service->getFindings();
 
         $this->assertCount(1, $findings);
-        $this->assertEquals('PHP Syntax', $findings[0]['source']);
-        $this->assertEquals('Application Code', $findings[0]['package']);
-        $this->assertStringContainsString('PHP Syntax Error', $findings[0]['title']);
-        $this->assertEquals('high', $findings[0]['severity']);
+        $this->assertEquals('PHP Syntax', $findings[0]->source);
+        $this->assertEquals('Application Code', $findings[0]->package);
+        $this->assertStringContainsString('PHP Syntax Error', $findings[0]->title);
+        $this->assertEquals('high', $findings[0]->severity->value);
     }
 }

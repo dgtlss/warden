@@ -4,6 +4,8 @@ namespace Dgtlss\Warden\Tests\Unit\Notifications\Channels;
 
 use Dgtlss\Warden\Notifications\Channels\TeamsChannel;
 use Dgtlss\Warden\Tests\TestCase;
+use Dgtlss\Warden\ValueObjects\Finding;
+use Dgtlss\Warden\Enums\Severity;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 
@@ -54,14 +56,13 @@ class TeamsChannelTest extends TestCase
         Http::fake();
 
         $findings = [
-            [
-                'source' => 'composer',
-                'package' => 'test/package',
-                'title' => 'High severity vulnerability',
-                'severity' => 'high',
-                'cve' => null,
-                'affected_versions' => '<1.0',
-            ],
+            new Finding(
+                source: 'composer',
+                package: 'test/package',
+                title: 'High severity vulnerability',
+                severity: Severity::HIGH,
+                affectedVersions: '<1.0',
+            ),
         ];
 
         $channel = new TeamsChannel();
@@ -81,14 +82,13 @@ class TeamsChannelTest extends TestCase
         Http::fake();
 
         $findings = [
-            [
-                'source' => 'composer',
-                'package' => 'test/package',
-                'title' => 'High severity vulnerability',
-                'severity' => 'high',
-                'cve' => null,
-                'affected_versions' => '<1.0',
-            ],
+            new Finding(
+                source: 'composer',
+                package: 'test/package',
+                title: 'High severity vulnerability',
+                severity: Severity::HIGH,
+                affectedVersions: '<1.0',
+            ),
         ];
 
         $channel = new TeamsChannel();
@@ -113,30 +113,27 @@ class TeamsChannelTest extends TestCase
         Http::fake();
 
         $findings = [
-            [
-                'source' => 'composer',
-                'package' => 'test/package1',
-                'title' => 'Critical vulnerability',
-                'severity' => 'critical',
-                'cve' => null,
-                'affected_versions' => '<1.0',
-            ],
-            [
-                'source' => 'composer',
-                'package' => 'test/package2',
-                'title' => 'High vulnerability',
-                'severity' => 'high',
-                'cve' => null,
-                'affected_versions' => '<2.0',
-            ],
-            [
-                'source' => 'composer',
-                'package' => 'test/package3',
-                'title' => 'Medium vulnerability',
-                'severity' => 'medium',
-                'cve' => null,
-                'affected_versions' => '<3.0',
-            ],
+            new Finding(
+                source: 'composer',
+                package: 'test/package1',
+                title: 'Critical vulnerability',
+                severity: Severity::CRITICAL,
+                affectedVersions: '<1.0',
+            ),
+            new Finding(
+                source: 'composer',
+                package: 'test/package2',
+                title: 'High vulnerability',
+                severity: Severity::HIGH,
+                affectedVersions: '<2.0',
+            ),
+            new Finding(
+                source: 'composer',
+                package: 'test/package3',
+                title: 'Medium vulnerability',
+                severity: Severity::MEDIUM,
+                affectedVersions: '<3.0',
+            ),
         ];
 
         $channel = new TeamsChannel();
@@ -150,7 +147,7 @@ class TeamsChannelTest extends TestCase
             }
 
             $facts = $data['sections'][0]['facts'];
-            $factsJson = json_encode($facts);
+            $factsJson = (string) json_encode($facts);
 
             // Should include severity counts
             return str_contains($factsJson, 'Critical') &&
@@ -166,14 +163,13 @@ class TeamsChannelTest extends TestCase
         Http::fake();
 
         $findings = [
-            [
-                'source' => 'composer',
-                'package' => 'test/package',
-                'title' => 'Critical vulnerability',
-                'severity' => 'critical',
-                'cve' => null,
-                'affected_versions' => '<1.0',
-            ],
+            new Finding(
+                source: 'composer',
+                package: 'test/package',
+                title: 'Critical vulnerability',
+                severity: Severity::CRITICAL,
+                affectedVersions: '<1.0',
+            ),
         ];
 
         $channel = new TeamsChannel();

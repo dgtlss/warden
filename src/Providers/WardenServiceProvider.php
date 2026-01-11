@@ -52,31 +52,23 @@ class WardenServiceProvider extends ServiceProvider
             if (config('warden.schedule.enabled', false)) {
                 $this->app->booted(function (): void {
                     $schedule = $this->app->make(Schedule::class);
-                    $frequency = config('warden.schedule.frequency', 'daily');
-                    $time = config('warden.schedule.time', '03:00');
-                    
-                    $event = $schedule->command('warden:audit --silent');
-                    
-                    switch ($frequency) {
-                        case 'hourly':
-                            $event->hourly();
-                            break;
-                        case 'daily':
-                            $event->dailyAt($time);
-                            break;
-                        case 'weekly':
-                            $event->weeklyOn(1, $time); // Monday
-                            break;
-                        case 'monthly':
-                            $event->monthlyOn(1, $time); // 1st of month
-                            break;
-                        default:
-                            $event->daily();
-                    }
-                    
-                    if ($timezone = config('warden.schedule.timezone')) {
-                        $event->timezone($timezone);
-                    }
+            $frequencyConfig = config('warden.schedule.frequency', 'daily');
+            $timeConfig = config('warden.schedule.time', '03:00');
+            $frequency = is_string($frequencyConfig) ? $frequencyConfig : 'daily';
+            $time = is_string($timeConfig) ? $timeConfig : '03:00';
+
+            $event = match ($frequency) {
+                'hourly' => $schedule->command('warden:audit')->hourly(),
+                'daily' => $schedule->command('warden:audit')->dailyAt($time),
+                'weekly' => $schedule->command('warden:audit')->weeklyOn(1, $time),
+                'monthly' => $schedule->command('warden:audit')->monthlyOn(1, $time),
+                default => $schedule->command('warden:audit')->dailyAt($time),
+            };
+
+            $timezone = config('warden.schedule.timezone');
+            if (is_string($timezone)) {
+                $event->timezone($timezone);
+            }
                 });
             }
         }

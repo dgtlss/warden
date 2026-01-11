@@ -51,13 +51,13 @@ class EnvAuditServiceTest extends TestCase
 
         // If .env exists, should have findings for missing keys
         $missingKeyFindings = array_filter($findings, function ($finding) {
-            return str_contains($finding['title'], 'Missing sensitive environment variable');
+            return str_contains($finding->title, 'Missing sensitive environment variable');
         });
 
         // Verify finding structure if any sensitive key findings exist
         foreach ($missingKeyFindings as $finding) {
-            $this->assertEquals('environment', $finding['package']);
-            $this->assertEquals('medium', $finding['severity']);
+            $this->assertEquals('environment', $finding->package);
+            $this->assertEquals('medium', $finding->severity->value);
         }
     }
 
@@ -78,9 +78,9 @@ class EnvAuditServiceTest extends TestCase
 
         // Filter for missing key findings related to our test keys
         $missingTestKeys = array_filter($findings, function ($finding) {
-            return str_contains($finding['title'], 'Missing sensitive environment variable') &&
-                   (str_contains($finding['title'], 'TEST_SENSITIVE_KEY') ||
-                    str_contains($finding['title'], 'ANOTHER_TEST_KEY'));
+            return str_contains($finding->title, 'Missing sensitive environment variable') &&
+                   (str_contains($finding->title, 'TEST_SENSITIVE_KEY') ||
+                    str_contains($finding->title, 'ANOTHER_TEST_KEY'));
         });
 
         // Should not have findings for our existing test keys
@@ -106,14 +106,14 @@ class EnvAuditServiceTest extends TestCase
         $this->assertIsArray($findings);
 
         $missingKeyFindings = array_filter($findings, function ($finding) {
-            return str_contains($finding['title'], 'Missing sensitive environment variable');
+            return str_contains($finding->title, 'Missing sensitive environment variable');
         });
 
         // If we have sensitive key findings, verify structure
         if (!empty($missingKeyFindings)) {
             // Should not have a finding for EXISTING_KEY
             $existingKeyFinding = current(array_filter($missingKeyFindings, function ($finding) {
-                return str_contains($finding['title'], 'EXISTING_KEY');
+                return str_contains($finding->title, 'EXISTING_KEY');
             }));
 
             $this->assertFalse($existingKeyFinding);

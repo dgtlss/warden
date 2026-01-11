@@ -2,6 +2,8 @@
 
 namespace Dgtlss\Warden\Contracts;
 
+use Dgtlss\Warden\ValueObjects\Finding;
+
 interface AuditService
 {
     /**
@@ -17,7 +19,7 @@ interface AuditService
     /**
      * Get all findings from the audit.
      *
-     * @return array<int, array<string, mixed>>
+     * @return array<int, Finding>
      */
     public function getFindings(): array;
 }

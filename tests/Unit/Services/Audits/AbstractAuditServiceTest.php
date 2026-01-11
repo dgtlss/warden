@@ -36,9 +36,9 @@ class AbstractAuditServiceTest extends TestCase
         $findings = $this->service->getFindings();
 
         $this->assertCount(1, $findings);
-        $this->assertEquals('test/package', $findings[0]['package']);
-        $this->assertEquals('Test vulnerability', $findings[0]['title']);
-        $this->assertEquals('high', $findings[0]['severity']);
+        $this->assertEquals('test/package', $findings[0]->package);
+        $this->assertEquals('Test vulnerability', $findings[0]->title);
+        $this->assertEquals('high', $findings[0]->severity->value);
     }
 
     public function testAddFindingIncludesSourceAutomatically(): void
@@ -53,8 +53,7 @@ class AbstractAuditServiceTest extends TestCase
 
         $findings = $this->service->getFindings();
 
-        $this->assertArrayHasKey('source', $findings[0]);
-        $this->assertEquals('testable', $findings[0]['source']);
+        $this->assertEquals('testable', $findings[0]->source);
     }
 
     public function testAddMultipleFindings(): void
@@ -77,8 +76,8 @@ class AbstractAuditServiceTest extends TestCase
         $findings = $this->service->getFindings();
 
         $this->assertCount(2, $findings);
-        $this->assertEquals('package-one', $findings[0]['package']);
-        $this->assertEquals('package-two', $findings[1]['package']);
+        $this->assertEquals('package-one', $findings[0]->package);
+        $this->assertEquals('package-two', $findings[1]->package);
     }
 
     public function testFindingsAreValid(): void
@@ -94,7 +93,8 @@ class AbstractAuditServiceTest extends TestCase
 
         $findings = $this->service->getFindings();
 
-        $this->assertValidFindings($findings);
+        $this->assertCount(1, $findings);
+        $this->assertInstanceOf(\Dgtlss\Warden\ValueObjects\Finding::class, $findings[0]);
     }
 }
 
@@ -116,7 +116,7 @@ class TestableAuditService extends AbstractAuditService
     /**
      * Expose addFinding for testing.
      */
-    public function addFinding(array $finding): void
+    public function addFinding(\Dgtlss\Warden\ValueObjects\Finding|array $finding): void
     {
         parent::addFinding($finding);
     }

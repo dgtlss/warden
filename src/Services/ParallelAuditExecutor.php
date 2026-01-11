@@ -3,6 +3,7 @@
 namespace Dgtlss\Warden\Services;
 
 use Dgtlss\Warden\Contracts\AuditService;
+use Dgtlss\Warden\ValueObjects\Finding;
 use Illuminate\Support\Collection;
 use Symfony\Component\Process\Process;
 use function Laravel\Prompts\spin;
@@ -15,7 +16,7 @@ class ParallelAuditExecutor
     protected array $processes = [];
 
     /**
-     * @var array<string, array{success: bool, findings: array<int, array<string, mixed>>, service: AuditService}>
+     * @var array<string, array{success: bool, findings: array<int, Finding>, service: AuditService}>
      */
     protected array $results = [];
 
@@ -30,7 +31,7 @@ class ParallelAuditExecutor
     /**
      * Execute all audits in parallel.
      *
-     * @return array<string, array{success: bool, findings: array<int, array<string, mixed>>, service: AuditService}>
+     * @return array<string, array{success: bool, findings: array<int, Finding>, service: AuditService}>
      */
     public function execute(bool $showProgress = true): array
     {
@@ -39,22 +40,27 @@ class ParallelAuditExecutor
         }
 
         if ($showProgress) {
-            return spin(
+            /** @var array<string, array{success: bool, findings: array<int, Finding>, service: AuditService}> $results */
+            $results = spin(
                 fn() => $this->runParallel(),
                 'Running security audits in parallel...'
             );
+            $this->results = $results;
+            return $results;
         }
 
-        return $this->runParallel();
+        $this->results = $this->runParallel();
+        return $this->results;
     }
 
     /**
      * Run audits in parallel using concurrent processing.
      *
-     * @return array<string, array{success: bool, findings: array<int, array<string, mixed>>, service: AuditService}>
+     * @return array<string, array{success: bool, findings: array<int, Finding>, service: AuditService}>
      */
     protected function runParallel(): array
     {
+        /** @var array<string, array{success: bool, findings: array<int, Finding>, service: AuditService}> $results */
         $results = [];
         $runningProcesses = [];
 
@@ -79,13 +85,16 @@ class ParallelAuditExecutor
             if ($process instanceof Process) {
                 $process->wait();
                 $success = $process->isSuccessful();
-            } else {
+            } elseif (is_object($process) && method_exists($process, 'wait')) {
                 // Handle other async implementations
-                $success = $process->wait();
+                $process->wait();
+                $success = method_exists($process, 'isSuccessful') ? $process->isSuccessful() : true;
+            } else {
+                $success = (bool) $process;
             }
 
             $results[$name] = [
-                'success' => $success,
+                'success' => (bool) $success,
                 'findings' => $this->processes[$name]->getFindings(),
                 'service' => $this->processes[$name]
             ];
@@ -96,13 +105,18 @@ class ParallelAuditExecutor
 
     /**
      * Get all findings from executed audits.
+     *
+     * @return Collection<int, Finding>
      */
     public function getAllFindings(): Collection
     {
-        return collect($this->results)
-            ->filter(fn($result) => !empty($result['findings']))
+        /** @var Collection<int, Finding> $collection */
+        $collection = collect($this->results)
+            ->filter(fn(array $result) => !empty($result['findings']))
             ->pluck('findings')
             ->flatten(1);
+            
+        return $collection;
     }
 
     /**
@@ -111,16 +125,21 @@ class ParallelAuditExecutor
     public function hasFailures(): bool
     {
         return collect($this->results)
-            ->contains(fn($result) => !$result['success']);
+            ->contains(fn(array $result) => !$result['success']);
     }
 
     /**
      * Get failed audits.
+     *
+     * @return Collection<int, string>
      */
     public function getFailedAudits(): Collection
     {
-        return collect($this->results)
-            ->filter(fn($result) => !$result['success'])
+        /** @var Collection<int, string> $collection */
+        $collection = collect($this->results)
+            ->filter(fn(array $result) => !$result['success'])
             ->keys();
+            
+        return $collection;
     }
 } 

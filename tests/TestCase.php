@@ -118,27 +118,23 @@ abstract class TestCase extends Orchestra
     }
 
     /**
-     * Assert that a finding array has valid structure.
+     * Assert that a finding object has valid structure.
      *
-     * @param array<string, mixed> $finding
+     * @param \Dgtlss\Warden\ValueObjects\Finding $finding
      */
-    protected function assertValidFinding(array $finding): void
+    protected function assertValidFinding($finding): void
     {
-        $this->assertArrayHasKey('source', $finding, 'Finding must have a source');
-        $this->assertArrayHasKey('package', $finding, 'Finding must have a package');
-        $this->assertArrayHasKey('title', $finding, 'Finding must have a title');
-        $this->assertArrayHasKey('severity', $finding, 'Finding must have a severity');
-        $this->assertContains(
-            $finding['severity'],
-            ['low', 'medium', 'moderate', 'high', 'critical', 'error', 'unknown'],
-            'Severity must be valid'
-        );
+        $this->assertInstanceOf(\Dgtlss\Warden\ValueObjects\Finding::class, $finding);
+        $this->assertNotEmpty($finding->source, 'Finding must have a source');
+        $this->assertNotEmpty($finding->package, 'Finding must have a package');
+        $this->assertNotEmpty($finding->title, 'Finding must have a title');
+        $this->assertInstanceOf(\Dgtlss\Warden\Enums\Severity::class, $finding->severity);
     }
 
     /**
      * Assert that multiple findings are valid.
      *
-     * @param array<int, array<string, mixed>> $findings
+     * @param array<int, \Dgtlss\Warden\ValueObjects\Finding> $findings
      */
     protected function assertValidFindings(array $findings): void
     {

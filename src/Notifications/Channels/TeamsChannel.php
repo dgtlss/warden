@@ -3,6 +3,7 @@
 namespace Dgtlss\Warden\Notifications\Channels;
 
 use Dgtlss\Warden\Contracts\NotificationChannel;
+use Dgtlss\Warden\ValueObjects\Finding;
 use Illuminate\Support\Facades\Http;
 
 class TeamsChannel implements NotificationChannel
@@ -15,6 +16,9 @@ class TeamsChannel implements NotificationChannel
         $this->webhookUrl = is_string($webhookUrl) && $webhookUrl !== '' ? $webhookUrl : null;
     }
 
+    /**
+     * @param array<int, Finding> $findings
+     */
     public function send(array $findings): void
     {
         if (!$this->isConfigured()) {
@@ -30,6 +34,9 @@ class TeamsChannel implements NotificationChannel
         Http::post($this->webhookUrl, $card);
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $abandonedPackages
+     */
     public function sendAbandonedPackages(array $abandonedPackages): void
     {
         if (!$this->isConfigured()) {
@@ -56,17 +63,13 @@ class TeamsChannel implements NotificationChannel
     }
 
     /**
-     * @param array<array<string, mixed>> $findings
-     * @return array<string, mixed>
-     */
-    /**
-     * @param array<int, array<string, mixed>> $findings
+     * @param array<int, Finding> $findings
      * @return array<string, mixed>
      */
     protected function buildFindingsCard(array $findings): array
     {
-        $findings = $this->normalizeArrayItems($findings);
-        $appName = (string) config('warden.app_name', 'Application');
+        $appNameConfig = config('warden.app_name', 'Application');
+        $appName = is_string($appNameConfig) ? $appNameConfig : 'Application';
         $totalFindings = count($findings);
         $severityCounts = $this->getSeverityCounts($findings);
         $highestSeverity = $this->getHighestSeverity($findings);
@@ -125,27 +128,20 @@ class TeamsChannel implements NotificationChannel
     }
 
     /**
-     * @param array<array<string, mixed>> $abandonedPackages
-     * @return array<string, mixed>
-     */
-    /**
      * @param array<int, array<string, mixed>> $abandonedPackages
      * @return array<string, mixed>
      */
     protected function buildAbandonedPackagesCard(array $abandonedPackages): array
     {
-        $abandonedPackages = $this->normalizeArrayItems($abandonedPackages);
-        $appName = (string) config('warden.app_name', 'Application');
+        $appNameConfig = config('warden.app_name', 'Application');
+        $appName = is_string($appNameConfig) ? $appNameConfig : 'Application';
         $totalPackages = count($abandonedPackages);
-        $packagesWithReplacements = array_filter($abandonedPackages, fn($pkg) => is_array($pkg) && !empty($pkg['replacement']));
+        $packagesWithReplacements = array_filter($abandonedPackages, fn(array $pkg) => !empty($pkg['replacement']));
 
         $packagesText = '';
         foreach (array_slice($abandonedPackages, 0, 10) as $package) { // Limit to prevent size issues
-            if (!is_array($package)) {
-                continue;
-            }
-
-            $packageName = isset($package['package']) ? (string) $package['package'] : 'unknown';
+            $packageName = is_string($package['package'] ?? null) ? $package['package'] : 'unknown';
+            /** @var string|null $replacement */
             $replacement = isset($package['replacement']) && is_string($package['replacement']) ? $package['replacement'] : null;
 
             $packagesText .= sprintf('**%s**  %s', $packageName, PHP_EOL);
@@ -211,7 +207,8 @@ class TeamsChannel implements NotificationChannel
      */
     protected function buildSuccessCard(): array
     {
-        $appName = (string) config('warden.app_name', 'Application');
+        $appNameConfig = config('warden.app_name', 'Application');
+        $appName = is_string($appNameConfig) ? $appNameConfig : 'Application';
         
         return [
             '@type' => 'MessageCard',
@@ -231,7 +228,7 @@ class TeamsChannel implements NotificationChannel
     }
 
     /**
-     * @param array<int, array<string, mixed>> $findings
+     * @param array<int, Finding> $findings
      * @return array{critical:int,high:int,medium:int,low:int}
      */
     protected function getSeverityCounts(array $findings): array
@@ -239,11 +236,10 @@ class TeamsChannel implements NotificationChannel
         $counts = ['critical' => 0, 'high' => 0, 'medium' => 0, 'low' => 0];
         
         foreach ($findings as $finding) {
-            if (!is_array($finding)) {
-                continue;
+            $severity = $finding->severity->value;
+            if ($severity === 'moderate') {
+                $severity = 'medium';
             }
-
-            $severity = $finding['severity'] ?? 'low';
             if (isset($counts[$severity])) {
                 $counts[$severity]++;
             }
@@ -253,20 +249,16 @@ class TeamsChannel implements NotificationChannel
     }
 
     /**
-     * @param array<int, array<string, mixed>> $findings
+     * @param array<int, Finding> $findings
      */
     protected function getHighestSeverity(array $findings): string
     {
-        $severityLevels = ['critical' => 4, 'high' => 3, 'medium' => 2, 'low' => 1];
+        $severityLevels = ['critical' => 4, 'high' => 3, 'medium' => 2, 'moderate' => 2, 'low' => 1];
         $highest = 'low';
         $highestLevel = 1;
 
         foreach ($findings as $finding) {
-            if (!is_array($finding)) {
-                continue;
-            }
-
-            $severity = $finding['severity'] ?? 'low';
+            $severity = $finding->severity->value;
             $level = $severityLevels[$severity] ?? 1;
             
             if ($level > $highestLevel) {
@@ -283,7 +275,7 @@ class TeamsChannel implements NotificationChannel
         return match($severity) {
             'critical' => 'FF0000', // Red
             'high' => 'FF8C00',     // Orange
-            'medium' => 'FFD700',   // Gold
+            'medium', 'moderate' => 'FFD700',   // Gold
             'low' => '32CD32',      // Green
             default => '808080'     // Gray
         };
@@ -294,26 +286,22 @@ class TeamsChannel implements NotificationChannel
         return match($severity) {
             'critical' => '🔴',
             'high' => '🟠',
-            'medium' => '🟡',
+            'medium', 'moderate' => '🟡',
             'low' => '🟢',
             default => '⚪'
         };
     }
 
     /**
-     * @param array<int, array<string, mixed>> $findings
-     * @return array<string, array<int, array<string, mixed>>>
+     * @param array<int, Finding> $findings
+     * @return array<string, array<int, Finding>>
      */
     protected function groupFindingsBySource(array $findings): array
     {
         $grouped = [];
         
         foreach ($findings as $finding) {
-            if (!is_array($finding)) {
-                continue;
-            }
-
-            $source = $finding['source'] ?? 'unknown';
+            $source = $finding->source;
             if (!isset($grouped[$source])) {
                 $grouped[$source] = [];
             }
@@ -325,7 +313,7 @@ class TeamsChannel implements NotificationChannel
     }
 
     /**
-     * @param array<int, array<string, mixed>> $findings
+     * @param array<int, Finding> $findings
      * @param array{critical:int,high:int,medium:int,low:int} $severityCounts
      */
     protected function generateSummary(array $findings, array $severityCounts): string
@@ -343,21 +331,4 @@ class TeamsChannel implements NotificationChannel
         return $severityCounts['low'] . ' low severity vulnerabilities detected';
     }
 
-    /**
-     * @param array<int, array<string, mixed>> $items
-     * @return array<int, array<string, mixed>>
-     */
-    private function normalizeArrayItems(array $items): array
-    {
-        $normalized = [];
-
-        foreach ($items as $item) {
-            if (is_array($item)) {
-                /** @var array<string, mixed> $item */
-                $normalized[] = $item;
-            }
-        }
-
-        return $normalized;
-    }
 }

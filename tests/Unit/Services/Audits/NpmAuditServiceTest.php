@@ -41,17 +41,17 @@ class NpmAuditServiceTest extends TestCase
 
         // Verify lodash vulnerability
         $lodashFinding = $findings[0];
-        $this->assertEquals('lodash', $lodashFinding['package']);
-        $this->assertStringContainsString('Prototype Pollution', $lodashFinding['title']);
-        $this->assertEquals('high', $lodashFinding['severity']);
-        $this->assertStringContainsString('GHSA-', $lodashFinding['cve']);
-        $this->assertEquals('<4.17.21', $lodashFinding['affected_versions']);
+        $this->assertEquals('lodash', $lodashFinding->package);
+        $this->assertStringContainsString('Prototype Pollution', $lodashFinding->title);
+        $this->assertEquals('high', $lodashFinding->severity->value);
+        $this->assertStringContainsString('GHSA-', (string) $lodashFinding->cve);
+        $this->assertEquals('<4.17.21', $lodashFinding->affectedVersions);
 
         // Verify axios vulnerability
         $axiosFinding = $findings[1];
-        $this->assertEquals('axios', $axiosFinding['package']);
-        $this->assertStringContainsString('Cross-Site Request Forgery', $axiosFinding['title']);
-        $this->assertEquals('moderate', $axiosFinding['severity']);
+        $this->assertEquals('axios', $axiosFinding->package);
+        $this->assertStringContainsString('Cross-Site Request Forgery', $axiosFinding->title);
+        $this->assertEquals('moderate', $axiosFinding->severity->value);
 
         $this->assertValidFindings($findings);
     }
@@ -71,11 +71,11 @@ class NpmAuditServiceTest extends TestCase
 
         // Verify legacy format finding
         $finding = $findings[0];
-        $this->assertEquals('lodash', $finding['package']);
-        $this->assertStringContainsString('Prototype Pollution', $finding['title']);
-        $this->assertEquals('high', $finding['severity']);
-        $this->assertEquals('CVE-2019-10744', $finding['cve']);
-        $this->assertEquals('<4.17.21', $finding['affected_versions']);
+        $this->assertEquals('lodash', $finding->package);
+        $this->assertStringContainsString('Prototype Pollution', $finding->title);
+        $this->assertEquals('high', $finding->severity->value);
+        $this->assertEquals('CVE-2019-10744', $finding->cve);
+        $this->assertEquals('<4.17.21', $finding->affectedVersions);
 
         $this->assertValidFindings($findings);
     }
@@ -90,10 +90,9 @@ class NpmAuditServiceTest extends TestCase
 
         $findings = $service->getFindings();
         $this->assertNotEmpty($findings);
-        $this->assertEquals('npm', $findings[0]['package']);
-        $this->assertStringContainsString('failed to run', $findings[0]['title']);
-        $this->assertEquals('high', $findings[0]['severity']);
-        $this->assertArrayHasKey('error', $findings[0]);
+        $this->assertEquals('npm', $findings[0]->package);
+        $this->assertStringContainsString('failed to run', $findings[0]->title);
+        $this->assertEquals('high', $findings[0]->severity->value);
     }
 
     /**

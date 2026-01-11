@@ -2,12 +2,14 @@
 
 namespace Dgtlss\Warden\Contracts;
 
+use Dgtlss\Warden\ValueObjects\Finding;
+
 interface NotificationChannel
 {
     /**
      * Send audit findings through this channel.
      *
-     * @param array<int, array<string, mixed>> $findings
+     * @param array<int, Finding> $findings
      */
     public function send(array $findings): void;
 

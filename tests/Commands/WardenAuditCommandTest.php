@@ -4,6 +4,8 @@ namespace Dgtlss\Warden\Tests\Commands;
 
 use Dgtlss\Warden\Tests\TestCase;
 use Dgtlss\Warden\Services\ParallelAuditExecutor;
+use Dgtlss\Warden\ValueObjects\Finding;
+use Dgtlss\Warden\Enums\Severity;
 use Illuminate\Support\Facades\Config;
 use Mockery\MockInterface;
 
@@ -30,7 +32,7 @@ class WardenAuditCommandTest extends TestCase
 
     public function testAuditCommandHandlesFindings(): void
     {
-        $mockService = \Mockery::mock();
+        $mockService = \Mockery::mock(\Dgtlss\Warden\Contracts\AuditService::class);
         $mockService->shouldReceive('getName')->andReturn('composer');
         $mockService->shouldReceive('getAbandonedPackages')->andReturn([]);
 
@@ -38,14 +40,14 @@ class WardenAuditCommandTest extends TestCase
             'composer' => [
                 'success' => true,
                 'findings' => [
-                    [
-                        'source' => 'composer',
-                        'package' => 'test/package',
-                        'title' => 'High severity vulnerability',
-                        'severity' => 'high',
-                        'cve' => 'CVE-2024-1234',
-                        'affected_versions' => '<1.0',
-                    ],
+                    new Finding(
+                        source: 'composer',
+                        package: 'test/package',
+                        title: 'High severity vulnerability',
+                        severity: Severity::HIGH,
+                        cve: 'CVE-2024-1234',
+                        affectedVersions: '<1.0',
+                    ),
                 ],
                 'service' => $mockService,
             ],

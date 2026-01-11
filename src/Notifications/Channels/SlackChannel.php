@@ -3,6 +3,7 @@
 namespace Dgtlss\Warden\Notifications\Channels;
 
 use Dgtlss\Warden\Contracts\NotificationChannel;
+use Dgtlss\Warden\ValueObjects\Finding;
 use Illuminate\Support\Facades\Http;
 
 class SlackChannel implements NotificationChannel
@@ -16,7 +17,7 @@ class SlackChannel implements NotificationChannel
     }
 
     /**
-     * @param array<int, array<string, mixed>> $findings
+     * @param array<int, Finding> $findings
      */
     public function send(array $findings): void
     {
@@ -26,7 +27,8 @@ class SlackChannel implements NotificationChannel
 
         $blocks = $this->buildFindingsBlocks($findings);
         
-        $appName = (string) config('warden.app_name', 'Application');
+        $appNameConfig = config('warden.app_name', 'Application');
+        $appName = is_string($appNameConfig) ? $appNameConfig : 'Application';
         
         if ($this->webhookUrl === null) {
             return;
@@ -49,7 +51,8 @@ class SlackChannel implements NotificationChannel
 
         $blocks = $this->buildAbandonedPackagesBlocks($abandonedPackages);
         
-        $appName = (string) config('warden.app_name', 'Application');
+        $appNameConfig = config('warden.app_name', 'Application');
+        $appName = is_string($appNameConfig) ? $appNameConfig : 'Application';
         
         if ($this->webhookUrl === null) {
             return;
@@ -72,12 +75,13 @@ class SlackChannel implements NotificationChannel
     }
 
     /**
-     * @param array<int, array<string, mixed>> $findings
+     * @param array<int, Finding> $findings
      * @return array<int, array<string, mixed>>
      */
     protected function buildFindingsBlocks(array $findings): array
     {
-        $appName = config('warden.app_name', 'Application');
+        $appNameConfig = config('warden.app_name', 'Application');
+        $appName = is_string($appNameConfig) ? $appNameConfig : 'Application';
         
         $blocks = [
             [
@@ -101,23 +105,20 @@ class SlackChannel implements NotificationChannel
         ];
 
         foreach ($findings as $finding) {
-            if (!is_array($finding)) {
-                continue;
-            }
-
-            $severity = isset($finding['severity']) ? (string) $finding['severity'] : 'low';
+            $severity = $finding->severity->value;
+            /** @var string $severityEmoji */
             $severityEmoji = match($severity) {
                 'critical' => '🔴',
                 'high' => '🟠',
-                'medium' => '🟡',
+                'medium', 'moderate' => '🟡',
                 'low' => '🟢',
                 default => '⚪'
             };
 
-            $title = isset($finding['title']) ? (string) $finding['title'] : 'Security issue';
-            $package = isset($finding['package']) ? (string) $finding['package'] : 'unknown';
-            $source = isset($finding['source']) ? (string) $finding['source'] : 'unknown';
-            $cve = isset($finding['cve']) && is_string($finding['cve']) ? $finding['cve'] : null;
+            $title = (string) $finding->title;
+            $package = (string) $finding->package;
+            $source = (string) $finding->source;
+            $cve = $finding->cve;
 
             $blocks[] = [
                 'type' => 'section',
@@ -125,11 +126,11 @@ class SlackChannel implements NotificationChannel
                     'type' => 'mrkdwn',
                     'text' => sprintf(
                         "%s *%s* - %s\n*Package:* `%s`\n*Source:* %s",
-                        $severityEmoji,
-                        ucfirst($severity),
-                        $title,
-                        $package,
-                        $source
+                        (string) $severityEmoji,
+                        ucfirst((string) $severity),
+                        (string) $title,
+                        (string) $package,
+                        (string) $source
                     )
                 ]
             ];
@@ -160,7 +161,8 @@ class SlackChannel implements NotificationChannel
      */
     protected function buildAbandonedPackagesBlocks(array $abandonedPackages): array
     {
-        $appName = config('warden.app_name', 'Application');
+        $appNameConfig = config('warden.app_name', 'Application');
+        $appName = is_string($appNameConfig) ? $appNameConfig : 'Application';
         
         $blocks = [
             [
@@ -184,16 +186,12 @@ class SlackChannel implements NotificationChannel
         ];
 
         foreach ($abandonedPackages as $abandonedPackage) {
-            if (!is_array($abandonedPackage)) {
-                continue;
-            }
-
-            $package = isset($abandonedPackage['package']) ? (string) $abandonedPackage['package'] : 'unknown';
+            $packageName = is_string($abandonedPackage['package'] ?? null) ? $abandonedPackage['package'] : 'unknown';
             $replacement = isset($abandonedPackage['replacement']) && is_string($abandonedPackage['replacement'])
                 ? $abandonedPackage['replacement']
                 : null;
 
-            $text = sprintf('• `%s`', $package);
+            $text = sprintf('• `%s`', $packageName);
             if ($replacement) {
                 $text .= sprintf(' → Recommended: `%s`', $replacement);
             }

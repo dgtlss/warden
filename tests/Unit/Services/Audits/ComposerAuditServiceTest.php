@@ -49,15 +49,15 @@ class ComposerAuditServiceTest extends TestCase
         $this->assertCount(2, $findings);
 
         // Verify first finding (symfony/http-kernel)
-        $this->assertEquals('composer', $findings[0]['source']);
-        $this->assertEquals('symfony/http-kernel', $findings[0]['package']);
-        $this->assertStringContainsString('Symfony HttpKernel', $findings[0]['title']);
-        $this->assertEquals('CVE-2023-1234', $findings[0]['cve']);
+        $this->assertEquals('composer', $findings[0]->source);
+        $this->assertEquals('symfony/http-kernel', $findings[0]->package);
+        $this->assertStringContainsString('Symfony HttpKernel', $findings[0]->title);
+        $this->assertEquals('CVE-2023-1234', $findings[0]->cve);
 
         // Verify second finding (laravel/framework)
-        $this->assertEquals('laravel/framework', $findings[1]['package']);
-        $this->assertStringContainsString('Laravel', $findings[1]['title']);
-        $this->assertEquals('CVE-2023-5678', $findings[1]['cve']);
+        $this->assertEquals('laravel/framework', $findings[1]->package);
+        $this->assertStringContainsString('Laravel', $findings[1]->title);
+        $this->assertEquals('CVE-2023-5678', $findings[1]->cve);
 
         $this->assertValidFindings($findings);
     }
@@ -98,10 +98,9 @@ class ComposerAuditServiceTest extends TestCase
 
         $findings = $service->getFindings();
         $this->assertNotEmpty($findings);
-        $this->assertEquals('composer', $findings[0]['package']);
-        $this->assertStringContainsString('failed to run', $findings[0]['title']);
-        $this->assertEquals('high', $findings[0]['severity']);
-        $this->assertArrayHasKey('error', $findings[0]);
+        $this->assertEquals('composer', $findings[0]->package);
+        $this->assertStringContainsString('failed to run', $findings[0]->title);
+        $this->assertEquals('high', $findings[0]->severity->value);
     }
 
     public function testRunHandlesProcessException(): void
@@ -126,9 +125,9 @@ class ComposerAuditServiceTest extends TestCase
 
         $findings = $service->getFindings();
         $this->assertNotEmpty($findings);
-        $this->assertEquals('composer', $findings[0]['package']);
-        $this->assertStringContainsString('exception', $findings[0]['title']);
-        $this->assertStringContainsString('Process execution failed', $findings[0]['error']);
+        $this->assertEquals('composer', $findings[0]->package);
+        $this->assertStringContainsString('exception', $findings[0]->title);
+        $this->assertStringContainsString('Process execution failed', (string) $findings[0]->error);
     }
 
     public function testGetAbandonedPackagesReturnsEmptyByDefault(): void

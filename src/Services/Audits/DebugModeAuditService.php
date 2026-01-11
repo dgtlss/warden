@@ -4,6 +4,7 @@ namespace Dgtlss\Warden\Services\Audits;
 
 class DebugModeAuditService extends AbstractAuditService
 {
+    /** @var array<int, string> */
     private array $devPackages = [
         'barryvdh/laravel-debugbar',
         'laravel/telescope',
@@ -84,15 +85,24 @@ class DebugModeAuditService extends AbstractAuditService
         return true;
     }
 
+    /**
+     * @return array<int, string>
+     */
     private function getInstalledPackagesNames(): array
     {
         $installedPackages = $this->getInstalledPackages();
 
-        return isset($installedPackages['packages'])
+        /** @var array<int, string> $names */
+        $names = isset($installedPackages['packages']) && is_array($installedPackages['packages'])
             ? array_column($installedPackages['packages'], 'name')
             : [];
+            
+        return $names;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function getInstalledPackages(): array
     {
         $installedPath = base_path('vendor/composer/installed.json');
@@ -102,15 +112,27 @@ class DebugModeAuditService extends AbstractAuditService
         }
 
         $installedContents = file_get_contents($installedPath);
-        return json_decode($installedContents, true);
+        if ($installedContents === false) {
+            return [];
+        }
+
+        $decoded = json_decode($installedContents, true);
+        /** @var array<string, mixed> $result */
+        $result = is_array($decoded) ? $decoded : [];
+        return $result;
     }
 
     private function hasExposedTestingRoutes(): bool
     {
-        $routeCollection = \Route::getRoutes();
+        /** @var \Illuminate\Routing\RouteCollection $routeCollection */
+        $routeCollection = \Illuminate\Support\Facades\Route::getRoutes();
 
         // Check debugbar routes separately as they're allowed when APP_DEBUG is true
         foreach ($routeCollection as $route) {
+            if (!($route instanceof \Illuminate\Routing\Route)) {
+                continue;
+            }
+
             $uri = $route->uri();
             if (str_starts_with($uri, '_debugbar')) {
                 // Only flag debugbar routes as exposed if APP_DEBUG is false and there's no protective middleware
@@ -139,10 +161,11 @@ class DebugModeAuditService extends AbstractAuditService
     }
 
     /**
-     * @param object $route
+     * @param \Illuminate\Routing\Route $route
      */
     private function hasProtectiveMiddleware($route): bool
     {
+        /** @var array<int, string> $middleware */
         $middleware = $route->middleware();
         $protectiveMiddleware = [
             'auth',

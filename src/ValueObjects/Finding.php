@@ -28,15 +28,15 @@ final readonly class Finding
     public static function fromArray(array $data): self
     {
         return new self(
-            source: $data['source'] ?? 'unknown',
-            package: $data['package'] ?? 'unknown',
-            title: $data['title'] ?? 'Unknown vulnerability',
+            source: is_string($data['source'] ?? null) ? $data['source'] : 'unknown',
+            package: is_string($data['package'] ?? null) ? $data['package'] : 'unknown',
+            title: is_string($data['title'] ?? null) ? $data['title'] : 'Unknown vulnerability',
             severity: isset($data['severity']) && $data['severity'] instanceof Severity
                 ? $data['severity']
-                : Severity::fromString($data['severity'] ?? 'unknown'),
-            cve: $data['cve'] ?? null,
-            affectedVersions: $data['affected_versions'] ?? null,
-            error: $data['error'] ?? null,
+                : Severity::fromString(is_string($data['severity'] ?? null) ? $data['severity'] : 'unknown'),
+            cve: is_string($data['cve'] ?? null) ? $data['cve'] : null,
+            affectedVersions: is_string($data['affected_versions'] ?? null) ? $data['affected_versions'] : null,
+            error: is_string($data['error'] ?? null) ? $data['error'] : null,
         );
     }
 

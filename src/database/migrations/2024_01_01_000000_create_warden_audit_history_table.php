@@ -11,28 +11,31 @@ return new class extends Migration
      */
     public function up(): void
     {
-        $tableName = config('warden.history.table', 'warden_audit_history');
-        
-        Schema::create($tableName, function (Blueprint $blueprint): void {
-            $blueprint->id();
-            $blueprint->string('audit_type', 50);
-            $blueprint->integer('total_findings')->default(0);
-            $blueprint->integer('critical_findings')->default(0);
-            $blueprint->integer('high_findings')->default(0);
-            $blueprint->integer('medium_findings')->default(0);
-            $blueprint->integer('low_findings')->default(0);
-            $blueprint->json('findings')->nullable();
-            $blueprint->json('metadata')->nullable();
-            $blueprint->boolean('has_failures')->default(false);
-            $blueprint->string('trigger', 50)->default('manual'); // manual, scheduled, api
-            $blueprint->string('triggered_by')->nullable();
-            $blueprint->integer('duration_ms')->nullable();
-            $blueprint->timestamps();
+        $table = config('warden.history.table', 'warden_audit_history');
+        if (!is_string($table)) {
+            $table = 'warden_audit_history';
+        }
+
+        Schema::create($table, function (Blueprint $table): void {
+            $table->id();
+            $table->string('audit_type', 50);
+            $table->integer('total_findings')->default(0);
+            $table->integer('critical_findings')->default(0);
+            $table->integer('high_findings')->default(0);
+            $table->integer('medium_findings')->default(0);
+            $table->integer('low_findings')->default(0);
+            $table->json('findings')->nullable();
+            $table->json('metadata')->nullable();
+            $table->boolean('has_failures')->default(false);
+            $table->string('trigger', 50)->default('manual'); // manual, scheduled, api
+            $table->string('triggered_by')->nullable();
+            $table->integer('duration_ms')->nullable();
+            $table->timestamps();
             
             // Indexes for performance
-            $blueprint->index('audit_type');
-            $blueprint->index('created_at');
-            $blueprint->index(['audit_type', 'created_at']);
+            $table->index('audit_type');
+            $table->index('created_at');
+            $table->index(['audit_type', 'created_at']);
         });
     }
 
@@ -41,7 +44,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        $tableName = config('warden.history.table', 'warden_audit_history');
-        Schema::dropIfExists($tableName);
+        $table = config('warden.history.table', 'warden_audit_history');
+        if (!is_string($table)) {
+            $table = 'warden_audit_history';
+        }
+
+        Schema::dropIfExists($table);
     }
-}; 
+};

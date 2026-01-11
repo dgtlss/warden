@@ -4,6 +4,8 @@ namespace Dgtlss\Warden\Tests\Unit\Notifications\Channels;
 
 use Dgtlss\Warden\Notifications\Channels\SlackChannel;
 use Dgtlss\Warden\Tests\TestCase;
+use Dgtlss\Warden\ValueObjects\Finding;
+use Dgtlss\Warden\Enums\Severity;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 
@@ -63,14 +65,14 @@ class SlackChannelTest extends TestCase
         Http::fake();
 
         $findings = [
-            [
-                'source' => 'composer',
-                'package' => 'test/package',
-                'title' => 'High severity vulnerability',
-                'severity' => 'high',
-                'cve' => 'CVE-2024-1234',
-                'affected_versions' => '<1.0',
-            ],
+            new Finding(
+                source: 'composer',
+                package: 'test/package',
+                title: 'High severity vulnerability',
+                severity: Severity::HIGH,
+                cve: 'CVE-2024-1234',
+                affectedVersions: '<1.0',
+            ),
         ];
 
         $channel = new SlackChannel();
@@ -90,14 +92,14 @@ class SlackChannelTest extends TestCase
         Http::fake();
 
         $findings = [
-            [
-                'source' => 'composer',
-                'package' => 'test/package',
-                'title' => 'High severity vulnerability',
-                'severity' => 'high',
-                'cve' => 'CVE-2024-1234',
-                'affected_versions' => '<1.0',
-            ],
+            new Finding(
+                source: 'composer',
+                package: 'test/package',
+                title: 'High severity vulnerability',
+                severity: Severity::HIGH,
+                cve: 'CVE-2024-1234',
+                affectedVersions: '<1.0',
+            ),
         ];
 
         $channel = new SlackChannel();
@@ -120,22 +122,20 @@ class SlackChannelTest extends TestCase
         Http::fake();
 
         $findings = [
-            [
-                'source' => 'composer',
-                'package' => 'test/package',
-                'title' => 'Critical vulnerability',
-                'severity' => 'critical',
-                'cve' => null,
-                'affected_versions' => '<1.0',
-            ],
-            [
-                'source' => 'composer',
-                'package' => 'test/package2',
-                'title' => 'High severity vulnerability',
-                'severity' => 'high',
-                'cve' => null,
-                'affected_versions' => '<2.0',
-            ],
+            new Finding(
+                source: 'composer',
+                package: 'test/package',
+                title: 'Critical vulnerability',
+                severity: Severity::CRITICAL,
+                affectedVersions: '<1.0',
+            ),
+            new Finding(
+                source: 'composer',
+                package: 'test/package2',
+                title: 'High severity vulnerability',
+                severity: Severity::HIGH,
+                affectedVersions: '<2.0',
+            ),
         ];
 
         $channel = new SlackChannel();
@@ -159,20 +159,20 @@ class SlackChannelTest extends TestCase
         Http::fake();
 
         $findings = [
-            [
-                'source' => 'composer',
-                'package' => 'test/package',
-                'title' => 'Vulnerability with CVE',
-                'severity' => 'high',
-                'cve' => 'CVE-2024-1234',
-                'affected_versions' => '<1.0',
-            ],
+            new Finding(
+                source: 'composer',
+                package: 'test/package',
+                title: 'Vulnerability with CVE',
+                severity: Severity::HIGH,
+                cve: 'CVE-2024-1234',
+                affectedVersions: '<1.0',
+            ),
         ];
 
         $channel = new SlackChannel();
         $channel->send($findings);
 
-        Http::assertSent(function ($request) use ($findings) {
+        Http::assertSent(function ($request) {
             $data = $request->data();
 
             if (!isset($data['blocks'])) {
@@ -180,7 +180,7 @@ class SlackChannelTest extends TestCase
             }
 
             $blocks = $data['blocks'];
-            $blocksJson = json_encode($blocks);
+            $blocksJson = (string) json_encode($blocks);
 
             return str_contains($blocksJson, 'CVE-2024-1234');
         });

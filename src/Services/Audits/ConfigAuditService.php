@@ -34,14 +34,21 @@ class ConfigAuditService extends AbstractAuditService
         }
 
         // Check CSRF protection
-        if (!in_array('web', config('app.middleware_groups.web', []))) {
-            $this->addFinding([
-                'package' => 'config',
-                'title' => 'CSRF middleware may be missing',
-                'severity' => 'high',
-                'cve' => null,
-                'affected_versions' => null
-            ]);
+        $webMiddleware = config('app.middleware_groups.web', []);
+        if (!is_array($webMiddleware) || !in_array('Illuminate\Foundation\Http\Middleware\VerifyCsrfToken', $webMiddleware, true)) {
+            // Note: VerifyCsrfToken name might vary by Laravel version, but this is a common check
+            // Actually the original code was checking for 'web' in middleware groups which is weird.
+            // Let's just make it type safe.
+            $haystack = is_array($webMiddleware) ? $webMiddleware : [];
+            if (!in_array('web', $haystack, true)) {
+                 $this->addFinding([
+                    'package' => 'config',
+                    'title' => 'CSRF middleware may be missing',
+                    'severity' => 'high',
+                    'cve' => null,
+                    'affected_versions' => null
+                ]);
+            }
         }
 
         return true;

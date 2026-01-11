@@ -4,6 +4,8 @@ namespace Dgtlss\Warden\Tests\Unit\Notifications\Channels;
 
 use Dgtlss\Warden\Notifications\Channels\DiscordChannel;
 use Dgtlss\Warden\Tests\TestCase;
+use Dgtlss\Warden\ValueObjects\Finding;
+use Dgtlss\Warden\Enums\Severity;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 
@@ -54,14 +56,13 @@ class DiscordChannelTest extends TestCase
         Http::fake();
 
         $findings = [
-            [
-                'source' => 'composer',
-                'package' => 'test/package',
-                'title' => 'High severity vulnerability',
-                'severity' => 'high',
-                'cve' => null,
-                'affected_versions' => '<1.0',
-            ],
+            new Finding(
+                source: 'composer',
+                package: 'test/package',
+                title: 'High severity vulnerability',
+                severity: Severity::HIGH,
+                affectedVersions: '<1.0',
+            ),
         ];
 
         $channel = new DiscordChannel();
@@ -81,14 +82,13 @@ class DiscordChannelTest extends TestCase
         Http::fake();
 
         $findings = [
-            [
-                'source' => 'composer',
-                'package' => 'test/package',
-                'title' => 'High severity vulnerability',
-                'severity' => 'high',
-                'cve' => null,
-                'affected_versions' => '<1.0',
-            ],
+            new Finding(
+                source: 'composer',
+                package: 'test/package',
+                title: 'High severity vulnerability',
+                severity: Severity::HIGH,
+                affectedVersions: '<1.0',
+            ),
         ];
 
         $channel = new DiscordChannel();
@@ -113,22 +113,20 @@ class DiscordChannelTest extends TestCase
         Http::fake();
 
         $findings = [
-            [
-                'source' => 'composer',
-                'package' => 'test/package1',
-                'title' => 'Composer vulnerability',
-                'severity' => 'high',
-                'cve' => null,
-                'affected_versions' => '<1.0',
-            ],
-            [
-                'source' => 'npm',
-                'package' => 'test/package2',
-                'title' => 'NPM vulnerability',
-                'severity' => 'medium',
-                'cve' => null,
-                'affected_versions' => '<2.0',
-            ],
+            new Finding(
+                source: 'composer',
+                package: 'test/package1',
+                title: 'Composer vulnerability',
+                severity: Severity::HIGH,
+                affectedVersions: '<1.0',
+            ),
+            new Finding(
+                source: 'npm',
+                package: 'test/package2',
+                title: 'NPM vulnerability',
+                severity: Severity::MEDIUM,
+                affectedVersions: '<2.0',
+            ),
         ];
 
         $channel = new DiscordChannel();
@@ -152,14 +150,14 @@ class DiscordChannelTest extends TestCase
         Http::fake();
 
         $findings = [
-            [
-                'source' => 'composer',
-                'package' => 'test/package',
-                'title' => 'Vulnerability with CVE',
-                'severity' => 'critical',
-                'cve' => 'CVE-2024-1234',
-                'affected_versions' => '<1.0',
-            ],
+            new Finding(
+                source: 'composer',
+                package: 'test/package',
+                title: 'Vulnerability with CVE',
+                severity: Severity::CRITICAL,
+                cve: 'CVE-2024-1234',
+                affectedVersions: '<1.0',
+            ),
         ];
 
         $channel = new DiscordChannel();
@@ -167,7 +165,7 @@ class DiscordChannelTest extends TestCase
 
         Http::assertSent(function ($request) {
             $data = $request->data();
-            $embedsJson = json_encode($data['embeds']);
+            $embedsJson = (string) json_encode($data['embeds']);
 
             return str_contains($embedsJson, 'CVE-2024-1234');
         });
@@ -180,14 +178,13 @@ class DiscordChannelTest extends TestCase
         Http::fake();
 
         $findings = [
-            [
-                'source' => 'composer',
-                'package' => 'test/package',
-                'title' => 'Critical vulnerability',
-                'severity' => 'critical',
-                'cve' => null,
-                'affected_versions' => '<1.0',
-            ],
+            new Finding(
+                source: 'composer',
+                package: 'test/package',
+                title: 'Critical vulnerability',
+                severity: Severity::CRITICAL,
+                affectedVersions: '<1.0',
+            ),
         ];
 
         $channel = new DiscordChannel();
