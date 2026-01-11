@@ -5,9 +5,10 @@
 # to ensure code quality and reliability.
 #
 # Configuration highlights:
-# - Level 5: Balanced strictness for production code
+# - Level max: Maximum strictness for production code
 # - Larastan integration: Proper Laravel framework understanding
 # - Carbon extension: Enhanced DateTime analysis
+# - Bleeding edge rules: Latest PHPStan improvements
 # - Focused analysis: Only src directory, excluding vendor and tests
 #
 # The configuration handles Laravel-specific patterns while maintaining
@@ -16,9 +17,10 @@
 includes:
     - vendor/larastan/larastan/extension.neon
     - vendor/nesbot/carbon/extension.neon
+    - vendor/phpstan/phpstan/conf/bleedingEdge.neon
 
 parameters:
-    level: 5
+    level: max
 
     paths:
         - src

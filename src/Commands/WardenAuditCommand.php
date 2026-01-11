@@ -154,6 +154,12 @@ class WardenAuditCommand extends Command
         return $this->processResults($allFindings, $abandonedPackages, $hasFailures);
     }
 
+    /**
+     * Process and display audit results.
+     *
+     * @param array<int, array<string, mixed>> $allFindings
+     * @param array<int, array<string, mixed>> $abandonedPackages
+     */
     protected function processResults(array $allFindings, array $abandonedPackages, bool $hasFailures): int
     {
         // Apply severity filtering if specified
@@ -265,7 +271,7 @@ class WardenAuditCommand extends Command
     /**
      * Process and display abandoned packages information.
      *
-     * @param array $abandonedPackages List of abandoned packages
+     * @param array<int, array<string, mixed>> $abandonedPackages List of abandoned packages
      */
     protected function handleAbandonedPackages(array $abandonedPackages): void
     {
@@ -303,7 +309,7 @@ class WardenAuditCommand extends Command
     /**
      * Display audit findings in a formatted table.
      *
-     * @param array $findings List of vulnerability findings
+     * @param array<int, array<string, mixed>> $findings List of vulnerability findings
      */
     protected function displayFindings(array $findings): void
     {
