@@ -1,3 +1,6 @@
 .phpunit.cache
 /vendor
 .idea
+IMPROVEMENT_PLAN.md
+SESSION.md
+TESTING.md
