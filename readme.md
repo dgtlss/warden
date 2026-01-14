@@ -10,9 +10,14 @@
 
 ## 🚀 Key Features
 
-### ✅ Core Security Audits
+### ✅ Comprehensive Security Audits
 - **🔍 Dependency Scanning**: Composer and NPM vulnerability detection
 - **⚙️ Configuration Audits**: Environment, storage permissions, and Laravel config
+- **🔒 Security Headers**: X-Frame-Options, CSP, HSTS, X-Content-Type-Options
+- **🗄️ Database Security**: Password strength, SSL/TLS connections, credential checks
+- **🌐 CORS Analysis**: Wildcard detection and permissive settings audit
+- **🔐 SSL/HTTPS**: Enforcement checks and secure cookie validation
+- **📁 File Permissions**: Directory permission audits for sensitive paths
 - **📝 Code Analysis**: PHP syntax validation and security checks
 - **🔧 Custom Audit Rules**: Organization-specific security policies
 
@@ -20,12 +25,27 @@
 - **⚡ Parallel Execution**: Up to 5x faster audit performance
 - **🗄️ Intelligent Caching**: Prevents redundant scans with configurable TTL
 - **🎯 Severity Filtering**: Focus on critical issues only
+- **📈 Incremental Audits**: Only scan changed dependencies for faster runs
+- **⏳ Queue Processing**: Background job execution for non-blocking audits
 
 ### ✅ Integration & Automation
-- **📊 Multiple Output Formats**: JSON, GitHub Actions, GitLab CI, Jenkins
-- **🔔 Rich Notifications**: Slack, Discord, Email with formatted reports
+- **📊 Multiple Output Formats**: JSON, SARIF, HTML, GitHub Actions, GitLab CI, Jenkins
+- **🔔 Rich Notifications**: Slack, Discord, Teams, Email, Telegram, PagerDuty
 - **⏰ Automated Scheduling**: Laravel scheduler integration
 - **🔄 CI/CD Ready**: Native support for all major platforms
+- **🛡️ Webhook Security**: HMAC-SHA256 signature verification
+
+### ✅ Developer Experience
+- **🎮 Interactive Mode**: Guided audit selection with Laravel Prompts
+- **🧪 Dry-Run Mode**: Simulate audits without sending notifications
+- **🧙 Setup Wizard**: Interactive configuration wizard (`warden:setup`)
+- **📊 Progress Indicators**: Visual feedback during audit execution
+- **🔍 Verbose Debugging**: Detailed timing and cache information
+
+### ✅ Remediation Support
+- **💡 Fix Suggestions**: Actionable remediation steps for each finding
+- **🔗 Reference Links**: CVE links and documentation references
+- **⚡ Priority Badges**: Immediate vs standard fix prioritization
 
 Perfect for continuous security monitoring and DevOps pipelines.
 
@@ -35,9 +55,11 @@ Perfect for continuous security monitoring and DevOps pipelines.
 
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Setup Wizard](#setup-wizard)
 - [Configuration](#configuration)
 - [Security Audits](#security-audits)
 - [Usage Examples](#usage-examples)
+- [Output Formats](#output-formats)
 - [Notifications](#notifications)
 - [Custom Audits](#custom-audits)
 - [Scheduling](#scheduling)
@@ -97,6 +119,53 @@ php artisan warden:audit --silent
 
 ---
 
+## 🧙 Setup Wizard
+
+Warden includes an interactive setup wizard to help you configure all features:
+
+```bash
+php artisan warden:setup
+```
+
+The wizard guides you through:
+
+### Step 1: Notification Channels
+- Slack, Discord, Microsoft Teams webhooks
+- Email recipient configuration
+- Telegram bot setup
+- PagerDuty integration
+
+### Step 2: Cache Settings
+- Enable/disable caching
+- Configure cache duration (30 min to 24 hours)
+
+### Step 3: Scheduled Audits
+- Enable automated scheduling
+- Set frequency (hourly, daily, weekly, monthly)
+- Configure run time
+
+### Step 4: Security Settings
+- Rate limiting configuration
+- Webhook signature verification
+- Secret key setup
+
+### Step 5: Advanced Settings
+- Queue processing options
+- Audit history tracking
+- Incremental audit configuration
+
+### Show All Environment Variables
+
+To see all available configuration options without interactive prompts:
+
+```bash
+php artisan warden:setup --show-env
+```
+
+This outputs a complete list of environment variables you can add to your `.env` file.
+
+---
+
 ## ⚙️ Configuration
 
 ### Environment Variables
@@ -118,6 +187,13 @@ WARDEN_TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/YOUR/WEBHOOK
 WARDEN_EMAIL_RECIPIENTS=security@company.com,admin@company.com
 WARDEN_EMAIL_FROM=security@company.com
 WARDEN_EMAIL_FROM_NAME="Security Team"
+
+# Telegram (New)
+WARDEN_TELEGRAM_BOT_TOKEN=your-bot-token
+WARDEN_TELEGRAM_CHAT_ID=your-chat-id
+
+# PagerDuty (New)
+WARDEN_PAGERDUTY_ROUTING_KEY=your-integration-key
 
 # Legacy webhook (backward compatibility)
 WARDEN_WEBHOOK_URL=https://your-webhook-url.com
@@ -145,6 +221,44 @@ WARDEN_OUTPUT_JSON=false
 WARDEN_OUTPUT_JUNIT=false
 ```
 
+#### 🔒 Security (New)
+```env
+# Webhook Signing
+WARDEN_WEBHOOK_SIGNING_ENABLED=false
+WARDEN_WEBHOOK_SECRET=your-secret-key
+WARDEN_WEBHOOK_MAX_TIME_DIFF=300  # seconds
+
+# Rate Limiting
+WARDEN_RATE_LIMIT_ENABLED=false
+WARDEN_RATE_LIMIT_MAX_ATTEMPTS=10
+WARDEN_RATE_LIMIT_DECAY_MINUTES=60
+
+# Audit History Integrity
+WARDEN_HISTORY_SECRET=            # defaults to APP_KEY
+```
+
+#### ⏳ Queue Processing (New)
+```env
+WARDEN_QUEUE_ENABLED=true
+WARDEN_QUEUE_CONNECTION=          # defaults to queue.default
+WARDEN_QUEUE_NAME=default
+WARDEN_QUEUE_TRIES=3
+WARDEN_QUEUE_TIMEOUT=300
+```
+
+#### 📈 Audit History (New)
+```env
+WARDEN_HISTORY_ENABLED=false
+WARDEN_HISTORY_TABLE=warden_audit_history
+WARDEN_HISTORY_RETENTION_DAYS=90
+```
+
+#### 🚀 Incremental Audits (New)
+```env
+WARDEN_INCREMENTAL_ENABLED=false
+WARDEN_INCREMENTAL_CACHE_TTL=86400  # 24 hours
+```
+
 ---
 
 ## 🔍 Security Audits
@@ -155,6 +269,7 @@ Warden performs comprehensive security analysis across multiple areas:
 - Scans PHP dependencies for known vulnerabilities
 - Uses official `composer audit` command
 - Identifies abandoned packages with replacement suggestions
+- Provides remediation suggestions with CVE links
 
 ### 2. **NPM Dependencies** 
 - Analyzes JavaScript dependencies (when `--npm` flag used)
@@ -181,6 +296,38 @@ Warden performs comprehensive security analysis across multiple areas:
 - Code syntax validation across your application
 - Configurable directory exclusions
 - Integration with existing audit workflow
+
+### 7. **Security Headers** *(New)*
+- **X-Frame-Options**: Clickjacking protection validation
+- **Content-Security-Policy**: CSP header presence and configuration
+- **Strict-Transport-Security**: HSTS enforcement check
+- **X-Content-Type-Options**: MIME type sniffing protection
+- **X-XSS-Protection**: XSS filter header validation
+- **Referrer-Policy**: Information leakage prevention
+
+### 8. **Database Security** *(New)*
+- Password strength analysis (detects weak/common passwords)
+- SSL/TLS connection enforcement checks
+- Credential configuration validation
+- Default password detection
+
+### 9. **CORS Configuration** *(New)*
+- Wildcard origin detection (`*` in allowed origins)
+- Permissive `Access-Control-Allow-Credentials` settings
+- Overly permissive allowed methods and headers
+- Configuration best practices validation
+
+### 10. **SSL/HTTPS** *(New)*
+- HTTPS enforcement in production
+- Secure session cookie configuration
+- `HTTPS_ONLY` and `SECURE_COOKIES` environment validation
+- Mixed content vulnerability detection
+
+### 11. **File Permissions** *(New)*
+- Directory permission audits for sensitive paths
+- World-writable file detection
+- Storage and cache directory validation
+- Recommended permission enforcement
 
 ---
 
@@ -218,6 +365,63 @@ php artisan warden:audit --output=gitlab > gl-dependency-scanning-report.json
 php artisan warden:audit --output=jenkins
 ```
 
+### Interactive Mode *(New)*
+
+```bash
+# Launch interactive mode with guided prompts
+php artisan warden:audit --interactive
+```
+
+Interactive mode lets you:
+- Select which audits to run (multi-select)
+- Choose minimum severity level
+- Toggle notification sending
+- Force cache refresh
+
+### Dry-Run Mode *(New)*
+
+```bash
+# Simulate audit without sending notifications
+php artisan warden:audit --dry-run
+
+# Combine with other options
+php artisan warden:audit --npm --severity=high --dry-run
+```
+
+Dry-run mode:
+- Runs all audits normally
+- Displays findings in console
+- Shows what notifications would be sent
+- Does NOT actually send any notifications
+
+### Background Processing *(New)*
+
+```bash
+# Run audit as a background job
+php artisan warden:audit --queue
+
+# Combine with other options
+php artisan warden:audit --npm --queue --silent
+```
+
+Queue mode dispatches the audit as a Laravel job for non-blocking execution.
+
+### Verbose Mode
+
+```bash
+# Show detailed debug information
+php artisan warden:audit -v
+
+# Very verbose with timestamps
+php artisan warden:audit -vv
+```
+
+Verbose output includes:
+- Audit service initialization details
+- Cache hit/miss information
+- Timing for each audit
+- Command execution details
+
 ### Advanced Usage
 
 ```bash
@@ -230,6 +434,67 @@ php artisan warden:syntax
 # Schedule management
 php artisan warden:schedule --enable
 php artisan warden:schedule --status
+
+# Configuration wizard
+php artisan warden:setup
+```
+
+---
+
+## 📊 Output Formats
+
+Warden supports multiple output formats for different use cases:
+
+### JSON Format
+Machine-readable output for processing and storage:
+```bash
+php artisan warden:audit --output=json > security-report.json
+```
+
+### SARIF Format *(New)*
+[SARIF (Static Analysis Results Interchange Format)](https://sarifweb.azurewebsites.net/) 2.1.0 compliant output for integration with:
+- **GitHub Advanced Security**: Code scanning alerts
+- **Azure DevOps**: Security scanning results
+- **VS Code**: SARIF Viewer extension
+
+```bash
+# Generate SARIF report
+php artisan warden:audit --output=sarif > warden-results.sarif
+
+# Upload to GitHub Code Scanning (in GitHub Actions)
+# Uses the github/codeql-action/upload-sarif action
+```
+
+SARIF output includes:
+- Tool information and version
+- Rule definitions for each audit type
+- Results with locations and severity
+- **Remediation suggestions** in the `fixes` property
+
+### HTML Format *(New)*
+Beautiful, human-readable HTML reports:
+```bash
+php artisan warden:audit --output=html > security-report.html
+```
+
+HTML reports include:
+- **Executive Summary**: Total findings, severity breakdown
+- **Severity Badges**: Color-coded (Critical, High, Medium, Low)
+- **Remediation Section**: Commands, manual steps, reference links
+- **Priority Indicators**: Immediate vs standard fixes
+- Responsive design for easy viewing
+
+### CI/CD Formats
+
+```bash
+# GitHub Actions annotations
+php artisan warden:audit --output=github
+
+# GitLab CI dependency scanning
+php artisan warden:audit --output=gitlab > gl-dependency-scanning-report.json
+
+# Jenkins format
+php artisan warden:audit --output=jenkins
 ```
 
 ---
@@ -278,8 +543,55 @@ WARDEN_EMAIL_FROM=security@company.com
 WARDEN_EMAIL_FROM_NAME="Security Team"
 ```
 
+### ✅ Telegram *(New)*
+- Bot-based messaging with HTML formatting
+- Severity-based alerts with emoji indicators
+- Grouped findings with CVE links
+- Supports both private chats and groups
+
+```env
+WARDEN_TELEGRAM_BOT_TOKEN=your-bot-token-from-botfather
+WARDEN_TELEGRAM_CHAT_ID=your-chat-or-group-id
+```
+
+To get your bot token:
+1. Message [@BotFather](https://t.me/BotFather) on Telegram
+2. Create a new bot with `/newbot`
+3. Copy the token provided
+
+To get your chat ID:
+1. Add the bot to your chat/group
+2. Send a message to the bot
+3. Visit `https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates` to find your chat ID
+
+### ✅ PagerDuty *(New)*
+- Critical incident creation via Events API v2
+- Automatic severity mapping to PagerDuty urgency levels
+- Deduplication support for related findings
+- Perfect for on-call security teams
+
+```env
+WARDEN_PAGERDUTY_ROUTING_KEY=your-integration-key
+```
+
+To get your routing key:
+1. Go to **Services** > **Service Directory** in PagerDuty
+2. Create or select a service
+3. Go to **Integrations** tab > **Add Integration**
+4. Select **Events API v2** and copy the Integration Key
+
 ### Multiple Channels
 Configure multiple channels simultaneously - Warden sends to all configured endpoints.
+
+### Webhook Security *(New)*
+Enable HMAC-SHA256 signature verification for outgoing webhooks:
+
+```env
+WARDEN_WEBHOOK_SIGNING_ENABLED=true
+WARDEN_WEBHOOK_SECRET=your-secret-key
+```
+
+When enabled, all webhook requests include `X-Warden-Signature` and `X-Warden-Timestamp` headers for verification.
 
 ---
 
@@ -458,6 +770,92 @@ pipeline {
 1. **Parallel Execution**: Enabled by default for 5x speed improvement
 2. **Intelligent Caching**: Configurable cache duration prevents redundant API calls  
 3. **Severity Filtering**: Focus resources on critical issues
+4. **Incremental Audits** *(New)*: Only scan changed dependencies
+
+### Incremental Audits *(New)*
+
+Warden can detect changes in your lockfiles and only scan modified dependencies:
+
+```env
+WARDEN_INCREMENTAL_ENABLED=true
+WARDEN_INCREMENTAL_CACHE_TTL=86400  # 24 hours
+```
+
+How it works:
+- Compares `composer.lock` and `package-lock.json` hashes
+- Only runs full audit when dependencies change
+- Caches previous scan results for unchanged packages
+- Significantly faster for large projects with frequent runs
+
+### Queue Processing *(New)*
+
+Run audits in the background without blocking your application:
+
+```env
+WARDEN_QUEUE_ENABLED=true
+WARDEN_QUEUE_CONNECTION=redis        # or sync, database, etc.
+WARDEN_QUEUE_NAME=security-audits
+WARDEN_QUEUE_TRIES=3
+WARDEN_QUEUE_TIMEOUT=300
+```
+
+Usage:
+```bash
+php artisan warden:audit --queue
+```
+
+### Rate Limiting *(New)*
+
+Prevent audit abuse in multi-tenant or shared environments:
+
+```env
+WARDEN_RATE_LIMIT_ENABLED=true
+WARDEN_RATE_LIMIT_MAX_ATTEMPTS=10   # Max attempts per hour
+WARDEN_RATE_LIMIT_DECAY_MINUTES=60  # Reset period
+```
+
+When rate limited, the command will display time until next available attempt.
+
+### Webhook Security *(New)*
+
+Sign outgoing webhook requests with HMAC-SHA256:
+
+```env
+WARDEN_WEBHOOK_SIGNING_ENABLED=true
+WARDEN_WEBHOOK_SECRET=your-secret-key
+WARDEN_WEBHOOK_MAX_TIME_DIFF=300    # 5 minute tolerance
+```
+
+Signed requests include:
+- `X-Warden-Signature`: HMAC-SHA256 signature
+- `X-Warden-Timestamp`: Request timestamp
+
+Verify incoming webhooks in your receiving application:
+```php
+$signature = hash_hmac('sha256', $timestamp . $payload, $secret);
+$isValid = hash_equals($signature, $receivedSignature);
+```
+
+### Audit History *(New)*
+
+Track audit results over time for trending and compliance:
+
+```env
+WARDEN_HISTORY_ENABLED=true
+WARDEN_HISTORY_TABLE=warden_audit_history
+WARDEN_HISTORY_RETENTION_DAYS=90
+```
+
+Features:
+- Stores severity breakdowns per audit
+- Query historical trends and statistics
+- Automatic cleanup of old data
+- Integrity hashing for tamper detection
+
+Run migration:
+```bash
+php artisan migrate
+```
 
 ### Audit Results
 
@@ -494,16 +892,46 @@ pipeline {
     'STRIPE_SECRET',
     'AWS_SECRET_ACCESS_KEY',
 ],
+
+// New in v2.x
+'rate_limit' => [
+    'enabled' => true,
+    'max_attempts' => 10,
+    'decay_minutes' => 60,
+],
+
+'queue' => [
+    'enabled' => true,
+    'connection' => 'redis',
+    'queue_name' => 'security-audits',
+],
+
+'incremental' => [
+    'enabled' => true,
+    'cache_ttl' => 86400,
+],
 ```
 
 ---
 
 ## 📈 Roadmap
 
+### ✅ Recently Completed
+- 📊 **Audit history tracking** with trend analysis and integrity hashing
+- 🔍 **5 new audit types**: Security Headers, Database Security, CORS, SSL/HTTPS, File Permissions
+- 📄 **SARIF & HTML output** for GitHub Advanced Security and human-readable reports
+- 📱 **Telegram & PagerDuty** notification channels
+- 💡 **Remediation suggestions** with commands, steps, and reference links
+- 🔒 **Security features**: Webhook signing, rate limiting, incremental audits
+- 🎮 **Interactive CLI mode** with Laravel Prompts
+- 🧙 **Setup wizard** for easy configuration
+
 ### Coming Soon
-- 📊 **Audit history tracking** and trend analysis
-- 🔍 **Additional audit types** (Docker, Git, API security)
-- 📋 **Web dashboard** for audit management
+- 📋 **Web dashboard** for audit management (warden-dashboard package)
+- 📈 **Historical trend graphs** and visualization
+- 🔌 **Plugin system** for community extensions
+- 🐳 **Docker security audits**
+- 🔑 **API security scanning**
 - 🤖 **AI-powered vulnerability analysis** and recommendations
 
 ---
