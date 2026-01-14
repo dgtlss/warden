@@ -35,7 +35,7 @@ class NpmAuditService extends AbstractAuditService
             return false;
         }
 
-        $process = new Process(['npm', 'audit', '--json']);
+        $process = $this->createProcess(['npm', 'audit', '--json']);
         $process->setWorkingDirectory(base_path());
         $timeout = config('warden.audits.timeout', 300);
         $process->setTimeout(is_numeric($timeout) ? (float) $timeout : 300.0);
@@ -124,5 +124,13 @@ class NpmAuditService extends AbstractAuditService
             ]);
             return false;
         }
+    }
+
+    /**
+     * @param array<int, string> $command
+     */
+    protected function createProcess(array $command): Process
+    {
+        return new Process($command);
     }
 }

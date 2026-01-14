@@ -10,17 +10,49 @@ use Illuminate\Support\Facades\File;
 class IncrementalAuditServiceTest extends TestCase
 {
     private IncrementalAuditService $service;
+    private string $composerLockPath;
+    private string $packageLockPath;
+    private ?string $originalComposerLock = null;
+    private ?string $originalPackageLock = null;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->service = new IncrementalAuditService();
         Cache::flush();
+        $this->composerLockPath = base_path('composer.lock');
+        $this->packageLockPath = base_path('package-lock.json');
+
+        if (File::exists($this->composerLockPath)) {
+            $this->originalComposerLock = File::get($this->composerLockPath);
+        } else {
+            $this->originalComposerLock = null;
+        }
+
+        if (File::exists($this->packageLockPath)) {
+            $this->originalPackageLock = File::get($this->packageLockPath);
+        } else {
+            $this->originalPackageLock = null;
+        }
+
+        $fixture = $this->getFixture('composer-lock.json');
+        File::put($this->composerLockPath, $fixture);
+        File::put($this->packageLockPath, $this->getFixture('package-lock.json'));
     }
 
     protected function tearDown(): void
     {
         Cache::flush();
+        if ($this->originalComposerLock !== null) {
+            File::put($this->composerLockPath, $this->originalComposerLock);
+        } elseif (File::exists($this->composerLockPath)) {
+            File::delete($this->composerLockPath);
+        }
+        if ($this->originalPackageLock !== null) {
+            File::put($this->packageLockPath, $this->originalPackageLock);
+        } elseif (File::exists($this->packageLockPath)) {
+            File::delete($this->packageLockPath);
+        }
         parent::tearDown();
     }
 
@@ -50,12 +82,6 @@ class IncrementalAuditServiceTest extends TestCase
 
     public function testCacheLockfileStoresCacheData(): void
     {
-        $composerLockPath = base_path('composer.lock');
-
-        if (!File::exists($composerLockPath)) {
-            $this->markTestSkipped('composer.lock does not exist');
-        }
-
         $this->service->cacheLockfile('composer');
 
         $this->assertFalse($this->service->hasLockfileChanged('composer'));
@@ -63,12 +89,6 @@ class IncrementalAuditServiceTest extends TestCase
 
     public function testClearCacheRemovesCachedData(): void
     {
-        $composerLockPath = base_path('composer.lock');
-
-        if (!File::exists($composerLockPath)) {
-            $this->markTestSkipped('composer.lock does not exist');
-        }
-
         $this->service->cacheLockfile('composer');
         $this->assertFalse($this->service->hasLockfileChanged('composer'));
 
@@ -78,12 +98,6 @@ class IncrementalAuditServiceTest extends TestCase
 
     public function testClearAllCachesClearsBothTypes(): void
     {
-        $composerLockPath = base_path('composer.lock');
-
-        if (!File::exists($composerLockPath)) {
-            $this->markTestSkipped('composer.lock does not exist');
-        }
-
         $this->service->cacheLockfile('composer');
         $this->service->clearAllCaches();
 
@@ -100,12 +114,6 @@ class IncrementalAuditServiceTest extends TestCase
 
     public function testGetChangedPackagesReturnsAllAsAddedWhenNoCacheExists(): void
     {
-        $composerLockPath = base_path('composer.lock');
-
-        if (!File::exists($composerLockPath)) {
-            $this->markTestSkipped('composer.lock does not exist');
-        }
-
         $changes = $this->service->getChangedPackages('composer');
 
         $this->assertIsArray($changes);
@@ -120,12 +128,6 @@ class IncrementalAuditServiceTest extends TestCase
 
     public function testGetChangedPackagesReturnsEmptyWhenNoChanges(): void
     {
-        $composerLockPath = base_path('composer.lock');
-
-        if (!File::exists($composerLockPath)) {
-            $this->markTestSkipped('composer.lock does not exist');
-        }
-
         $this->service->cacheLockfile('composer');
         $changes = $this->service->getChangedPackages('composer');
 
@@ -138,5 +140,41 @@ class IncrementalAuditServiceTest extends TestCase
         $this->service->cacheLockfile('nonexistent');
 
         $this->assertTrue($this->service->hasLockfileChanged('nonexistent'));
+    }
+
+    public function testCacheLockfileStoresNpmPackages(): void
+    {
+        $this->service->cacheLockfile('npm');
+
+        $this->assertFalse($this->service->hasLockfileChanged('npm'));
+    }
+
+    public function testGetChangedPackagesDetectsUpdatedNpmPackage(): void
+    {
+        $this->service->cacheLockfile('npm');
+
+        $updatedLock = [
+            'name' => 'test-app',
+            'version' => '1.0.0',
+            'lockfileVersion' => 2,
+            'packages' => [
+                '' => [
+                    'name' => 'test-app',
+                    'version' => '1.0.0',
+                ],
+                'node_modules/lodash' => [
+                    'version' => '4.17.21',
+                ],
+            ],
+        ];
+
+        File::put($this->packageLockPath, json_encode($updatedLock));
+
+        $changes = $this->service->getChangedPackages('npm');
+
+        $this->assertArrayHasKey('lodash', $changes);
+        $this->assertEquals('updated', $changes['lodash']['status']);
+        $this->assertEquals('4.17.20', $changes['lodash']['old_version']);
+        $this->assertEquals('4.17.21', $changes['lodash']['new_version']);
     }
 }

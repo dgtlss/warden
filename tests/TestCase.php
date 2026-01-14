@@ -108,7 +108,7 @@ abstract class TestCase extends Orchestra
         $process = Mockery::mock(Process::class);
         $process->shouldReceive('setWorkingDirectory')->andReturnSelf();
         $process->shouldReceive('setTimeout')->andReturnSelf();
-        $process->shouldReceive('run')->andReturnSelf();
+        $process->shouldReceive('run')->andReturn($exitCode);
         $process->shouldReceive('getOutput')->andReturn($output);
         $process->shouldReceive('getErrorOutput')->andReturn($errorOutput);
         $process->shouldReceive('getExitCode')->andReturn($exitCode);

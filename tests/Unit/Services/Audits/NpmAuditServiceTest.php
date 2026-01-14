@@ -4,10 +4,44 @@ namespace Dgtlss\Warden\Tests\Unit\Services\Audits;
 
 use Dgtlss\Warden\Services\Audits\NpmAuditService;
 use Dgtlss\Warden\Tests\TestCase;
+use Illuminate\Support\Facades\File;
 use Mockery;
+use Symfony\Component\Process\Process;
 
 class NpmAuditServiceTest extends TestCase
 {
+    private string $packageJsonPath;
+    private string $packageLockPath;
+    private ?string $originalPackageJson = null;
+    private ?string $originalPackageLock = null;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->packageJsonPath = base_path('package.json');
+        $this->packageLockPath = base_path('package-lock.json');
+        $this->originalPackageJson = File::exists($this->packageJsonPath) ? File::get($this->packageJsonPath) : null;
+        $this->originalPackageLock = File::exists($this->packageLockPath) ? File::get($this->packageLockPath) : null;
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->originalPackageJson !== null) {
+            File::put($this->packageJsonPath, $this->originalPackageJson);
+        } elseif (File::exists($this->packageJsonPath)) {
+            File::delete($this->packageJsonPath);
+        }
+
+        if ($this->originalPackageLock !== null) {
+            File::put($this->packageLockPath, $this->originalPackageLock);
+        } elseif (File::exists($this->packageLockPath)) {
+            File::delete($this->packageLockPath);
+        }
+
+        parent::tearDown();
+    }
+
     public function testGetNameReturnsNpm(): void
     {
         $service = new NpmAuditService();
@@ -17,6 +51,7 @@ class NpmAuditServiceTest extends TestCase
 
     public function testRunWithNoVulnerabilities(): void
     {
+        /** @var NpmAuditService $service */
         $service = Mockery::mock(NpmAuditService::class)->makePartial();
 
         $output = $this->getFixture('npm-audit-success.json');
@@ -28,6 +63,7 @@ class NpmAuditServiceTest extends TestCase
 
     public function testRunWithVulnerabilitiesModernFormat(): void
     {
+        /** @var NpmAuditService $service */
         $service = Mockery::mock(NpmAuditService::class)->makePartial();
 
         $output = $this->getFixture('npm-audit-vulnerabilities-v7.json');
@@ -58,6 +94,7 @@ class NpmAuditServiceTest extends TestCase
 
     public function testRunWithVulnerabilitiesLegacyFormat(): void
     {
+        /** @var NpmAuditService $service */
         $service = Mockery::mock(NpmAuditService::class)->makePartial();
 
         $output = $this->getFixture('npm-audit-vulnerabilities-legacy.json');
@@ -82,6 +119,7 @@ class NpmAuditServiceTest extends TestCase
 
     public function testRunWithInvalidJson(): void
     {
+        /** @var NpmAuditService $service */
         $service = Mockery::mock(NpmAuditService::class)->makePartial();
 
         $result = $this->runServiceWithMockedOutput($service, 'Invalid JSON output', 1, 'npm command failed');
@@ -93,6 +131,79 @@ class NpmAuditServiceTest extends TestCase
         $this->assertEquals('npm', $findings[0]->package);
         $this->assertStringContainsString('failed to run', $findings[0]->title);
         $this->assertEquals('high', $findings[0]->severity->value);
+    }
+
+    public function testRunReturnsFalseWhenPackageJsonMissing(): void
+    {
+        if (File::exists($this->packageJsonPath)) {
+            File::delete($this->packageJsonPath);
+        }
+
+        File::put($this->packageLockPath, $this->getFixture('package-lock.json'));
+
+        $service = new NpmAuditService();
+        $result = $service->run();
+
+        $this->assertFalse($result);
+        $this->assertNotEmpty($service->getFindings());
+        $this->assertEquals('Missing package.json', $service->getFindings()[0]->title);
+    }
+
+    public function testRunReturnsFalseWhenPackageLockMissing(): void
+    {
+        File::put($this->packageJsonPath, '{"name":"test","version":"1.0.0"}');
+        if (File::exists($this->packageLockPath)) {
+            File::delete($this->packageLockPath);
+        }
+
+        $service = new NpmAuditService();
+        $result = $service->run();
+
+        $this->assertFalse($result);
+        $this->assertNotEmpty($service->getFindings());
+        $this->assertEquals('Missing package-lock.json', $service->getFindings()[0]->title);
+    }
+
+    public function testRunParsesModernAuditOutput(): void
+    {
+        File::put($this->packageJsonPath, '{"name":"test","version":"1.0.0"}');
+        File::put($this->packageLockPath, $this->getFixture('package-lock.json'));
+
+        $process = $this->mockProcess($this->getFixture('npm-audit-vulnerabilities-v7.json'), 1);
+        $service = $this->makeServiceWithProcess($process);
+
+        $result = $service->run();
+
+        $this->assertTrue($result);
+        $this->assertCount(2, $service->getFindings());
+    }
+
+    public function testRunParsesLegacyAuditOutput(): void
+    {
+        File::put($this->packageJsonPath, '{"name":"test","version":"1.0.0"}');
+        File::put($this->packageLockPath, $this->getFixture('package-lock.json'));
+
+        $process = $this->mockProcess($this->getFixture('npm-audit-vulnerabilities-legacy.json'), 1);
+        $service = $this->makeServiceWithProcess($process);
+
+        $result = $service->run();
+
+        $this->assertTrue($result);
+        $this->assertCount(1, $service->getFindings());
+    }
+
+    public function testRunReturnsFalseWhenOutputIsNotJson(): void
+    {
+        File::put($this->packageJsonPath, '{"name":"test","version":"1.0.0"}');
+        File::put($this->packageLockPath, $this->getFixture('package-lock.json'));
+
+        $process = $this->mockProcess('Invalid JSON output', 1, 'npm command failed');
+        $service = $this->makeServiceWithProcess($process);
+
+        $result = $service->run();
+
+        $this->assertFalse($result);
+        $this->assertNotEmpty($service->getFindings());
     }
 
     /**
@@ -179,5 +290,19 @@ class NpmAuditServiceTest extends TestCase
         }
 
         return true;
+    }
+
+    private function makeServiceWithProcess(Process $process): NpmAuditService
+    {
+        return new class ($process) extends NpmAuditService {
+            public function __construct(private Process $process)
+            {
+            }
+
+            protected function createProcess(array $command): Process
+            {
+                return $this->process;
+            }
+        };
     }
 }
