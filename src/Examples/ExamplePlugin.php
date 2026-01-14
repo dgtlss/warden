@@ -8,8 +8,8 @@ use Dgtlss\Warden\Plugins\AbstractPlugin;
  * Example plugin demonstrating how to extend Warden.
  *
  * This plugin shows how to:
- * - Create a custom audit service
- * - Create a custom notification channel
+ * - Create a custom audit service (DockerAuditService)
+ * - Create a custom notification channel (WebhookChannel)
  * - Register them with Warden
  *
  * To create your own plugin:
@@ -49,7 +49,7 @@ class ExamplePlugin extends AbstractPlugin
     /**
      * A brief description of what this plugin does.
      */
-    protected string $description = 'Example Warden plugin demonstrating custom audits and channels';
+    protected string $description = 'Example Warden plugin with Docker security audits and custom webhook notifications';
 
     /**
      * The plugin author.
@@ -66,8 +66,7 @@ class ExamplePlugin extends AbstractPlugin
     public function audits(): array
     {
         return [
-            // Add your custom audit services here
-            // ExampleAuditService::class,
+            DockerAuditService::class,
         ];
     }
 
@@ -81,8 +80,7 @@ class ExamplePlugin extends AbstractPlugin
     public function channels(): array
     {
         return [
-            // Add your custom notification channels here
-            // ExampleNotificationChannel::class,
+            WebhookChannel::class,
         ];
     }
 

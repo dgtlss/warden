@@ -62,6 +62,7 @@ Perfect for continuous security monitoring and DevOps pipelines.
 - [Output Formats](#output-formats)
 - [Notifications](#notifications)
 - [Custom Audits](#custom-audits)
+- [Plugin System](#-plugin-system-new)
 - [Scheduling](#scheduling)
 - [CI/CD Integration](#cicd-integration)
 - [Advanced Features](#advanced-features)
@@ -656,6 +657,210 @@ Add to `config/warden.php`:
     \App\Audits\ApiKeySecurityAudit::class,
     // Add more custom audits
 ],
+```
+
+---
+
+## 🔌 Plugin System *(New)*
+
+Extend Warden with reusable plugins that bundle custom audits, notification channels, and commands. Plugins can be shared across projects or distributed as Composer packages.
+
+### What Plugins Can Provide
+
+| Component | Description |
+|-----------|-------------|
+| **Audits** | Custom security checks (e.g., Docker, AWS, Kubernetes) |
+| **Channels** | Custom notification endpoints (e.g., custom webhooks, SMS) |
+| **Commands** | Additional Artisan commands |
+
+### Creating a Plugin
+
+Create a class extending `AbstractPlugin`:
+
+```php
+<?php
+
+namespace App\Warden;
+
+use Dgtlss\Warden\Plugins\AbstractPlugin;
+
+class MySecurityPlugin extends AbstractPlugin
+{
+    protected string $name = 'my-security-plugin';
+    protected string $version = '1.0.0';
+    protected string $description = 'Custom security audits for my organization';
+
+    public function audits(): array
+    {
+        return [
+            \App\Warden\Audits\AwsSecurityAudit::class,
+            \App\Warden\Audits\KubernetesAudit::class,
+        ];
+    }
+
+    public function channels(): array
+    {
+        return [
+            \App\Warden\Channels\SmsChannel::class,
+        ];
+    }
+}
+```
+
+### Registering Plugins
+
+Add your plugin to `config/warden.php`:
+
+```php
+'plugins' => [
+    'auto_discover' => true,
+    'registered' => [
+        \App\Warden\MySecurityPlugin::class,
+    ],
+],
+```
+
+### Auto-Discovery for Packages
+
+Distributed plugins can be auto-discovered! Add to your package's `composer.json`:
+
+```json
+{
+    "name": "vendor/warden-docker",
+    "extra": {
+        "warden": {
+            "plugin": "Vendor\\WardenDocker\\DockerPlugin"
+        }
+    }
+}
+```
+
+When users install your package, Warden automatically discovers and loads the plugin.
+
+### Creating Custom Audits for Plugins
+
+Audit classes must implement `AuditService` or extend `AbstractAuditService`:
+
+```php
+<?php
+
+namespace App\Warden\Audits;
+
+use Dgtlss\Warden\Services\Audits\AbstractAuditService;
+use Dgtlss\Warden\Enums\Severity;
+use Dgtlss\Warden\ValueObjects\Finding;
+use Dgtlss\Warden\ValueObjects\Remediation;
+
+class AwsSecurityAudit extends AbstractAuditService
+{
+    public function getName(): string
+    {
+        return 'AWS Security';
+    }
+
+    public function run(): bool
+    {
+        // Check for exposed AWS credentials
+        if ($this->hasExposedCredentials()) {
+            $this->addFinding(Finding::create(
+                source: $this->getName(),
+                package: 'aws-config',
+                title: 'AWS credentials in environment',
+                severity: Severity::Critical,
+                remediation: Remediation::create(
+                    description: 'Use IAM roles instead of hardcoded credentials',
+                    links: ['https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html']
+                )
+            ));
+        }
+
+        return $this->findings === [];
+    }
+
+    protected function hasExposedCredentials(): bool
+    {
+        return env('AWS_ACCESS_KEY_ID') !== null 
+            && env('AWS_SECRET_ACCESS_KEY') !== null;
+    }
+}
+```
+
+### Creating Custom Channels for Plugins
+
+Channel classes must implement `NotificationChannel`:
+
+```php
+<?php
+
+namespace App\Warden\Channels;
+
+use Dgtlss\Warden\Contracts\NotificationChannel;
+use Dgtlss\Warden\ValueObjects\Finding;
+use Illuminate\Support\Facades\Http;
+
+class SmsChannel implements NotificationChannel
+{
+    public function getName(): string
+    {
+        return 'SMS';
+    }
+
+    public function isConfigured(): bool
+    {
+        return config('services.twilio.sid') !== null;
+    }
+
+    public function send(array $findings): void
+    {
+        $criticalCount = count(array_filter(
+            $findings, 
+            fn(Finding $f) => $f->severity->value === 'critical'
+        ));
+
+        if ($criticalCount > 0) {
+            // Send SMS via Twilio, Vonage, etc.
+            $this->sendSms("ALERT: {$criticalCount} critical security findings");
+        }
+    }
+
+    public function sendAbandonedPackages(array $abandonedPackages): void
+    {
+        // Optional: notify about abandoned packages
+    }
+
+    protected function sendSms(string $message): void
+    {
+        // Your SMS implementation
+    }
+}
+```
+
+### Example Plugin
+
+Warden includes an example plugin with Docker security audits and a custom webhook channel:
+
+```php
+// Register the example plugin to try it out
+'plugins' => [
+    'registered' => [
+        \Dgtlss\Warden\Examples\ExamplePlugin::class,
+    ],
+],
+```
+
+The example plugin includes:
+- **DockerAuditService**: Checks for Docker socket permissions, privileged containers, and exposed Docker API
+- **WebhookChannel**: Sends findings to any HTTP endpoint with optional authentication
+
+### Plugin Configuration
+
+```env
+# Enable/disable plugin auto-discovery
+WARDEN_PLUGIN_AUTO_DISCOVER=true
+
+# Example webhook channel configuration
+WARDEN_CUSTOM_WEBHOOK_URL=https://your-service.com/api/security-alerts
+WARDEN_CUSTOM_WEBHOOK_SECRET=your-shared-secret
 ```
 
 ---
