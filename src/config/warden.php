@@ -258,4 +258,37 @@ return [
     'security' => [
         'history_secret' => env('WARDEN_HISTORY_SECRET', env('APP_KEY')),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Plugin System
+    |--------------------------------------------------------------------------
+    |
+    | Configure Warden's plugin system for extending functionality.
+    |
+    | Plugins can provide:
+    | - Custom audit services
+    | - Custom notification channels
+    | - Additional Artisan commands
+    |
+    | Auto-discovery: When enabled, Warden will scan installed Composer
+    | packages for plugins that declare themselves in their composer.json:
+    |
+    |   "extra": {
+    |       "warden": {
+    |           "plugin": "Vendor\\Package\\MyPlugin"
+    |       }
+    |   }
+    |
+    | Manual registration: Add plugin classes to the 'registered' array
+    | for plugins that don't support auto-discovery.
+    |
+    */
+
+    'plugins' => [
+        'auto_discover' => env('WARDEN_PLUGIN_AUTO_DISCOVER', true),
+        'registered' => [
+            // \App\Warden\MyCustomPlugin::class,
+        ],
+    ],
 ];

@@ -37,4 +37,15 @@ class ConfigurationException extends WardenException
             configKey: $key,
         );
     }
+
+    /**
+     * Create an exception for a plugin configuration error.
+     */
+    public static function pluginError(string $message): self
+    {
+        return new self(
+            message: $message,
+            configKey: 'warden.plugins',
+        );
+    }
 }

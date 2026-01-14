@@ -8,21 +8,23 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Collection;
 use Carbon\Carbon;
 use Symfony\Component\Process\Process;
-use Dgtlss\Warden\Jobs\RunSecurityAuditJob;
-use Dgtlss\Warden\Services\Audits\ComposerAuditService;
-use Dgtlss\Warden\Services\Audits\NpmAuditService;
-use Dgtlss\Warden\Services\Audits\EnvAuditService;
-use Dgtlss\Warden\Services\Audits\StorageAuditService;
-use Dgtlss\Warden\Services\Audits\DebugModeAuditService;
-use Dgtlss\Warden\Services\AuditCacheService;
-use Dgtlss\Warden\Services\AuditRateLimiter;
-use Dgtlss\Warden\Services\ParallelAuditExecutor;
-use Dgtlss\Warden\Notifications\Channels\SlackChannel;
-use Dgtlss\Warden\Notifications\Channels\DiscordChannel;
-use Dgtlss\Warden\Notifications\Channels\EmailChannel;
-use Dgtlss\Warden\Notifications\Channels\TeamsChannel;
+use Dgtlss\Warden\Contracts\AuditService;
 use Dgtlss\Warden\Contracts\CustomAudit;
 use Dgtlss\Warden\Contracts\NotificationChannel;
+use Dgtlss\Warden\Jobs\RunSecurityAuditJob;
+use Dgtlss\Warden\Notifications\Channels\DiscordChannel;
+use Dgtlss\Warden\Notifications\Channels\EmailChannel;
+use Dgtlss\Warden\Notifications\Channels\SlackChannel;
+use Dgtlss\Warden\Notifications\Channels\TeamsChannel;
+use Dgtlss\Warden\Services\AuditCacheService;
+use Dgtlss\Warden\Services\AuditRateLimiter;
+use Dgtlss\Warden\Services\Audits\ComposerAuditService;
+use Dgtlss\Warden\Services\Audits\DebugModeAuditService;
+use Dgtlss\Warden\Services\Audits\EnvAuditService;
+use Dgtlss\Warden\Services\Audits\NpmAuditService;
+use Dgtlss\Warden\Services\Audits\StorageAuditService;
+use Dgtlss\Warden\Services\ParallelAuditExecutor;
+use Dgtlss\Warden\Services\PluginManager;
 use Dgtlss\Warden\ValueObjects\Finding;
 use function Laravel\Prompts\info;
 use function Laravel\Prompts\note;
@@ -53,11 +55,17 @@ class WardenAuditCommand extends Command
 
     protected ParallelAuditExecutor $parallelExecutor;
 
-    public function __construct(AuditCacheService $auditCacheService, ParallelAuditExecutor $parallelAuditExecutor)
-    {
+    protected PluginManager $pluginManager;
+
+    public function __construct(
+        AuditCacheService $auditCacheService,
+        ParallelAuditExecutor $parallelAuditExecutor,
+        PluginManager $pluginManager
+    ) {
         parent::__construct();
         $this->cacheService = $auditCacheService;
         $this->parallelExecutor = $parallelAuditExecutor;
+        $this->pluginManager = $pluginManager;
     }
 
     /**
@@ -452,11 +460,11 @@ class WardenAuditCommand extends Command
     /**
      * Initialize and return all audit services based on command options.
      *
-     * @return array<int, \Dgtlss\Warden\Contracts\AuditService> Array of audit service instances
+     * @return array<int, AuditService> Array of audit service instances
      */
     protected function initializeAuditServices(): array
     {
-        /** @var array<int, \Dgtlss\Warden\Contracts\AuditService> $services */
+        /** @var array<int, AuditService> $services */
         $services = [
             new ComposerAuditService(),
             new EnvAuditService(),
@@ -468,7 +476,20 @@ class WardenAuditCommand extends Command
             $services[] = new NpmAuditService();
         }
 
-        // Load custom audits from configuration
+        // Load audits from plugins
+        $pluginAuditClasses = $this->pluginManager->getAudits();
+        foreach ($pluginAuditClasses as $auditClass) {
+            try {
+                /** @var AuditService $audit */
+                $audit = app()->make($auditClass);
+                $services[] = $audit;
+                $this->verboseOutput('Loaded plugin audit: ' . $audit->getName());
+            } catch (\Exception $e) {
+                $this->warn(sprintf('Failed to load plugin audit %s: %s', $auditClass, $e->getMessage()));
+            }
+        }
+
+        // Load custom audits from configuration (legacy support)
         $customAudits = config('warden.custom_audits', []);
         if (is_iterable($customAudits)) {
             foreach ($customAudits as $customAuditClass) {
@@ -682,6 +703,21 @@ class WardenAuditCommand extends Command
         $teamsChannel = new TeamsChannel();
         if ($teamsChannel->isConfigured()) {
             $channels[] = $teamsChannel;
+        }
+
+        // Load channels from plugins
+        $pluginChannelClasses = $this->pluginManager->getChannels();
+        foreach ($pluginChannelClasses as $channelClass) {
+            try {
+                /** @var NotificationChannel $channel */
+                $channel = app()->make($channelClass);
+                if ($channel->isConfigured()) {
+                    $channels[] = $channel;
+                    $this->verboseOutput('Loaded plugin channel: ' . $channel->getName());
+                }
+            } catch (\Exception $e) {
+                $this->warn(sprintf('Failed to load plugin channel %s: %s', $channelClass, $e->getMessage()));
+            }
         }
 
         return $channels;
