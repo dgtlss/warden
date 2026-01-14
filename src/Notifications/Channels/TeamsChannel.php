@@ -3,11 +3,14 @@
 namespace Dgtlss\Warden\Notifications\Channels;
 
 use Dgtlss\Warden\Contracts\NotificationChannel;
+use Dgtlss\Warden\Notifications\Channels\Concerns\SignsWebhooks;
 use Dgtlss\Warden\ValueObjects\Finding;
 use Illuminate\Support\Facades\Http;
 
 class TeamsChannel implements NotificationChannel
 {
+    use SignsWebhooks;
+
     protected ?string $webhookUrl;
 
     public function __construct()
@@ -26,12 +29,12 @@ class TeamsChannel implements NotificationChannel
         }
 
         $card = $this->buildFindingsCard($findings);
-        
+
         if ($this->webhookUrl === null) {
             return;
         }
-        
-        Http::post($this->webhookUrl, $card);
+
+        $this->sendSignedPost($this->webhookUrl, $card);
     }
 
     /**
@@ -44,12 +47,12 @@ class TeamsChannel implements NotificationChannel
         }
 
         $card = $this->buildAbandonedPackagesCard($abandonedPackages);
-        
+
         if ($this->webhookUrl === null) {
             return;
         }
-        
-        Http::post($this->webhookUrl, $card);
+
+        $this->sendSignedPost($this->webhookUrl, $card);
     }
 
     public function isConfigured(): bool

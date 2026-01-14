@@ -6,6 +6,7 @@ use Dgtlss\Warden\Enums\Severity;
 use Dgtlss\Warden\Services\OutputFormatters\SarifFormatter;
 use Dgtlss\Warden\Tests\TestCase;
 use Dgtlss\Warden\ValueObjects\Finding;
+use Dgtlss\Warden\ValueObjects\Remediation;
 
 class SarifFormatterTest extends TestCase
 {
@@ -179,5 +180,145 @@ class SarifFormatterTest extends TestCase
         $this->assertArrayHasKey('runs', $decoded);
         $this->assertEmpty($decoded['runs'][0]['results']);
         $this->assertEmpty($decoded['runs'][0]['tool']['driver']['rules']);
+    }
+
+    public function testFormatIncludesFixesWhenRemediationPresent(): void
+    {
+        $formatter = new SarifFormatter();
+
+        $remediation = new Remediation(
+            description: 'Update the package to fix the vulnerability',
+            commands: ['composer update vendor/package'],
+            manualSteps: ['Review the changelog'],
+            links: ['https://example.com/advisory'],
+            priority: 'high',
+        );
+
+        $findings = [
+            new Finding(
+                source: 'Composer Audit',
+                package: 'vendor/package',
+                title: 'Security vulnerability',
+                severity: Severity::HIGH,
+                remediation: $remediation,
+            ),
+        ];
+
+        $output = $formatter->format($findings);
+        $decoded = json_decode($output, true);
+
+        $result = $decoded['runs'][0]['results'][0];
+
+        $this->assertArrayHasKey('fixes', $result);
+        $this->assertCount(1, $result['fixes']);
+        $this->assertArrayHasKey('description', $result['fixes'][0]);
+        $this->assertStringContainsString('Update the package', $result['fixes'][0]['description']['text']);
+    }
+
+    public function testFormatIncludesCommandsInFixes(): void
+    {
+        $formatter = new SarifFormatter();
+
+        $remediation = new Remediation(
+            description: 'Fix the issue',
+            commands: ['composer update vendor/package', 'composer audit'],
+        );
+
+        $findings = [
+            new Finding(
+                source: 'Test',
+                package: 'vendor/package',
+                title: 'Test issue',
+                severity: Severity::HIGH,
+                remediation: $remediation,
+            ),
+        ];
+
+        $output = $formatter->format($findings);
+        $decoded = json_decode($output, true);
+
+        $fixDescription = $decoded['runs'][0]['results'][0]['fixes'][0]['description']['text'];
+
+        $this->assertStringContainsString('composer update vendor/package', $fixDescription);
+        $this->assertStringContainsString('composer audit', $fixDescription);
+    }
+
+    public function testFormatIncludesManualStepsInFixes(): void
+    {
+        $formatter = new SarifFormatter();
+
+        $remediation = new Remediation(
+            description: 'Fix the issue',
+            manualSteps: ['Step 1: Review changes', 'Step 2: Test application'],
+        );
+
+        $findings = [
+            new Finding(
+                source: 'Test',
+                package: 'vendor/package',
+                title: 'Test issue',
+                severity: Severity::HIGH,
+                remediation: $remediation,
+            ),
+        ];
+
+        $output = $formatter->format($findings);
+        $decoded = json_decode($output, true);
+
+        $fixDescription = $decoded['runs'][0]['results'][0]['fixes'][0]['description']['text'];
+
+        $this->assertStringContainsString('Manual Steps', $fixDescription);
+        $this->assertStringContainsString('Review changes', $fixDescription);
+        $this->assertStringContainsString('Test application', $fixDescription);
+    }
+
+    public function testFormatIncludesLinksInFixes(): void
+    {
+        $formatter = new SarifFormatter();
+
+        $remediation = new Remediation(
+            description: 'Fix the issue',
+            links: ['https://example.com/advisory', 'https://nvd.nist.gov/vuln/CVE-2024-1234'],
+        );
+
+        $findings = [
+            new Finding(
+                source: 'Test',
+                package: 'vendor/package',
+                title: 'Test issue',
+                severity: Severity::HIGH,
+                remediation: $remediation,
+            ),
+        ];
+
+        $output = $formatter->format($findings);
+        $decoded = json_decode($output, true);
+
+        $fixDescription = $decoded['runs'][0]['results'][0]['fixes'][0]['description']['text'];
+
+        $this->assertStringContainsString('References', $fixDescription);
+        $this->assertStringContainsString('https://example.com/advisory', $fixDescription);
+        $this->assertStringContainsString('https://nvd.nist.gov/vuln/CVE-2024-1234', $fixDescription);
+    }
+
+    public function testFormatDoesNotIncludeFixesWhenNoRemediation(): void
+    {
+        $formatter = new SarifFormatter();
+
+        $findings = [
+            new Finding(
+                source: 'Test',
+                package: 'vendor/package',
+                title: 'Test issue',
+                severity: Severity::HIGH,
+            ),
+        ];
+
+        $output = $formatter->format($findings);
+        $decoded = json_decode($output, true);
+
+        $result = $decoded['runs'][0]['results'][0];
+
+        $this->assertArrayNotHasKey('fixes', $result);
     }
 }

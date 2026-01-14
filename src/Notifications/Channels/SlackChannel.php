@@ -3,11 +3,14 @@
 namespace Dgtlss\Warden\Notifications\Channels;
 
 use Dgtlss\Warden\Contracts\NotificationChannel;
+use Dgtlss\Warden\Notifications\Channels\Concerns\SignsWebhooks;
 use Dgtlss\Warden\ValueObjects\Finding;
 use Illuminate\Support\Facades\Http;
 
 class SlackChannel implements NotificationChannel
 {
+    use SignsWebhooks;
+
     protected ?string $webhookUrl;
 
     public function __construct()
@@ -26,18 +29,20 @@ class SlackChannel implements NotificationChannel
         }
 
         $blocks = $this->buildFindingsBlocks($findings);
-        
+
         $appNameConfig = config('warden.app_name', 'Application');
         $appName = is_string($appNameConfig) ? $appNameConfig : 'Application';
-        
+
         if ($this->webhookUrl === null) {
             return;
         }
-        
-        Http::post($this->webhookUrl, [
+
+        $payload = [
             'blocks' => $blocks,
-            'text' => sprintf('🚨 [%s] Warden Security Audit: %d vulnerabilities found', $appName, count($findings))
-        ]);
+            'text' => sprintf('🚨 [%s] Warden Security Audit: %d vulnerabilities found', $appName, count($findings)),
+        ];
+
+        $this->sendSignedPost($this->webhookUrl, $payload);
     }
 
     /**
@@ -50,18 +55,20 @@ class SlackChannel implements NotificationChannel
         }
 
         $blocks = $this->buildAbandonedPackagesBlocks($abandonedPackages);
-        
+
         $appNameConfig = config('warden.app_name', 'Application');
         $appName = is_string($appNameConfig) ? $appNameConfig : 'Application';
-        
+
         if ($this->webhookUrl === null) {
             return;
         }
-        
-        Http::post($this->webhookUrl, [
+
+        $payload = [
             'blocks' => $blocks,
-            'text' => sprintf('⚠️ [%s] Warden Audit: %d abandoned packages found', $appName, count($abandonedPackages))
-        ]);
+            'text' => sprintf('⚠️ [%s] Warden Audit: %d abandoned packages found', $appName, count($abandonedPackages)),
+        ];
+
+        $this->sendSignedPost($this->webhookUrl, $payload);
     }
 
     public function isConfigured(): bool

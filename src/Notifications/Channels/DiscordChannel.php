@@ -3,11 +3,14 @@
 namespace Dgtlss\Warden\Notifications\Channels;
 
 use Dgtlss\Warden\Contracts\NotificationChannel;
+use Dgtlss\Warden\Notifications\Channels\Concerns\SignsWebhooks;
 use Dgtlss\Warden\ValueObjects\Finding;
 use Illuminate\Support\Facades\Http;
 
 class DiscordChannel implements NotificationChannel
 {
+    use SignsWebhooks;
+
     protected ?string $webhookUrl;
 
     public function __construct()
@@ -28,17 +31,19 @@ class DiscordChannel implements NotificationChannel
         $appNameConfig = config('warden.app_name', 'Application');
         $appName = is_string($appNameConfig) ? $appNameConfig : 'Application';
         $embeds = $this->buildFindingsEmbeds($findings);
-        
+
         if ($this->webhookUrl === null) {
             return;
         }
-        
-        Http::post($this->webhookUrl, [
+
+        $payload = [
             'username' => 'Warden Security',
             'avatar_url' => 'https://raw.githubusercontent.com/dgtlss/warden/main/public/warden-logo.png',
             'content' => sprintf('🚨 **[%s] Security Audit Alert** - %d vulnerabilities found', $appName, count($findings)),
-            'embeds' => $embeds
-        ]);
+            'embeds' => $embeds,
+        ];
+
+        $this->sendSignedPost($this->webhookUrl, $payload);
     }
 
     /**
@@ -53,17 +58,19 @@ class DiscordChannel implements NotificationChannel
         $appNameConfig = config('warden.app_name', 'Application');
         $appName = is_string($appNameConfig) ? $appNameConfig : 'Application';
         $embed = $this->buildAbandonedPackagesEmbed($abandonedPackages);
-        
+
         if ($this->webhookUrl === null) {
             return;
         }
-        
-        Http::post($this->webhookUrl, [
+
+        $payload = [
             'username' => 'Warden Security',
             'avatar_url' => 'https://raw.githubusercontent.com/dgtlss/warden/main/public/warden-logo.png',
             'content' => sprintf('⚠️ **[%s] Abandoned Packages Alert** - %d packages need attention', $appName, count($abandonedPackages)),
-            'embeds' => [$embed]
-        ]);
+            'embeds' => [$embed],
+        ];
+
+        $this->sendSignedPost($this->webhookUrl, $payload);
     }
 
     public function isConfigured(): bool

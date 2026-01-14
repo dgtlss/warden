@@ -103,7 +103,7 @@ class SarifFormatter
         $results = [];
 
         foreach ($findings as $finding) {
-            $results[] = [
+            $result = [
                 'ruleId' => $this->getRuleId($finding),
                 'level' => $this->mapSeverityToLevel($finding->severity->value),
                 'message' => [
@@ -125,9 +125,53 @@ class SarifFormatter
                     'affected_versions' => $finding->affectedVersions,
                 ],
             ];
+
+            if ($finding->hasRemediation() && $finding->remediation !== null) {
+                $result['fixes'] = $this->formatFixes($finding);
+            }
+
+            $results[] = $result;
         }
 
         return $results;
+    }
+
+    /**
+     * Format remediation as SARIF fixes.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function formatFixes(Finding $finding): array
+    {
+        if (!$finding->hasRemediation() || $finding->remediation === null) {
+            return [];
+        }
+
+        $remediation = $finding->remediation;
+        $fixes = [];
+
+        $description = $remediation->description;
+
+        if ($remediation->hasCommands()) {
+            $description .= "\n\nCommands:\n" . implode("\n", array_map(fn($cmd) => "  $ {$cmd}", $remediation->commands));
+        }
+
+        if ($remediation->hasManualSteps()) {
+            $description .= "\n\nManual Steps:\n" . implode("\n", array_map(fn($step, $i) => "  " . ($i + 1) . ". {$step}", $remediation->manualSteps, array_keys($remediation->manualSteps)));
+        }
+
+        if ($remediation->hasLinks()) {
+            $description .= "\n\nReferences:\n" . implode("\n", array_map(fn($link) => "  - {$link}", $remediation->links));
+        }
+
+        $fixes[] = [
+            'description' => [
+                'text' => $description,
+            ],
+            'artifactChanges' => [],
+        ];
+
+        return $fixes;
     }
 
     /**

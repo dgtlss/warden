@@ -8,12 +8,14 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Collection;
 use Carbon\Carbon;
 use Symfony\Component\Process\Process;
+use Dgtlss\Warden\Jobs\RunSecurityAuditJob;
 use Dgtlss\Warden\Services\Audits\ComposerAuditService;
 use Dgtlss\Warden\Services\Audits\NpmAuditService;
 use Dgtlss\Warden\Services\Audits\EnvAuditService;
 use Dgtlss\Warden\Services\Audits\StorageAuditService;
 use Dgtlss\Warden\Services\Audits\DebugModeAuditService;
 use Dgtlss\Warden\Services\AuditCacheService;
+use Dgtlss\Warden\Services\AuditRateLimiter;
 use Dgtlss\Warden\Services\ParallelAuditExecutor;
 use Dgtlss\Warden\Notifications\Channels\SlackChannel;
 use Dgtlss\Warden\Notifications\Channels\DiscordChannel;
@@ -23,7 +25,14 @@ use Dgtlss\Warden\Contracts\CustomAudit;
 use Dgtlss\Warden\Contracts\NotificationChannel;
 use Dgtlss\Warden\ValueObjects\Finding;
 use function Laravel\Prompts\info;
+use function Laravel\Prompts\note;
+use function Laravel\Prompts\warning;
+use function Laravel\Prompts\error;
 use function Laravel\Prompts\table;
+use function Laravel\Prompts\confirm;
+use function Laravel\Prompts\select;
+use function Laravel\Prompts\multiselect;
+use function Laravel\Prompts\progress;
 
 class WardenAuditCommand extends Command
 {
@@ -33,7 +42,10 @@ class WardenAuditCommand extends Command
     {--ignore-abandoned : Ignore abandoned packages, without throwing an error}
     {--output= : Output format (json|github|gitlab|jenkins)}
     {--severity= : Filter by severity level (low|medium|high|critical)}
-    {--force : Force cache refresh and ignore cached results}';
+    {--force : Force cache refresh and ignore cached results}
+    {--queue : Run the audit as a background job}
+    {--dry-run : Simulate audit without sending notifications}
+    {--interactive : Run in interactive mode with prompts}';
 
     protected $description = 'Performs a composer audit and reports findings via Warden.';
 
@@ -57,6 +69,22 @@ class WardenAuditCommand extends Command
     {
         $this->displayVersion();
 
+        if ($this->option('dry-run')) {
+            note('DRY RUN MODE: Notifications will be simulated but not sent.');
+        }
+
+        if (!$this->checkRateLimit()) {
+            return 2;
+        }
+
+        if ($this->option('interactive')) {
+            return $this->runInteractiveMode();
+        }
+
+        if ($this->option('queue')) {
+            return $this->dispatchQueuedAudit();
+        }
+
         // Handle cache clearing if force option is used
         if ($this->option('force')) {
             $this->cacheService->clearCache();
@@ -73,17 +101,151 @@ class WardenAuditCommand extends Command
         }
     }
 
+    /**
+     * Run the audit in interactive mode using Laravel Prompts.
+     */
+    protected function runInteractiveMode(): int
+    {
+        note('Welcome to Warden Interactive Mode!');
+
+        /** @var array<string> $audits */
+        $audits = multiselect(
+            label: 'Which audits do you want to run?',
+            options: [
+                'composer' => 'Composer Dependencies',
+                'npm' => 'NPM Packages',
+                'env' => 'Environment Configuration',
+                'storage' => 'Storage Permissions',
+                'debug' => 'Debug Mode Detection',
+            ],
+            default: ['composer', 'env', 'storage', 'debug'],
+            required: true,
+        );
+
+        /** @var string $severity */
+        $severity = select(
+            label: 'Minimum severity level to report?',
+            options: [
+                'low' => 'Low (show all)',
+                'medium' => 'Medium and above',
+                'high' => 'High and above',
+                'critical' => 'Critical only',
+            ],
+            default: 'low',
+        );
+
+        $notify = confirm(
+            label: 'Send notifications when vulnerabilities are found?',
+            default: true,
+        );
+
+        $forceRefresh = confirm(
+            label: 'Force cache refresh?',
+            default: false,
+        );
+
+        if ($forceRefresh) {
+            $this->cacheService->clearCache();
+            note('Cache cleared.');
+        }
+
+        $includeNpm = in_array('npm', $audits, true);
+        $this->input->setOption('npm', $includeNpm);
+        $this->input->setOption('silent', !$notify);
+        $this->input->setOption('severity', $severity !== 'low' ? $severity : null);
+
+        $useParallel = config('warden.audits.parallel_execution', true);
+
+        if ($useParallel) {
+            return $this->runParallelAudits();
+        }
+
+        return $this->runSequentialAudits();
+    }
+
+    /**
+     * Check if the audit is rate limited.
+     */
+    protected function checkRateLimit(): bool
+    {
+        $rateLimiter = AuditRateLimiter::fromConfig();
+
+        if (!$rateLimiter->isEnabled()) {
+            return true;
+        }
+
+        $key = $rateLimiter->getContextKey();
+
+        if ($rateLimiter->tooManyAttempts($key)) {
+            $secondsUntilAvailable = $rateLimiter->availableIn($key);
+            $this->error("Rate limit exceeded. Please wait {$secondsUntilAvailable} seconds before trying again.");
+
+            return false;
+        }
+
+        $rateLimiter->hit($key);
+
+        return true;
+    }
+
+    /**
+     * Dispatch the audit as a queued job.
+     */
+    protected function dispatchQueuedAudit(): int
+    {
+        $auditTypes = ['composer', 'env', 'storage', 'debug'];
+
+        if ($this->option('npm')) {
+            $auditTypes[] = 'npm';
+        }
+
+        $severity = $this->option('severity');
+        $notify = !$this->option('silent');
+        $forceRefresh = (bool) $this->option('force');
+
+        $job = new RunSecurityAuditJob(
+            auditTypes: $auditTypes,
+            severity: is_string($severity) ? $severity : null,
+            notify: $notify,
+            forceRefresh: $forceRefresh,
+        );
+
+        /** @var string|null $connection */
+        $connection = config('warden.queue.connection');
+
+        /** @var string $queueName */
+        $queueName = config('warden.queue.queue_name', 'default');
+
+        if ($connection !== null) {
+            $job->onConnection($connection);
+        }
+
+        $job->onQueue($queueName);
+
+        dispatch($job);
+
+        $this->info('Security audit has been queued for background processing.');
+
+        return 0;
+    }
+
     protected function runParallelAudits(): int
     {
         $auditServices = $this->initializeAuditServices();
 
+        $this->verboseOutput('Initializing ' . count($auditServices) . ' audit service(s) for parallel execution...');
+
         // Add services to parallel executor
         foreach ($auditServices as $auditService) {
             $this->parallelExecutor->addAudit($auditService);
+            $this->verboseOutput('Added ' . $auditService->getName() . ' audit to parallel executor');
         }
 
-        $this->info('Running security audits in parallel...');
+        $startTime = microtime(true);
+        note('Running ' . count($auditServices) . ' security audits in parallel...');
         $results = $this->parallelExecutor->execute(true);
+        $duration = round((microtime(true) - $startTime) * 1000, 2);
+        $this->verboseOutput("Parallel execution completed in {$duration}ms");
 
         // Collect findings and abandoned packages
         /** @var array<int, Finding> $allFindings */
@@ -91,10 +253,31 @@ class WardenAuditCommand extends Command
         $abandonedPackages = [];
         $hasFailures = false;
 
-        foreach ($results as $result) {
+        /** @var array<int, array{success: bool, service: object, findings?: array<int, Finding>}> $typedResults */
+        $typedResults = $results;
+
+        if ($typedResults === []) {
+            return $this->processResults($allFindings, $abandonedPackages, $hasFailures);
+        }
+
+        /** @var array<int, array{success: bool, service: object, findings?: array<int, Finding>}> $processedResults */
+        $processedResults = progress(
+            label: 'Processing audit results',
+            steps: $typedResults,
+            callback: fn (array $result) => $result,
+            hint: 'Collecting findings...',
+        );
+
+        foreach ($processedResults as $result) {
+            /** @var object $service */
+            $service = $result['service'];
+            $serviceNameRaw = method_exists($service, 'getName') ? $service->getName() : null;
+            $serviceName = is_string($serviceNameRaw) ? $serviceNameRaw : 'unknown';
+
             if (!$result['success']) {
-                $this->handleAuditFailure($result['service']);
+                $this->handleAuditFailure($service);
                 $hasFailures = true;
+                $this->verboseOutput('Audit failed: ' . $serviceName);
                 continue;
             }
 
@@ -102,11 +285,13 @@ class WardenAuditCommand extends Command
                 /** @var array<int, Finding> $findings */
                 $findings = $result['findings'];
                 $allFindings = array_merge($allFindings, $findings);
+                $this->verboseOutput('Found ' . count($findings) . ' issue(s) from ' . $serviceName);
             }
 
             // Collect abandoned packages from composer audit
-            if ($result['service'] instanceof ComposerAuditService) {
-                $abandonedPackages = $result['service']->getAbandonedPackages();
+            if ($service instanceof ComposerAuditService) {
+                $abandonedPackages = $service->getAbandonedPackages();
+                $this->verboseOutput('Found ' . count($abandonedPackages) . ' abandoned package(s)');
             }
         }
 
@@ -121,40 +306,77 @@ class WardenAuditCommand extends Command
         $allFindings = [];
         $abandonedPackages = [];
 
-        foreach ($auditServices as $auditService) {
-            $auditName = $auditService->getName();
+        $this->verboseOutput('Initializing ' . count($auditServices) . ' audit service(s)...');
 
-            // Check cache first (unless force is used)
-            if (!$this->option('force') && $this->cacheService->hasRecentAudit($auditName)) {
-                $this->info(sprintf('Using cached results for %s audit...', $auditName));
-                $cached = $this->cacheService->getCachedResult($auditName);
-                if ($cached !== null && !empty($cached['result'])) {
-                    foreach ($cached['result'] as $findingData) {
-                        $allFindings[] = Finding::fromArray($findingData);
+        /** @var array<int, array{findings: array<int, Finding>, abandoned: array<int, array<string, mixed>>, failed: bool, service?: \Dgtlss\Warden\Contracts\AuditService}> $results */
+        $results = progress(
+            label: 'Running security audits',
+            steps: $auditServices,
+            callback: function (\Dgtlss\Warden\Contracts\AuditService $auditService) {
+                $auditName = $auditService->getName();
+                $startTime = microtime(true);
+
+                $this->verboseOutput("Starting {$auditName} audit...");
+
+                // Check cache first (unless force is used)
+                if (!$this->option('force') && $this->cacheService->hasRecentAudit($auditName)) {
+                    $this->verboseOutput("Cache hit for {$auditName} audit");
+                    $cached = $this->cacheService->getCachedResult($auditName);
+                    /** @var array<int, Finding> $cachedFindings */
+                    $cachedFindings = [];
+                    if ($cached !== null && !empty($cached['result'])) {
+                        foreach ($cached['result'] as $findingData) {
+                            $cachedFindings[] = Finding::fromArray($findingData);
+                        }
                     }
+
+                    return ['findings' => $cachedFindings, 'abandoned' => [], 'failed' => false];
                 }
 
-                continue;
-            }
+                $this->verboseOutput("Cache miss for {$auditName} - running fresh audit");
 
-            $this->info(sprintf('Running %s audit...', $auditName));
+                if (!$auditService->run()) {
+                    $duration = round((microtime(true) - $startTime) * 1000, 2);
+                    $this->verboseOutput("{$auditName} audit failed after {$duration}ms");
 
-            if (!$auditService->run()) {
-                $this->handleAuditFailure($auditService);
+                    return ['findings' => [], 'abandoned' => [], 'failed' => true, 'service' => $auditService];
+                }
+
+                $findings = $auditService->getFindings();
+                $duration = round((microtime(true) - $startTime) * 1000, 2);
+                $this->verboseOutput("{$auditName} audit completed in {$duration}ms - found " . count($findings) . " issue(s)");
+
+                if (!empty($findings)) {
+                    $this->cacheService->storeResult($auditName, array_map(fn(Finding $f) => $f->toArray(), $findings));
+                }
+
+                /** @var array<int, array<string, mixed>> $abandoned */
+                $abandoned = [];
+                if ($auditService instanceof ComposerAuditService) {
+                    $abandoned = $auditService->getAbandonedPackages();
+                }
+
+                return ['findings' => $findings, 'abandoned' => $abandoned, 'failed' => false];
+            },
+            hint: 'Checking for security vulnerabilities...',
+        );
+
+        foreach ($results as $result) {
+            if ($result['failed']) {
+                if (array_key_exists('service', $result)) {
+                    $this->handleAuditFailure($result['service']);
+                }
+
                 $hasFailures = true;
                 continue;
             }
 
-            $findings = $auditService->getFindings();
-            if (!empty($findings)) {
-                $allFindings = array_merge($allFindings, $findings);
-                // Cache the results (convert to array for cache if needed, but AuditCacheService might handle objects)
-                $this->cacheService->storeResult($auditName, array_map(fn(Finding $f) => $f->toArray(), $findings));
+            if (!empty($result['findings'])) {
+                $allFindings = array_merge($allFindings, $result['findings']);
             }
 
-            // Collect abandoned packages
-            if ($auditService instanceof ComposerAuditService) {
-                $abandonedPackages = $auditService->getAbandonedPackages();
+            if (!empty($result['abandoned'])) {
+                $abandonedPackages = array_merge($abandonedPackages, $result['abandoned']);
             }
         }
 
@@ -191,10 +413,14 @@ class WardenAuditCommand extends Command
         if ($allFindings !== []) {
             $this->displayFindings($allFindings);
 
-            if (!$this->option('silent')) {
+            if (!$this->option('silent') && !$this->option('dry-run')) {
                 $this->sendNotifications($allFindings);
                 $this->newLine();
                 info('Notifications sent.');
+            } elseif ($this->option('dry-run')) {
+                $this->newLine();
+                $channelCount = count($this->getNotificationChannels());
+                note(sprintf('DRY RUN: Would have sent %d notifications via %d configured channel(s).', count($allFindings), $channelCount));
             }
 
             return 1;
@@ -210,6 +436,17 @@ class WardenAuditCommand extends Command
     protected function displayVersion(): void
     {
         $this->info('Warden Audit Version ' . $this->getWardenVersion());
+    }
+
+    /**
+     * Output verbose debugging information if verbose mode is enabled.
+     */
+    protected function verboseOutput(string $message): void
+    {
+        if ($this->output->isVerbose()) {
+            $timestamp = date('H:i:s');
+            $this->line("<comment>[{$timestamp}]</comment> {$message}");
+        }
     }
 
     /**
@@ -320,10 +557,12 @@ class WardenAuditCommand extends Command
             rows: $rows
         );
 
-        if (!$this->option('silent')) {
+        if (!$this->option('silent') && !$this->option('dry-run')) {
             /** @var array<int, array<string, mixed>> $abandonedPackagesTyped */
             $abandonedPackagesTyped = $abandonedPackages;
             $this->sendAbandonedPackagesNotification($abandonedPackagesTyped);
+        } elseif ($this->option('dry-run')) {
+            note(sprintf('DRY RUN: Would have sent abandoned packages notification for %d packages.', count($abandonedPackages)));
         }
     }
 

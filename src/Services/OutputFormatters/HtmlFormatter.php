@@ -123,7 +123,7 @@ HTML;
         foreach ($findingsBySource as $source => $findings) {
             $html .= "<h2>📋 {$source}</h2>";
             $html .= '<table class="findings-table">';
-            $html .= '<thead><tr><th>Severity</th><th>Package</th><th>Issue</th><th>Details</th></tr></thead>';
+            $html .= '<thead><tr><th>Severity</th><th>Package</th><th>Issue</th><th>Details</th><th>Remediation</th></tr></thead>';
             $html .= '<tbody>';
 
             foreach ($findings as $finding) {
@@ -135,6 +135,7 @@ HTML;
                 $html .= "<td>" . htmlspecialchars($finding->package) . "</td>";
                 $html .= "<td>" . htmlspecialchars($finding->title) . "</td>";
                 $html .= "<td>" . $this->formatDetails($finding) . "</td>";
+                $html .= "<td>" . $this->formatRemediation($finding) . "</td>";
                 $html .= '</tr>';
             }
 
@@ -166,6 +167,58 @@ HTML;
         }
 
         return $details ?: '-';
+    }
+
+    /**
+     * Format remediation suggestions.
+     */
+    protected function formatRemediation(Finding $finding): string
+    {
+        if (!$finding->hasRemediation() || $finding->remediation === null) {
+            return '<span class="no-remediation">-</span>';
+        }
+
+        $remediation = $finding->remediation;
+        $html = '<div class="remediation">';
+
+        $priorityClass = match ($remediation->priority) {
+            'immediate' => 'priority-immediate',
+            'high' => 'priority-high',
+            'medium' => 'priority-medium',
+            default => 'priority-low',
+        };
+
+        $html .= '<span class="priority-badge ' . $priorityClass . '">' . ucfirst($remediation->priority) . '</span>';
+        $html .= '<p class="remediation-desc">' . htmlspecialchars($remediation->description) . '</p>';
+
+        if ($remediation->hasCommands()) {
+            $html .= '<div class="remediation-commands"><strong>Commands:</strong><ul>';
+            foreach ($remediation->commands as $command) {
+                $html .= '<li><code>' . htmlspecialchars($command) . '</code></li>';
+            }
+            $html .= '</ul></div>';
+        }
+
+        if ($remediation->hasManualSteps()) {
+            $html .= '<div class="remediation-steps"><strong>Manual Steps:</strong><ul>';
+            foreach ($remediation->manualSteps as $step) {
+                $html .= '<li>' . htmlspecialchars($step) . '</li>';
+            }
+            $html .= '</ul></div>';
+        }
+
+        if ($remediation->hasLinks()) {
+            $html .= '<div class="remediation-links"><strong>References:</strong><ul>';
+            foreach ($remediation->links as $link) {
+                $escapedLink = htmlspecialchars($link);
+                $html .= '<li><a href="' . $escapedLink . '" target="_blank" rel="noopener">' . $escapedLink . '</a></li>';
+            }
+            $html .= '</ul></div>';
+        }
+
+        $html .= '</div>';
+
+        return $html;
     }
 
     /**
@@ -209,7 +262,7 @@ HTML;
         return <<<CSS
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: #f5f7fa; color: #2d3748; line-height: 1.6; }
-.container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+.container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
 header { text-align: center; margin-bottom: 3rem; }
 header h1 { font-size: 2.5rem; color: #1a202c; margin-bottom: 0.5rem; }
 .timestamp { color: #718096; font-size: 0.9rem; }
@@ -227,7 +280,7 @@ h2 { color: #2d3748; margin-bottom: 1.5rem; font-size: 1.5rem; }
 .summary-card.low { background: #dbeafe; border-color: #93c5fd; color: #1e40af; }
 .findings-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
 .findings-table th { background: #f9fafb; padding: 0.75rem; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
-.findings-table td { padding: 0.75rem; border-bottom: 1px solid #e5e7eb; }
+.findings-table td { padding: 0.75rem; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
 .findings-table tr:hover { background: #f9fafb; }
 .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
 .badge.critical { background: #fecaca; color: #991b1b; }
@@ -239,6 +292,20 @@ h2 { color: #2d3748; margin-bottom: 1.5rem; font-size: 1.5rem; }
 footer { text-align: center; padding: 2rem; color: #718096; }
 footer a { color: #3182ce; text-decoration: none; }
 footer a:hover { text-decoration: underline; }
+.remediation { font-size: 0.875rem; max-width: 400px; }
+.remediation-desc { margin: 0.5rem 0; color: #4a5568; }
+.remediation-commands, .remediation-steps, .remediation-links { margin-top: 0.75rem; }
+.remediation-commands ul, .remediation-steps ul, .remediation-links ul { margin-left: 1rem; margin-top: 0.25rem; }
+.remediation-commands li, .remediation-steps li, .remediation-links li { margin-bottom: 0.25rem; }
+.remediation code { background: #f1f5f9; padding: 0.125rem 0.375rem; border-radius: 4px; font-family: 'SF Mono', Monaco, 'Courier New', monospace; font-size: 0.8rem; color: #1e40af; word-break: break-all; }
+.remediation a { color: #3182ce; text-decoration: none; word-break: break-all; }
+.remediation a:hover { text-decoration: underline; }
+.priority-badge { display: inline-block; padding: 0.125rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; margin-bottom: 0.25rem; }
+.priority-immediate { background: #fecaca; color: #991b1b; }
+.priority-high { background: #fed7aa; color: #9a3412; }
+.priority-medium { background: #fef08a; color: #92400e; }
+.priority-low { background: #bfdbfe; color: #1e40af; }
+.no-remediation { color: #a0aec0; }
 CSS;
     }
 }

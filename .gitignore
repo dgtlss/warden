@@ -4,3 +4,6 @@
 IMPROVEMENT_PLAN.md
 SESSION.md
 TESTING.md
+coverage-html/
+# Snyk Security Extension - AI Rules (auto-generated)
+.cursor/rules/snyk_rules.mdc

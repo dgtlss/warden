@@ -17,6 +17,7 @@ final readonly class Finding
         public ?string $cve = null,
         public ?string $affectedVersions = null,
         public ?string $error = null,
+        public ?Remediation $remediation = null,
     ) {
     }
 
@@ -27,6 +28,17 @@ final readonly class Finding
      */
     public static function fromArray(array $data): self
     {
+        $remediation = null;
+        if (isset($data['remediation'])) {
+            if ($data['remediation'] instanceof Remediation) {
+                $remediation = $data['remediation'];
+            } elseif (is_array($data['remediation'])) {
+                /** @var array<string, mixed> $remediationData */
+                $remediationData = $data['remediation'];
+                $remediation = Remediation::fromArray($remediationData);
+            }
+        }
+
         return new self(
             source: is_string($data['source'] ?? null) ? $data['source'] : 'unknown',
             package: is_string($data['package'] ?? null) ? $data['package'] : 'unknown',
@@ -37,6 +49,7 @@ final readonly class Finding
             cve: is_string($data['cve'] ?? null) ? $data['cve'] : null,
             affectedVersions: is_string($data['affected_versions'] ?? null) ? $data['affected_versions'] : null,
             error: is_string($data['error'] ?? null) ? $data['error'] : null,
+            remediation: $remediation,
         );
     }
 
@@ -64,6 +77,10 @@ final readonly class Finding
 
         if ($this->error !== null) {
             $array['error'] = $this->error;
+        }
+
+        if ($this->remediation !== null) {
+            $array['remediation'] = $this->remediation->toArray();
         }
 
         return $array;
@@ -108,6 +125,14 @@ final readonly class Finding
     }
 
     /**
+     * Check if this finding has remediation suggestions.
+     */
+    public function hasRemediation(): bool
+    {
+        return $this->remediation !== null;
+    }
+
+    /**
      * Create a new Finding with modified values.
      */
     public function with(
@@ -118,6 +143,7 @@ final readonly class Finding
         ?string $cve = null,
         ?string $affectedVersions = null,
         ?string $error = null,
+        ?Remediation $remediation = null,
     ): self {
         return new self(
             source: $source ?? $this->source,
@@ -127,6 +153,24 @@ final readonly class Finding
             cve: $cve ?? $this->cve,
             affectedVersions: $affectedVersions ?? $this->affectedVersions,
             error: $error ?? $this->error,
+            remediation: $remediation ?? $this->remediation,
+        );
+    }
+
+    /**
+     * Create a new Finding with remediation suggestions.
+     */
+    public function withRemediation(Remediation $remediation): self
+    {
+        return new self(
+            source: $this->source,
+            package: $this->package,
+            title: $this->title,
+            severity: $this->severity,
+            cve: $this->cve,
+            affectedVersions: $this->affectedVersions,
+            error: $this->error,
+            remediation: $remediation,
         );
     }
 }

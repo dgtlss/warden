@@ -38,25 +38,125 @@ class AuditHistoryService
         ?string $triggeredBy = null
     ): int {
         $severityBreakdown = $this->calculateSeverityBreakdown($findings);
+        $findingsJson = json_encode($this->findingsToArray($findings));
+        $metadataJson = json_encode($metadata);
 
-        $id = DB::table($this->tableName)->insertGetId([
+        $data = [
             'audit_type' => $auditType,
             'total_findings' => count($findings),
             'critical_findings' => $severityBreakdown['critical'],
             'high_findings' => $severityBreakdown['high'],
             'medium_findings' => $severityBreakdown['medium'],
             'low_findings' => $severityBreakdown['low'],
-            'findings' => json_encode($this->findingsToArray($findings)),
-            'metadata' => json_encode($metadata),
+            'findings' => $findingsJson,
+            'metadata' => $metadataJson,
             'has_failures' => count($findings) > 0,
             'trigger' => $trigger,
             'triggered_by' => $triggeredBy,
             'duration_ms' => $durationMs,
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
+        ];
+
+        $data['integrity_hash'] = $this->calculateHash($data);
+
+        $id = DB::table($this->tableName)->insertGetId($data);
 
         return $id;
+    }
+
+    /**
+     * Calculate integrity hash for audit data.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function calculateHash(array $data): string
+    {
+        $hashableData = [
+            'audit_type' => $data['audit_type'] ?? '',
+            'total_findings' => $data['total_findings'] ?? 0,
+            'critical_findings' => $data['critical_findings'] ?? 0,
+            'high_findings' => $data['high_findings'] ?? 0,
+            'medium_findings' => $data['medium_findings'] ?? 0,
+            'low_findings' => $data['low_findings'] ?? 0,
+            'findings' => $data['findings'] ?? '[]',
+            'metadata' => $data['metadata'] ?? '{}',
+        ];
+
+        /** @var string $secret */
+        $secret = Config::get('warden.security.history_secret', Config::get('app.key', 'warden-default-key'));
+
+        return hash_hmac('sha256', json_encode($hashableData) ?: '', $secret);
+    }
+
+    /**
+     * Verify the integrity of an audit record.
+     */
+    public function verify(int $id): bool
+    {
+        $record = DB::table($this->tableName)->find($id);
+
+        if ($record === null) {
+            return false;
+        }
+
+        $storedHash = $record->integrity_hash ?? null;
+
+        if ($storedHash === null || !is_string($storedHash)) {
+            return false;
+        }
+
+        $data = [
+            'audit_type' => $record->audit_type ?? '',
+            'total_findings' => $record->total_findings ?? 0,
+            'critical_findings' => $record->critical_findings ?? 0,
+            'high_findings' => $record->high_findings ?? 0,
+            'medium_findings' => $record->medium_findings ?? 0,
+            'low_findings' => $record->low_findings ?? 0,
+            'findings' => $record->findings ?? '[]',
+            'metadata' => $record->metadata ?? '{}',
+        ];
+
+        $calculatedHash = $this->calculateHash($data);
+
+        return hash_equals($calculatedHash, $storedHash);
+    }
+
+    /**
+     * Verify all audit records in the database.
+     *
+     * @return array{verified: int, failed: int, missing_hash: int, failed_ids: array<int, int>}
+     */
+    public function verifyAll(): array
+    {
+        $results = [
+            'verified' => 0,
+            'failed' => 0,
+            'missing_hash' => 0,
+            'failed_ids' => [],
+        ];
+
+        $records = DB::table($this->tableName)->get();
+
+        foreach ($records as $record) {
+            $recordId = $record->id ?? 0;
+            $id = is_numeric($recordId) ? (int) $recordId : 0;
+            $storedHash = $record->integrity_hash ?? null;
+
+            if ($storedHash === null || !is_string($storedHash) || $storedHash === '') {
+                $results['missing_hash']++;
+                continue;
+            }
+
+            if ($this->verify($id)) {
+                $results['verified']++;
+            } else {
+                $results['failed']++;
+                $results['failed_ids'][] = $id;
+            }
+        }
+
+        return $results;
     }
 
     /**

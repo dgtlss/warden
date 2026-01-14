@@ -172,8 +172,90 @@ return [
     | - Cloud: AWS_SECRET_KEY, GOOGLE_CLOUD_KEY
     |
     */
-   
+
     'sensitive_keys' => [
-       // Add your sensitive keys here
+        // Add your sensitive keys here
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Webhook Security
+    |--------------------------------------------------------------------------
+    |
+    | Configure webhook signing for secure notification delivery.
+    | When a secret is configured, all webhook requests will include
+    | HMAC-SHA256 signatures for verification.
+    |
+    */
+
+    'webhook_security' => [
+        'enabled' => env('WARDEN_WEBHOOK_SIGNING_ENABLED', false),
+        'secret' => env('WARDEN_WEBHOOK_SECRET'),
+        'signature_header' => env('WARDEN_WEBHOOK_SIGNATURE_HEADER', 'X-Warden-Signature'),
+        'timestamp_header' => env('WARDEN_WEBHOOK_TIMESTAMP_HEADER', 'X-Warden-Timestamp'),
+        'max_time_difference' => env('WARDEN_WEBHOOK_MAX_TIME_DIFF', 300), // seconds
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rate Limiting
+    |--------------------------------------------------------------------------
+    |
+    | Configure rate limiting for audit commands to prevent abuse.
+    | This is especially useful in shared or multi-tenant environments.
+    |
+    */
+
+    'rate_limit' => [
+        'enabled' => env('WARDEN_RATE_LIMIT_ENABLED', false),
+        'max_attempts' => env('WARDEN_RATE_LIMIT_MAX_ATTEMPTS', 10),
+        'decay_minutes' => env('WARDEN_RATE_LIMIT_DECAY_MINUTES', 60),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Queue Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure background job processing for audits.
+    | When enabled with --queue flag, audits run asynchronously.
+    |
+    */
+
+    'queue' => [
+        'enabled' => env('WARDEN_QUEUE_ENABLED', true),
+        'connection' => env('WARDEN_QUEUE_CONNECTION', config('queue.default')),
+        'queue_name' => env('WARDEN_QUEUE_NAME', 'default'),
+        'tries' => env('WARDEN_QUEUE_TRIES', 3),
+        'timeout' => env('WARDEN_QUEUE_TIMEOUT', 300),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Incremental Audits
+    |--------------------------------------------------------------------------
+    |
+    | Configure incremental audit behavior for performance optimization.
+    | When enabled, audits will only scan packages that have changed
+    | since the last audit based on lockfile comparison.
+    |
+    */
+
+    'incremental' => [
+        'enabled' => env('WARDEN_INCREMENTAL_ENABLED', false),
+        'cache_ttl' => env('WARDEN_INCREMENTAL_CACHE_TTL', 86400), // seconds (24 hours)
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Security Settings
+    |--------------------------------------------------------------------------
+    |
+    | Advanced security configuration for audit data protection.
+    |
+    */
+
+    'security' => [
+        'history_secret' => env('WARDEN_HISTORY_SECRET', env('APP_KEY')),
     ],
 ];

@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Console\Scheduling\Schedule;
 use Dgtlss\Warden\Commands\WardenAuditCommand;
 use Dgtlss\Warden\Commands\WardenScheduleCommand;
+use Dgtlss\Warden\Commands\WardenSetupCommand;
 use Dgtlss\Warden\Commands\WardenSyntaxCommand;
 use Dgtlss\Warden\Services\AuditCacheService;
 use Dgtlss\Warden\Services\ParallelAuditExecutor;
@@ -45,6 +46,7 @@ class WardenServiceProvider extends ServiceProvider
             $this->commands([
                 WardenAuditCommand::class,
                 WardenScheduleCommand::class,
+                WardenSetupCommand::class,
                 WardenSyntaxCommand::class,
             ]);
 

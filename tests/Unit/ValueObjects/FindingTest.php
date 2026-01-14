@@ -4,6 +4,7 @@ namespace Dgtlss\Warden\Tests\Unit\ValueObjects;
 
 use Dgtlss\Warden\Enums\Severity;
 use Dgtlss\Warden\ValueObjects\Finding;
+use Dgtlss\Warden\ValueObjects\Remediation;
 use Dgtlss\Warden\Tests\TestCase;
 
 class FindingTest extends TestCase
@@ -285,5 +286,181 @@ class FindingTest extends TestCase
         $this->assertEquals($original->package, $copy->package);
         $this->assertEquals($original->title, $copy->title);
         $this->assertSame($original->severity, $copy->severity);
+    }
+
+    public function testConstructorWithRemediation(): void
+    {
+        $remediation = new Remediation(
+            description: 'Update the package',
+            commands: ['composer update vendor/package'],
+            priority: 'high',
+        );
+
+        $finding = new Finding(
+            source: 'composer',
+            package: 'vendor/package',
+            title: 'Test Vulnerability',
+            severity: Severity::HIGH,
+            remediation: $remediation,
+        );
+
+        $this->assertNotNull($finding->remediation);
+        $this->assertEquals('Update the package', $finding->remediation->description);
+    }
+
+    public function testHasRemediationReturnsTrueWhenPresent(): void
+    {
+        $remediation = new Remediation(description: 'Fix it');
+        $finding = new Finding(
+            source: 'test',
+            package: 'test',
+            title: 'test',
+            severity: Severity::HIGH,
+            remediation: $remediation,
+        );
+
+        $this->assertTrue($finding->hasRemediation());
+    }
+
+    public function testHasRemediationReturnsFalseWhenNull(): void
+    {
+        $finding = new Finding(
+            source: 'test',
+            package: 'test',
+            title: 'test',
+            severity: Severity::HIGH,
+        );
+
+        $this->assertFalse($finding->hasRemediation());
+    }
+
+    public function testWithRemediationCreatesNewInstanceWithRemediation(): void
+    {
+        $original = new Finding(
+            source: 'composer',
+            package: 'vendor/package',
+            title: 'Test Vulnerability',
+            severity: Severity::HIGH,
+        );
+
+        $remediation = new Remediation(
+            description: 'Update the package',
+            commands: ['composer update vendor/package'],
+        );
+
+        $modified = $original->withRemediation($remediation);
+
+        // Original should not have remediation
+        $this->assertFalse($original->hasRemediation());
+
+        // Modified should have remediation
+        $this->assertTrue($modified->hasRemediation());
+        $this->assertEquals('Update the package', $modified->remediation->description);
+
+        // Other values should be preserved
+        $this->assertEquals('composer', $modified->source);
+        $this->assertEquals('vendor/package', $modified->package);
+        $this->assertEquals('Test Vulnerability', $modified->title);
+        $this->assertSame(Severity::HIGH, $modified->severity);
+    }
+
+    public function testFromArrayWithRemediationObject(): void
+    {
+        $remediation = new Remediation(description: 'Fix it');
+        $data = [
+            'source' => 'composer',
+            'package' => 'vendor/package',
+            'title' => 'Test',
+            'severity' => 'high',
+            'remediation' => $remediation,
+        ];
+
+        $finding = Finding::fromArray($data);
+
+        $this->assertTrue($finding->hasRemediation());
+        $this->assertEquals('Fix it', $finding->remediation->description);
+    }
+
+    public function testFromArrayWithRemediationArray(): void
+    {
+        $data = [
+            'source' => 'composer',
+            'package' => 'vendor/package',
+            'title' => 'Test',
+            'severity' => 'high',
+            'remediation' => [
+                'description' => 'Update the package',
+                'commands' => ['composer update vendor/package'],
+                'priority' => 'high',
+            ],
+        ];
+
+        $finding = Finding::fromArray($data);
+
+        $this->assertTrue($finding->hasRemediation());
+        $this->assertEquals('Update the package', $finding->remediation->description);
+        $this->assertEquals(['composer update vendor/package'], $finding->remediation->commands);
+        $this->assertEquals('high', $finding->remediation->priority);
+    }
+
+    public function testToArrayIncludesRemediationWhenPresent(): void
+    {
+        $remediation = new Remediation(
+            description: 'Update the package',
+            commands: ['composer update'],
+            priority: 'high',
+        );
+
+        $finding = new Finding(
+            source: 'composer',
+            package: 'vendor/package',
+            title: 'Test',
+            severity: Severity::HIGH,
+            remediation: $remediation,
+        );
+
+        $array = $finding->toArray();
+
+        $this->assertArrayHasKey('remediation', $array);
+        $this->assertEquals('Update the package', $array['remediation']['description']);
+        $this->assertEquals('high', $array['remediation']['priority']);
+    }
+
+    public function testToArrayOmitsRemediationWhenNull(): void
+    {
+        $finding = new Finding(
+            source: 'composer',
+            package: 'vendor/package',
+            title: 'Test',
+            severity: Severity::HIGH,
+        );
+
+        $array = $finding->toArray();
+
+        $this->assertArrayNotHasKey('remediation', $array);
+    }
+
+    public function testWithRemediationPreservesAllOtherProperties(): void
+    {
+        $original = new Finding(
+            source: 'composer',
+            package: 'vendor/package',
+            title: 'Test Vulnerability',
+            severity: Severity::HIGH,
+            cve: 'CVE-2024-1234',
+            affectedVersions: '<1.0.0',
+            error: 'Some error',
+        );
+
+        $remediation = new Remediation(description: 'Fix it');
+        $modified = $original->withRemediation($remediation);
+
+        $this->assertEquals($original->source, $modified->source);
+        $this->assertEquals($original->package, $modified->package);
+        $this->assertEquals($original->title, $modified->title);
+        $this->assertSame($original->severity, $modified->severity);
+        $this->assertEquals($original->cve, $modified->cve);
+        $this->assertEquals($original->affectedVersions, $modified->affectedVersions);
+        $this->assertEquals($original->error, $modified->error);
     }
 }

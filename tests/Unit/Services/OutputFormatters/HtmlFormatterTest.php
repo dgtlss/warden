@@ -6,6 +6,7 @@ use Dgtlss\Warden\Enums\Severity;
 use Dgtlss\Warden\Services\OutputFormatters\HtmlFormatter;
 use Dgtlss\Warden\Tests\TestCase;
 use Dgtlss\Warden\ValueObjects\Finding;
+use Dgtlss\Warden\ValueObjects\Remediation;
 
 class HtmlFormatterTest extends TestCase
 {
@@ -177,5 +178,162 @@ class HtmlFormatterTest extends TestCase
         // Should not contain unescaped HTML tags from user input
         $this->assertStringNotContainsString('<script>alert("xss")</script>', $output);
         $this->assertStringContainsString('&lt;script&gt;', $output);
+    }
+
+    public function testFormatIncludesRemediationColumn(): void
+    {
+        $formatter = new HtmlFormatter();
+
+        $findings = [
+            new Finding(
+                source: 'Test',
+                package: 'test/package',
+                title: 'Test issue',
+                severity: Severity::HIGH
+            ),
+        ];
+
+        $output = $formatter->format($findings);
+
+        $this->assertStringContainsString('<th>Remediation</th>', $output);
+    }
+
+    public function testFormatDisplaysRemediationWhenPresent(): void
+    {
+        $formatter = new HtmlFormatter();
+
+        $remediation = new Remediation(
+            description: 'Update the package to fix the vulnerability',
+            commands: ['composer update test/package'],
+            manualSteps: ['Review the changelog'],
+            links: ['https://example.com/advisory'],
+            priority: 'high',
+        );
+
+        $findings = [
+            new Finding(
+                source: 'Composer Audit',
+                package: 'test/package',
+                title: 'Security vulnerability',
+                severity: Severity::HIGH,
+                remediation: $remediation,
+            ),
+        ];
+
+        $output = $formatter->format($findings);
+
+        $this->assertStringContainsString('Update the package to fix the vulnerability', $output);
+        $this->assertStringContainsString('composer update test/package', $output);
+        $this->assertStringContainsString('Review the changelog', $output);
+        $this->assertStringContainsString('https://example.com/advisory', $output);
+    }
+
+    public function testFormatDisplaysPriorityBadge(): void
+    {
+        $formatter = new HtmlFormatter();
+
+        $remediation = new Remediation(
+            description: 'Fix it immediately',
+            priority: 'immediate',
+        );
+
+        $findings = [
+            new Finding(
+                source: 'Test',
+                package: 'test/package',
+                title: 'Critical issue',
+                severity: Severity::CRITICAL,
+                remediation: $remediation,
+            ),
+        ];
+
+        $output = $formatter->format($findings);
+
+        $this->assertStringContainsString('priority-immediate', $output);
+        $this->assertStringContainsString('Immediate', $output);
+    }
+
+    public function testFormatShowsNoRemediationPlaceholder(): void
+    {
+        $formatter = new HtmlFormatter();
+
+        $findings = [
+            new Finding(
+                source: 'Test',
+                package: 'test/package',
+                title: 'Test issue',
+                severity: Severity::HIGH
+            ),
+        ];
+
+        $output = $formatter->format($findings);
+
+        $this->assertStringContainsString('no-remediation', $output);
+    }
+
+    public function testFormatEscapesHtmlInRemediation(): void
+    {
+        $formatter = new HtmlFormatter();
+
+        $remediation = new Remediation(
+            description: '<script>alert("xss")</script>',
+            commands: ['<script>malicious</script>'],
+            manualSteps: ['<img onerror="alert(1)" src="x">'],
+            links: ['https://example.com/<script>'],
+        );
+
+        $findings = [
+            new Finding(
+                source: 'Test',
+                package: 'test/package',
+                title: 'Test issue',
+                severity: Severity::HIGH,
+                remediation: $remediation,
+            ),
+        ];
+
+        $output = $formatter->format($findings);
+
+        $this->assertStringNotContainsString('<script>alert("xss")</script>', $output);
+        $this->assertStringContainsString('&lt;script&gt;', $output);
+    }
+
+    public function testFormatRendersRemediationLinks(): void
+    {
+        $formatter = new HtmlFormatter();
+
+        $remediation = new Remediation(
+            description: 'Fix it',
+            links: ['https://nvd.nist.gov/vuln/detail/CVE-2024-1234'],
+        );
+
+        $findings = [
+            new Finding(
+                source: 'Test',
+                package: 'test/package',
+                title: 'Test issue',
+                severity: Severity::HIGH,
+                remediation: $remediation,
+            ),
+        ];
+
+        $output = $formatter->format($findings);
+
+        $this->assertStringContainsString('<a href="https://nvd.nist.gov/vuln/detail/CVE-2024-1234"', $output);
+        $this->assertStringContainsString('target="_blank"', $output);
+        $this->assertStringContainsString('rel="noopener"', $output);
+    }
+
+    public function testFormatIncludesRemediationStyles(): void
+    {
+        $formatter = new HtmlFormatter();
+        $findings = [];
+
+        $output = $formatter->format($findings);
+
+        $this->assertStringContainsString('.remediation', $output);
+        $this->assertStringContainsString('.priority-badge', $output);
+        $this->assertStringContainsString('.priority-immediate', $output);
+        $this->assertStringContainsString('.priority-high', $output);
     }
 }
