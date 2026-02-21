@@ -18,8 +18,9 @@ class EnvAuditService extends AbstractAuditService
 
     public function run(): bool
     {
-        // Check if .env exists
-        if (!file_exists(base_path('.env'))) {
+        // Check if .env exists (respect custom environment path)
+        $envPath = app()->environmentPath() . DIRECTORY_SEPARATOR . app()->environmentFile();
+        if (!file_exists($envPath)) {
             $this->addFinding([
                 'package' => 'environment',
                 'title' => 'Missing .env file',
