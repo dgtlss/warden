@@ -4,15 +4,6 @@ namespace Dgtlss\Warden\Services\Audits;
 
 class StorageAuditService extends AbstractAuditService
 {
-    /**
-     * @var array<string>
-     */
-    private array $directories = [
-        'storage/framework',
-        'storage/logs',
-        'bootstrap/cache',
-    ];
-
     public function getName(): string
     {
         return 'storage';
@@ -20,13 +11,18 @@ class StorageAuditService extends AbstractAuditService
 
     public function run(): bool
     {
-        foreach ($this->directories as $directory) {
-            $path = base_path($directory);
+        $directories = [
+            storage_path('framework'),
+            storage_path('logs'),
+            base_path('bootstrap/cache'),
+        ];
+
+        foreach ($directories as $path) {
             
             if (!file_exists($path)) {
                 $this->addFinding([
                     'package' => 'storage',
-                    'title' => 'Missing directory: ' . $directory,
+                    'title' => 'Missing directory: ' . $path,
                     'severity' => 'high',
                     'cve' => null,
                     'affected_versions' => null
@@ -37,7 +33,7 @@ class StorageAuditService extends AbstractAuditService
             if (!is_writable($path)) {
                 $this->addFinding([
                     'package' => 'storage',
-                    'title' => 'Directory not writable: ' . $directory,
+                    'title' => 'Directory not writable: ' . $path,
                     'severity' => 'high',
                     'cve' => null,
                     'affected_versions' => null

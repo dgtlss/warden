@@ -14,6 +14,16 @@ class WardenPHPStanFakeApplication extends Container
     {
         return 'fake-laravel-version';
     }
+
+    public function environmentPath(): string
+    {
+        return __DIR__ . '/../';
+    }
+
+    public function environmentFile(): string
+    {
+        return '.env';
+    }
 }
 
 if (!class_exists(\Illuminate\Foundation\Application::class)) {
@@ -43,6 +53,11 @@ class WardenPHPStanFakeRouteDefinition
 {
     public function uri(): string { return ''; }
     public function middleware(): array { return []; }
+}
+
+if (!interface_exists(\Illuminate\Routing\RouteCollectionInterface::class)) {
+    interface WardenPHPStanFakeRouteCollectionInterface extends \IteratorAggregate {}
+    class_alias(WardenPHPStanFakeRouteCollectionInterface::class, \Illuminate\Routing\RouteCollectionInterface::class);
 }
 
 class WardenPHPStanFakeRouteFacade

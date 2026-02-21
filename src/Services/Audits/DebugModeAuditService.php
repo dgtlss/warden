@@ -2,6 +2,8 @@
 
 namespace Dgtlss\Warden\Services\Audits;
 
+use Illuminate\Support\Facades\Route;
+
 class DebugModeAuditService extends AbstractAuditService
 {
     private array $devPackages = [
@@ -107,7 +109,7 @@ class DebugModeAuditService extends AbstractAuditService
 
     private function hasExposedTestingRoutes(): bool
     {
-        $routeCollection = \Route::getRoutes();
+        $routeCollection = Route::getRoutes();
 
         // Check debugbar routes separately as they're allowed when APP_DEBUG is true
         foreach ($routeCollection as $route) {
