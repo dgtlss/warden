@@ -14,14 +14,20 @@ class WardenSyntaxCommand extends Command
 
     protected $description = 'Performs a PHP syntax audit on your application code.';
 
+    protected PhpSyntaxAuditService $syntaxService;
+
+    public function __construct(PhpSyntaxAuditService $syntaxService)
+    {
+        parent::__construct();
+        $this->syntaxService = $syntaxService;
+    }
+
     public function handle(): int
     {
         $this->info('Warden PHP Syntax Audit');
 
-        $phpSyntaxAuditService = new PhpSyntaxAuditService();
-
         $result = spin(
-            fn() => $phpSyntaxAuditService->run(),
+            fn() => $this->syntaxService->run(),
             'Running PHP syntax check...'
         );
 
@@ -30,10 +36,9 @@ class WardenSyntaxCommand extends Command
             return 0;
         }
 
-        $findings = $phpSyntaxAuditService->getFindings();
+        $findings = $this->syntaxService->getFindings();
         $this->displayFindings($findings);
 
-        // Check if the audit itself failed to run.
         if (collect($findings)->contains('severity', 'error')) {
             return 2;
         }
@@ -43,7 +48,8 @@ class WardenSyntaxCommand extends Command
 
     protected function displayFindings(array $findings): void
     {
-        $this->error(count($findings) . ' syntax errors found.');
+        $count = count($findings);
+        $this->error($count . ' syntax ' . ($count === 1 ? 'error' : 'errors') . ' found.');
 
         $headers = ['File', 'Error Description'];
         $rows = [];
@@ -60,4 +66,4 @@ class WardenSyntaxCommand extends Command
             rows: $rows
         );
     }
-} 
+}

@@ -16,6 +16,11 @@ class WardenScheduleCommand extends Command
 
     public function handle(): int
     {
+        if ($this->option('enable') && $this->option('disable')) {
+            $this->error('Cannot use --enable and --disable at the same time.');
+            return 1;
+        }
+
         if ($this->option('enable')) {
             return $this->enableSchedule();
         }
@@ -24,11 +29,6 @@ class WardenScheduleCommand extends Command
             return $this->disableSchedule();
         }
 
-        if ($this->option('status')) {
-            return $this->showStatus();
-        }
-
-        // Default: show status
         return $this->showStatus();
     }
 
