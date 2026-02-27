@@ -7,6 +7,18 @@ use Carbon\Carbon;
 
 class AuditCacheService
 {
+    /**
+     * Audit names used for cache key generation. Must be kept in sync with registered audits.
+     */
+    private const AUDIT_NAMES = [
+        'composer',
+        'npm',
+        'environment',
+        'storage',
+        'debug-mode',
+        'PHP Syntax',
+    ];
+
     protected string $cachePrefix = 'warden:audit:';
 
     protected int $cacheDuration;
@@ -72,18 +84,6 @@ class AuditCacheService
     /**
      * Clear cached audit results.
      */
-    /**
-     * Known audit names used for cache key generation.
-     */
-    private const AUDIT_NAMES = [
-        'composer',
-        'npm',
-        'environment',
-        'storage',
-        'debug-mode',
-        'PHP Syntax',
-    ];
-
     public function clearCache(?string $auditName = null): void
     {
         if ($auditName) {
