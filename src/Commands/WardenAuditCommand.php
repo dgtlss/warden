@@ -62,7 +62,7 @@ class WardenAuditCommand extends Command
             return true;
         }
 
-        if (method_exists($this->output, 'isSilent') && $this->output->isSilent()) {
+        if ($this->output->isSilent()) {
             return true;
         }
 
@@ -184,10 +184,13 @@ class WardenAuditCommand extends Command
 
     protected function processResults(array $allFindings, array $abandonedPackages, bool $hasFailures): int
     {
+        $totalBeforeFilter = count($allFindings);
+        $severityOption = null;
+
         // Apply severity filtering if specified
         if ($this->option('severity')) {
-            $severityOption = $this->option('severity');
-            $allFindings = $this->filterBySeverity($allFindings, (string) $severityOption);
+            $severityOption = (string) $this->option('severity');
+            $allFindings = $this->filterBySeverity($allFindings, $severityOption);
         }
 
         $this->handleAbandonedPackages($abandonedPackages);
@@ -211,7 +214,7 @@ class WardenAuditCommand extends Command
         }
 
         $filtered = $totalBeforeFilter - count($allFindings);
-        if ($filtered > 0) {
+        if ($filtered > 0 && $severityOption !== null) {
             info(sprintf('No issues at %s severity or above (%d lower-severity %s filtered).', $severityOption, $filtered, $filtered === 1 ? 'issue' : 'issues'));
         } else {
             info('✅ No security issues found.');
