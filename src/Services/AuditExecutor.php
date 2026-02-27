@@ -39,7 +39,7 @@ class AuditExecutor
         $results = [];
 
         foreach ($this->audits as $name => $auditService) {
-            if ($onProgress) {
+            if ($onProgress !== null) {
                 $onProgress($name, 'running', null);
             }
 
@@ -53,7 +53,7 @@ class AuditExecutor
                 'service' => $auditService,
             ];
 
-            if ($onProgress) {
+            if ($onProgress !== null) {
                 $status = $success ? 'done' : 'failed';
                 $onProgress($name, $status, $durationMs);
             }

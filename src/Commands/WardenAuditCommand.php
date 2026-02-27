@@ -62,12 +62,7 @@ class WardenAuditCommand extends Command
         if ($this->option('no-notify')) {
             return true;
         }
-
-        if ($this->output->isSilent()) {
-            return true;
-        }
-
-        return false;
+        return $this->output->isSilent();
     }
 
     /**
@@ -153,6 +148,7 @@ class WardenAuditCommand extends Command
                 if (!$isMachineOutput) {
                     $this->info(sprintf('Using cached results for %s audit...', $auditName));
                 }
+
                 $cached = $this->cacheService->getCachedResult($auditName);
                 if (!empty($cached['result'])) {
                     $allFindings = array_merge($allFindings, $cached['result']);
@@ -316,16 +312,16 @@ class WardenAuditCommand extends Command
     /**
      * Handle a failed audit service.
      *
-     * @param AuditServiceInterface $service The audit service that failed
+     * @param AuditServiceInterface $auditService The audit service that failed
      */
-    protected function handleAuditFailure(AuditServiceInterface $service): void
+    protected function handleAuditFailure(AuditServiceInterface $auditService): void
     {
-        $serviceName = $service instanceof \Dgtlss\Warden\Services\Audits\AbstractAuditService || $service instanceof CustomAuditWrapper
-            ? $service->getName()
+        $serviceName = $auditService instanceof \Dgtlss\Warden\Services\Audits\AbstractAuditService || $auditService instanceof CustomAuditWrapper
+            ? $auditService->getName()
             : 'Unknown service';
         $this->error($serviceName . ' audit failed to run.');
-        if ($service instanceof ComposerAuditService) {
-            $findings = $service->getFindings();
+        if ($auditService instanceof ComposerAuditService) {
+            $findings = $auditService->getFindings();
             $error = Collection::make($findings)->last()['error'] ?? 'Unknown error';
             $this->error("Error: " . $error);
         }
