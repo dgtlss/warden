@@ -72,13 +72,26 @@ class AuditCacheService
     /**
      * Clear cached audit results.
      */
+    /**
+     * Known audit names used for cache key generation.
+     */
+    private const AUDIT_NAMES = [
+        'composer',
+        'npm',
+        'environment',
+        'storage',
+        'debug-mode',
+        'PHP Syntax',
+    ];
+
     public function clearCache(?string $auditName = null): void
     {
         if ($auditName) {
             Cache::forget($this->getCacheKey($auditName));
         } else {
-            // Clear all Warden audit cache
-            Cache::flush(); // Note: In production, you might want to use tags instead
+            foreach (self::AUDIT_NAMES as $name) {
+                Cache::forget($this->getCacheKey($name));
+            }
         }
     }
 

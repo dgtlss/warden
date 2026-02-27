@@ -27,14 +27,14 @@ use function Laravel\Prompts\table;
 class WardenAuditCommand extends Command
 {
     protected $signature = 'warden:audit 
-    {--silent : Run the audit without sending notifications} 
+    {--no-notify : Run the audit without sending notifications} 
     {--npm : Run the npm audit}
     {--ignore-abandoned : Ignore abandoned packages, without throwing an error}
     {--output= : Output format (json|github|gitlab|jenkins)}
     {--severity= : Filter by severity level (low|medium|high|critical)}
     {--force : Force cache refresh and ignore cached results}';
 
-    protected $description = 'Performs a composer audit and reports findings via Warden.';
+    protected $description = 'Run security audits on your application dependencies and configuration.';
 
     protected AuditCacheService $cacheService;
 
@@ -54,35 +54,41 @@ class WardenAuditCommand extends Command
      */
     public function handle(): int
     {
-        $this->displayVersion();
+        $isMachineOutput = $this->option('output') !== null;
 
-        // Handle cache clearing if force option is used
-        if ($this->option('force')) {
-            $this->cacheService->clearCache();
-            $this->info('Cache cleared.');
+        if (!$isMachineOutput) {
+            $this->displayVersion();
         }
 
-        // Check if we should use parallel execution
+        if ($this->option('force')) {
+            $this->cacheService->clearCache();
+            if (!$isMachineOutput) {
+                $this->info('Cache cleared.');
+            }
+        }
+
         $useParallel = config('warden.audits.parallel_execution', true);
 
         if ($useParallel) {
-            return $this->runParallelAudits();
-        } else {
-            return $this->runSequentialAudits();
+            return $this->runParallelAudits($isMachineOutput);
         }
+
+        return $this->runSequentialAudits($isMachineOutput);
     }
 
-    protected function runParallelAudits(): int
+    protected function runParallelAudits(bool $isMachineOutput = false): int
     {
         $auditServices = $this->initializeAuditServices();
 
-        // Add services to parallel executor
         foreach ($auditServices as $auditService) {
             $this->parallelExecutor->addAudit($auditService);
         }
 
-        $this->info('Running security audits in parallel...');
-        $results = $this->parallelExecutor->execute(true);
+        if (!$isMachineOutput) {
+            $this->info('Running security audits...');
+        }
+
+        $results = $this->parallelExecutor->execute(!$isMachineOutput);
 
         // Collect findings and abandoned packages
         $allFindings = [];
@@ -109,7 +115,7 @@ class WardenAuditCommand extends Command
         return $this->processResults($allFindings, $abandonedPackages, $hasFailures);
     }
 
-    protected function runSequentialAudits(): int
+    protected function runSequentialAudits(bool $isMachineOutput = false): int
     {
         $auditServices = $this->initializeAuditServices();
         $hasFailures = false;
@@ -178,10 +184,8 @@ class WardenAuditCommand extends Command
         if ($allFindings !== []) {
             $this->displayFindings($allFindings);
 
-            if (!$this->option('silent')) {
+            if (!$this->option('no-notify')) {
                 $this->sendNotifications($allFindings);
-                $this->newLine();
-                info('Notifications sent.');
             }
 
             return 1;
@@ -295,7 +299,7 @@ class WardenAuditCommand extends Command
             rows: $rows
         );
 
-        if (!$this->option('silent')) {
+        if (!$this->option('no-notify')) {
             $this->sendAbandonedPackagesNotification($abandonedPackages);
         }
     }
@@ -364,18 +368,24 @@ class WardenAuditCommand extends Command
     protected function sendNotifications(array $findings): void
     {
         $channels = $this->getNotificationChannels();
+        $sent = false;
 
         foreach ($channels as $channel) {
             try {
                 $channel->send($findings);
                 $this->info('Notification sent via ' . $channel->getName());
+                $sent = true;
             } catch (\Exception $e) {
                 $this->warn(sprintf('Failed to send notification via %s: %s', $channel->getName(), $e->getMessage()));
             }
         }
 
-        // Legacy support
-        $this->sendLegacyNotifications($findings);
+        $legacySent = $this->sendLegacyNotifications($findings);
+        $sent = $sent || $legacySent;
+
+        if (!$sent) {
+            $this->warn('No notification channels configured. Set up Slack, Discord, Teams, or Email in config/warden.php.');
+        }
     }
 
     /**
@@ -419,19 +429,24 @@ class WardenAuditCommand extends Command
      *
      * @param array<array<string, mixed>> $findings List of vulnerability findings
      */
-    protected function sendLegacyNotifications(array $findings): void
+    protected function sendLegacyNotifications(array $findings): bool
     {
         $webhookUrl = config('warden.webhook_url');
         $emailRecipients = config('warden.email_recipients');
+        $sent = false;
 
         if ($webhookUrl) {
             $this->sendWebhookNotification($webhookUrl, $findings);
+            $sent = true;
         }
 
         if ($emailRecipients) {
             $recipients = is_string($emailRecipients) ? explode(',', $emailRecipients) : $emailRecipients;
             $this->sendEmailReport($findings, $recipients);
+            $sent = true;
         }
+
+        return $sent;
     }
 
     /**
