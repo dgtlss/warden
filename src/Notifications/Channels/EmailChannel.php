@@ -9,6 +9,7 @@ use Carbon\Carbon;
 class EmailChannel implements NotificationChannel
 {
     use \Dgtlss\Warden\Notifications\Concerns\HasSeverityHelpers;
+
     protected ?string $recipients;
 
     protected ?string $fromAddress;

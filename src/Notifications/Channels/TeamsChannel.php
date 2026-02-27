@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Http;
 class TeamsChannel implements NotificationChannel
 {
     use \Dgtlss\Warden\Notifications\Concerns\HasSeverityHelpers;
+
     protected ?string $webhookUrl;
 
     public function __construct()
