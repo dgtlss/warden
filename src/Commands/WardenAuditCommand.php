@@ -64,6 +64,7 @@ class WardenAuditCommand extends Command
         }
 
         // Check if isSilent() exists (Symfony Console 7.2+/Laravel 11+)
+        // @phpstan-ignore function.alreadyNarrowedType (runtime check needed for older Symfony versions)
         if (method_exists($this->output, 'isSilent')) {
             return $this->output->isSilent();
         }
@@ -324,7 +325,7 @@ class WardenAuditCommand extends Command
     protected function handleAuditFailure(AuditServiceInterface $auditService): void
     {
         $serviceName = $auditService->getName();
-        if ($serviceName === '' || $serviceName === null) {
+        if ($serviceName === '') {
             $serviceName = 'Unknown service';
         }
         $this->error($serviceName . ' audit failed to run.');
