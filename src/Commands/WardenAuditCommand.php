@@ -162,25 +162,27 @@ class WardenAuditCommand extends Command
 
     protected function processResults(array $allFindings, array $abandonedPackages, bool $hasFailures): int
     {
-        // Apply severity filtering if specified
-        if ($this->option('severity')) {
-            $severityOption = $this->option('severity');
-            if (is_string($severityOption)) {
-                $allFindings = $this->filterBySeverity($allFindings, $severityOption);
+        $totalBeforeFilter = count($allFindings);
+        $severityOption = $this->option('severity');
+
+        if ($severityOption && is_string($severityOption)) {
+            $validLevels = ['low', 'medium', 'high', 'critical'];
+            if (!in_array($severityOption, $validLevels, true)) {
+                $this->error(sprintf('Invalid severity level: %s. Valid levels: %s', $severityOption, implode(', ', $validLevels)));
+                return 2;
             }
+
+            $allFindings = $this->filterBySeverity($allFindings, $severityOption);
         }
 
-        // Handle abandoned packages
         $this->handleAbandonedPackages($abandonedPackages);
 
-        // Handle output formatting
         $outputFormat = $this->option('output');
         if ($outputFormat) {
             $this->outputFormattedResults($allFindings, (string) $outputFormat);
-            return $allFindings === [] ? ($hasFailures ? 2 : 0) : (1);
+            return $allFindings === [] ? ($hasFailures ? 2 : 0) : 1;
         }
 
-        // Display and handle findings (default console output)
         if ($allFindings !== []) {
             $this->displayFindings($allFindings);
 
@@ -191,7 +193,13 @@ class WardenAuditCommand extends Command
             return 1;
         }
 
-        info('No vulnerabilities found.');
+        $filtered = $totalBeforeFilter - count($allFindings);
+        if ($filtered > 0) {
+            info(sprintf('No issues at %s severity or above (%d lower-severity %s filtered).', $severityOption, $filtered, $filtered === 1 ? 'issue' : 'issues'));
+        } else {
+            info('✅ No security issues found.');
+        }
+
         return $hasFailures ? 2 : 0;
     }
 
@@ -311,21 +319,41 @@ class WardenAuditCommand extends Command
      */
     protected function displayFindings(array $findings): void
     {
-        $this->error(count($findings) . ' vulnerabilities found.');
+        $count = count($findings);
+        $this->error($count . ' security ' . ($count === 1 ? 'issue' : 'issues') . ' found.');
 
-        $headers = ['Source', 'Package', 'Title', 'Severity', 'CVE', 'Link', 'Affected Versions'];
+        $hasCveData = collect($findings)->contains(fn ($f) => !empty($f['cve']));
+
+        $headers = ['Source', 'Package', 'Title', 'Severity'];
+        if ($hasCveData) {
+            $headers = array_merge($headers, ['CVE', 'Affected Versions']);
+        }
+
         $rows = [];
-
         foreach ($findings as $finding) {
-            $rows[] = [
+            $severity = $finding['severity'] ?? 'unknown';
+            $severityDisplay = match ($severity) {
+                'critical' => '🔴 Critical',
+                'high' => '🟠 High',
+                'medium' => '🟡 Medium',
+                'low' => '🟢 Low',
+                default => $severity,
+            };
+
+            $row = [
                 $finding['source'],
                 $finding['package'],
                 $finding['title'],
-                $finding['severity'],
-                $finding['cve'] ?? '-',
-                $finding['cve'] ? 'https://www.cve.org/CVERecord?id=' . $finding['cve'] : '-',
-                $finding['affected_versions'] ?? '-'
+                $severityDisplay,
             ];
+
+            if ($hasCveData) {
+                $cve = $finding['cve'] ?? null;
+                $row[] = $cve ?: '-';
+                $row[] = $finding['affected_versions'] ?? '-';
+            }
+
+            $rows[] = $row;
         }
 
         table(
@@ -633,6 +661,11 @@ class WardenAuditCommand extends Command
      */
     protected function outputGitHubActions(array $findings): void
     {
+        if ($findings === []) {
+            $this->output->writeln('::notice title=Warden Security Audit::No security issues found.');
+            return;
+        }
+
         foreach ($findings as $finding) {
             $level = in_array($finding['severity'], ['critical', 'high']) ? 'error' : 'warning';
             $title = $finding['title'] ?? 'Security vulnerability';
