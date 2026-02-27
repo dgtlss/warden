@@ -23,7 +23,6 @@ Warden is a Laravel security audit **package** (library), not a standalone appli
 
 ### Gotchas
 
-- **PHPStan error with full framework**: When `orchestra/testbench` is installed (which brings in `laravel/framework`), PHPStan reports 1 error in `DebugModeAuditService.php` line 113 (`RouteCollectionInterface` not iterable). This error does not appear in CI because CI installs without testbench. This is a pre-existing code issue, not an environment problem.
-- **Test failures are pre-existing**: All 5 tests in `tests/` currently fail due to mock expectations not matching the actual implementation (e.g., `ParallelAuditExecutor::addAudit()` is called but not mocked). These are not caused by the environment setup.
-- **testbench.yaml**: A `testbench.yaml` file at the repo root registers `WardenServiceProvider` so that `vendor/bin/testbench` can run the package's artisan commands (e.g., `warden:audit`).
-- **No phpunit.xml**: The repo does not include a `phpunit.xml`. Tests are run directly with `vendor/bin/phpunit tests/`.
+- **PHPStan with full framework**: When `orchestra/testbench` is installed (which brings in `laravel/framework`), PHPStan may report additional errors due to full type information replacing stubs. The CI workflow installs testbench, so check PHPStan passes with `composer phpstan`.
+- **testbench.yaml**: Registers `WardenServiceProvider` so `vendor/bin/testbench` can run the package's artisan commands (e.g., `warden:audit`).
+- **Test app**: To test the package inside a real Laravel app, create one in `/tmp`: `cd /tmp && composer create-project laravel/laravel warden-test-app` then `cd warden-test-app && composer config repositories.warden path /workspace && composer require dgtlss/warden:* --dev`.
