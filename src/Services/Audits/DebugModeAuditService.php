@@ -107,8 +107,7 @@ class DebugModeAuditService extends AbstractAuditService
 
     private function hasExposedTestingRoutes(): bool
     {
-        $routeCollection = \Route::getRoutes();
-        $routes = iterator_to_array($routeCollection, false);
+        $routes = \Route::getRoutes()->getRoutes();
 
         // Check debugbar routes separately as they're allowed when APP_DEBUG is true
         foreach ($routes as $route) {
