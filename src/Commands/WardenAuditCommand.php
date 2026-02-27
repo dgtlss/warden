@@ -28,7 +28,7 @@ use function Laravel\Prompts\table;
 class WardenAuditCommand extends Command
 {
     protected $signature = 'warden:audit 
-    {--no-notify : Run the audit without sending notifications} 
+    {--no-notify : Run the audit without sending notifications (replaces --silent)} 
     {--npm : Run the npm audit}
     {--ignore-abandoned : Ignore abandoned packages, without throwing an error}
     {--output= : Output format (json|github|gitlab|jenkins)}
@@ -46,6 +46,27 @@ class WardenAuditCommand extends Command
         parent::__construct();
         $this->cacheService = $auditCacheService;
         $this->executor = $auditExecutor;
+    }
+
+    /**
+     * Check whether notifications should be suppressed.
+     *
+     * Supports both the new --no-notify flag and the legacy --silent flag.
+     * On Symfony Console 7.2+ (Laravel 11+), --silent is a framework-level
+     * option that also suppresses output. We detect it via output verbosity
+     * so that existing users passing --silent still get notification suppression.
+     */
+    protected function shouldSuppressNotifications(): bool
+    {
+        if ($this->option('no-notify')) {
+            return true;
+        }
+
+        if (method_exists($this->output, 'isSilent') && $this->output->isSilent()) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -187,7 +208,7 @@ class WardenAuditCommand extends Command
         if ($allFindings !== []) {
             $this->displayFindings($allFindings);
 
-            if (!$this->option('no-notify')) {
+            if (!$this->shouldSuppressNotifications()) {
                 $this->sendNotifications($allFindings);
             }
 
@@ -308,7 +329,7 @@ class WardenAuditCommand extends Command
             rows: $rows
         );
 
-        if (!$this->option('no-notify')) {
+        if (!$this->shouldSuppressNotifications()) {
             $this->sendAbandonedPackagesNotification($abandonedPackages);
         }
     }
