@@ -2,9 +2,10 @@
 
 namespace Dgtlss\Warden\Services;
 
+use Dgtlss\Warden\Contracts\AuditServiceInterface;
 use Dgtlss\Warden\Contracts\CustomAudit;
 
-class CustomAuditWrapper
+class CustomAuditWrapper implements AuditServiceInterface
 {
     protected CustomAudit $customAudit;
 
@@ -23,10 +24,7 @@ class CustomAuditWrapper
     public function run(): bool
     {
         $success = $this->customAudit->audit();
-
-        if (!$success) {
-            $this->findings = $this->customAudit->getFindings();
-        }
+        $this->findings = $this->customAudit->getFindings();
 
         return $success;
     }

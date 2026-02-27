@@ -2,7 +2,9 @@
 
 namespace Dgtlss\Warden\Services\Audits;
 
-abstract class AbstractAuditService
+use Dgtlss\Warden\Contracts\AuditServiceInterface;
+
+abstract class AbstractAuditService implements AuditServiceInterface
 {
     /**
      * @var array<array<string, mixed>>
