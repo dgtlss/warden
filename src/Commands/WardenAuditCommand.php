@@ -184,17 +184,10 @@ class WardenAuditCommand extends Command
 
     protected function processResults(array $allFindings, array $abandonedPackages, bool $hasFailures): int
     {
-        $totalBeforeFilter = count($allFindings);
-        $severityOption = $this->option('severity');
-
-        if ($severityOption && is_string($severityOption)) {
-            $validLevels = ['low', 'medium', 'high', 'critical'];
-            if (!in_array($severityOption, $validLevels, true)) {
-                $this->error(sprintf('Invalid severity level: %s. Valid levels: %s', $severityOption, implode(', ', $validLevels)));
-                return 2;
-            }
-
-            $allFindings = $this->filterBySeverity($allFindings, $severityOption);
+        // Apply severity filtering if specified
+        if ($this->option('severity')) {
+            $severityOption = $this->option('severity');
+            $allFindings = $this->filterBySeverity($allFindings, (string) $severityOption);
         }
 
         $this->handleAbandonedPackages($abandonedPackages);
@@ -319,7 +312,9 @@ class WardenAuditCommand extends Command
      */
     protected function handleAuditFailure(object $service): void
     {
-        $serviceName = method_exists($service, 'getName') ? $service->getName() : 'Unknown service';
+        $serviceName = $service instanceof \Dgtlss\Warden\Services\Audits\AbstractAuditService || $service instanceof CustomAuditWrapper
+            ? $service->getName()
+            : 'Unknown service';
         $this->error($serviceName . ' audit failed to run.');
         if ($service instanceof ComposerAuditService) {
             $findings = $service->getFindings();
