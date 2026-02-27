@@ -27,6 +27,13 @@ jobs:
           tools: composer
           coverage: none
 
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ matrix.php }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ matrix.php }}-
+
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
 
