@@ -19,6 +19,7 @@ use Dgtlss\Warden\Notifications\Channels\SlackChannel;
 use Dgtlss\Warden\Notifications\Channels\DiscordChannel;
 use Dgtlss\Warden\Notifications\Channels\EmailChannel;
 use Dgtlss\Warden\Notifications\Channels\TeamsChannel;
+use Dgtlss\Warden\Contracts\AuditServiceInterface;
 use Dgtlss\Warden\Contracts\CustomAudit;
 use Dgtlss\Warden\Contracts\NotificationChannel;
 use Dgtlss\Warden\Services\CustomAuditWrapper;
@@ -149,7 +150,9 @@ class WardenAuditCommand extends Command
 
             // Check cache first (unless force is used)
             if (!$this->option('force') && $this->cacheService->hasRecentAudit($auditName)) {
-                $this->info(sprintf('Using cached results for %s audit...', $auditName));
+                if (!$isMachineOutput) {
+                    $this->info(sprintf('Using cached results for %s audit...', $auditName));
+                }
                 $cached = $this->cacheService->getCachedResult($auditName);
                 if (!empty($cached['result'])) {
                     $allFindings = array_merge($allFindings, $cached['result']);
@@ -158,7 +161,9 @@ class WardenAuditCommand extends Command
                 continue;
             }
 
-            $this->info(sprintf('Running %s audit...', $auditName));
+            if (!$isMachineOutput) {
+                $this->info(sprintf('Running %s audit...', $auditName));
+            }
 
             if (!$auditService->run()) {
                 $this->handleAuditFailure($auditService);
@@ -193,13 +198,13 @@ class WardenAuditCommand extends Command
             $allFindings = $this->filterBySeverity($allFindings, $severityOption);
         }
 
-        $this->handleAbandonedPackages($abandonedPackages);
-
         $outputFormat = $this->option('output');
         if ($outputFormat) {
             $this->outputFormattedResults($allFindings, (string) $outputFormat);
             return $allFindings === [] ? ($hasFailures ? 2 : 0) : 1;
         }
+
+        $this->handleAbandonedPackages($abandonedPackages);
 
         $this->newLine();
 
@@ -264,7 +269,7 @@ class WardenAuditCommand extends Command
     /**
      * Initialize and return all audit services based on command options.
      *
-     * @return array<int, object> Array of audit service instances
+     * @return array<int, AuditServiceInterface> Array of audit service instances
      */
     protected function initializeAuditServices(): array
     {
@@ -311,9 +316,9 @@ class WardenAuditCommand extends Command
     /**
      * Handle a failed audit service.
      *
-     * @param object $service The audit service that failed
+     * @param AuditServiceInterface $service The audit service that failed
      */
-    protected function handleAuditFailure(object $service): void
+    protected function handleAuditFailure(AuditServiceInterface $service): void
     {
         $serviceName = $service instanceof \Dgtlss\Warden\Services\Audits\AbstractAuditService || $service instanceof CustomAuditWrapper
             ? $service->getName()
@@ -722,8 +727,14 @@ class WardenAuditCommand extends Command
             $level = in_array($finding['severity'], ['critical', 'high']) ? 'error' : 'warning';
             $title = $finding['title'] ?? 'Security vulnerability';
             $package = $finding['package'] ?? 'unknown';
+            $severity = $finding['severity'] ?? 'unknown';
 
-            $this->output->writeln(sprintf('::%s title=%s::%s - %s severity vulnerability found', $level, $title, $package, $finding['severity']));
+            $titleEncoded = $this->escapeGitHubWorkflowKeyValue($title);
+            $messageEncoded = $this->escapeGitHubWorkflowMessage(
+                sprintf('%s - %s severity vulnerability found', $package, $severity)
+            );
+
+            $this->output->writeln(sprintf('::%s title=%s::%s', $level, $titleEncoded, $messageEncoded));
         }
     }
 
@@ -784,6 +795,24 @@ class WardenAuditCommand extends Command
 
         $jsonOutput = json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         $this->output->writeln($jsonOutput);
+    }
+
+    /**
+     * Escape a value for GitHub Actions workflow command key=value pairs.
+     * Must escape: % → %25, \r → %0D, \n → %0A, : → %3A, , → %2C
+     */
+    protected function escapeGitHubWorkflowKeyValue(string $value): string
+    {
+        return str_replace(['%', "\r", "\n", ':', ','], ['%25', '%0D', '%0A', '%3A', '%2C'], $value);
+    }
+
+    /**
+     * Escape message content for GitHub Actions workflow command.
+     * Must escape: % → %25, \r → %0D, \n → %0A
+     */
+    protected function escapeGitHubWorkflowMessage(string $value): string
+    {
+        return str_replace(['%', "\r", "\n"], ['%25', '%0D', '%0A'], $value);
     }
 
     /**
