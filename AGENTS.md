@@ -1,10 +1,10 @@
 # AGENTS.md
 
-## Cursor Cloud specific instructions
+## Cursor Cloud-specific instructions
 
 ### Project overview
 
-Warden is a Laravel security audit **package** (library), not a standalone application. It is tested using Orchestra Testbench which bootstraps a minimal Laravel environment in-memory.
+Warden is a Laravel security audit **package** (library), not a standalone application. It is tested using Orchestra Testbench, which bootstraps a minimal Laravel environment in-memory.
 
 ### Prerequisites (installed in VM snapshot)
 
@@ -23,6 +23,7 @@ Warden is a Laravel security audit **package** (library), not a standalone appli
 
 ### Gotchas
 
+- **Tests target Laravel 12+**: The package supports Laravel 7–12, but `orchestra/testbench ^10.9` pins the test suite to Laravel 12+; CI runs against the latest supported Laravel.
 - **PHPStan with full framework**: When `orchestra/testbench` is installed (which brings in `laravel/framework`), PHPStan may report additional errors due to full type information replacing stubs. The CI workflow installs testbench, so check PHPStan passes with `composer phpstan`.
 - **testbench.yaml**: Registers `WardenServiceProvider` so `vendor/bin/testbench` can run the package's artisan commands (e.g., `warden:audit`).
 - **Test app**: To test the package inside a real Laravel app, create one in `/tmp`: `cd /tmp && composer create-project laravel/laravel warden-test-app` then `cd warden-test-app && composer config repositories.warden path /workspace && composer require dgtlss/warden:* --dev`.

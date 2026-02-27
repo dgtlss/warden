@@ -2,6 +2,7 @@
 
 namespace Dgtlss\Warden\Services;
 
+use Dgtlss\Warden\Contracts\AuditServiceInterface;
 use Illuminate\Support\Collection;
 
 class AuditExecutor
@@ -10,13 +11,13 @@ class AuditExecutor
 
     protected array $results = [];
 
-    public function addAudit(object $auditService): void
+    public function addAudit(AuditServiceInterface $auditService): void
     {
         $this->audits[$auditService->getName()] = $auditService;
     }
 
     /**
-     * @return array<string, object> Registered audit services keyed by name.
+     * @return array<string, AuditServiceInterface> Registered audit services keyed by name.
      */
     public function getAudits(): array
     {
@@ -27,7 +28,7 @@ class AuditExecutor
      * Execute all registered audits.
      *
      * @param callable|null $onProgress Called with (string $name, string $status, ?float $durationMs) per audit
-     * @return array<string, array{success: bool, findings: array, service: object}>
+     * @return array<string, array{success: bool, findings: array, service: AuditServiceInterface}>
      */
     public function execute(?callable $onProgress = null): array
     {
@@ -38,7 +39,7 @@ class AuditExecutor
         $results = [];
 
         foreach ($this->audits as $name => $auditService) {
-            if ($onProgress) {
+            if ($onProgress !== null) {
                 $onProgress($name, 'running', null);
             }
 
@@ -52,11 +53,13 @@ class AuditExecutor
                 'service' => $auditService,
             ];
 
-            if ($onProgress) {
+            if ($onProgress !== null) {
                 $status = $success ? 'done' : 'failed';
                 $onProgress($name, $status, $durationMs);
             }
         }
+
+        $this->results = $results;
 
         return $results;
     }
