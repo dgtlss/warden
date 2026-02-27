@@ -24,7 +24,7 @@ class WardenAuditCommandTest extends TestCase
         });
 
         $this->artisan('warden:audit')
-            ->expectsOutputToContain('Warden Audit Version')
+            ->expectsOutputToContain('Warden')
             ->expectsOutputToContain('No security issues found.')
             ->assertExitCode(0);
     }
@@ -52,7 +52,7 @@ class WardenAuditCommandTest extends TestCase
         });
 
         $this->artisan('warden:audit', ['--no-notify' => true])
-            ->expectsOutputToContain('Warden Audit Version')
+            ->expectsOutputToContain('Warden')
             ->expectsOutputToContain('1 security issue found.')
             ->assertExitCode(1);
     }

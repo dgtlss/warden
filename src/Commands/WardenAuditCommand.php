@@ -106,11 +106,11 @@ class WardenAuditCommand extends Command
             $this->executor->addAudit($auditService);
         }
 
-        if (!$isMachineOutput) {
-            $this->info('Running security audits...');
-        }
+        $progress = $isMachineOutput ? null : function (string $name, string $status, ?float $durationMs): void {
+            $this->renderAuditProgress($name, $status, $durationMs);
+        };
 
-        $results = $this->executor->execute(!$isMachineOutput);
+        $results = $this->executor->execute($progress);
 
         // Collect findings and abandoned packages
         $allFindings = [];
@@ -205,6 +205,8 @@ class WardenAuditCommand extends Command
             return $allFindings === [] ? ($hasFailures ? 2 : 0) : 1;
         }
 
+        $this->newLine();
+
         if ($allFindings !== []) {
             $this->displayFindings($allFindings);
 
@@ -230,7 +232,37 @@ class WardenAuditCommand extends Command
      */
     protected function displayVersion(): void
     {
-        $this->info('Warden Audit Version ' . $this->getWardenVersion());
+        $this->newLine();
+        $this->line(sprintf('  <fg=cyan;options=bold>Warden</> <fg=white>v%s</>', $this->getWardenVersion()));
+        $this->newLine();
+    }
+
+    /**
+     * Render per-audit progress line.
+     */
+    protected function renderAuditProgress(string $name, string $status, ?float $durationMs): void
+    {
+        $label = ucfirst($name);
+
+        if ($status === 'running') {
+            $this->output->write(sprintf('  <fg=blue>⏳</> Running <options=bold>%s</> audit ...', $label));
+            return;
+        }
+
+        // Overwrite the "running" line if terminal supports it
+        if (stream_isatty(STDOUT)) {
+            $this->output->write("\r\033[2K");
+        } else {
+            $this->newLine();
+        }
+
+        $duration = $durationMs !== null ? sprintf(' <fg=gray>(%sms)</>', number_format($durationMs, 0)) : '';
+
+        if ($status === 'done') {
+            $this->line(sprintf('  <fg=green>✓</> %s audit%s', $label, $duration));
+        } else {
+            $this->line(sprintf('  <fg=red>✗</> %s audit <fg=red>failed</>%s', $label, $duration));
+        }
     }
 
     /**
