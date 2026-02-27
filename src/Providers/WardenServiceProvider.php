@@ -21,7 +21,7 @@ class WardenServiceProvider extends ServiceProvider
             return new AuditCacheService();
         });
         
-        $this->app->bind(AuditExecutor::class, function ($app) {
+        $this->app->bind(AuditExecutor::class, function () {
             return new AuditExecutor();
         });
     }
@@ -55,7 +55,7 @@ class WardenServiceProvider extends ServiceProvider
                     $frequency = config('warden.schedule.frequency', 'daily');
                     $time = config('warden.schedule.time', '03:00');
                     
-                    $event = $schedule->command('warden:audit --silent');
+                    $event = $schedule->command('warden:audit --no-notify');
                     
                     switch ($frequency) {
                         case 'hourly':
