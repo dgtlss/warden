@@ -220,14 +220,14 @@ class WardenAuditCommand extends Command
     protected function initializeAuditServices(): array
     {
         $services = [
-            new ComposerAuditService(),
-            new EnvAuditService(),
-            new StorageAuditService(),
-            new DebugModeAuditService(),
+            app(ComposerAuditService::class),
+            app(EnvAuditService::class),
+            app(StorageAuditService::class),
+            app(DebugModeAuditService::class),
         ];
 
         if ($this->option('npm')) {
-            $services[] = new NpmAuditService();
+            $services[] = app(NpmAuditService::class);
         }
 
         // Load custom audits from configuration

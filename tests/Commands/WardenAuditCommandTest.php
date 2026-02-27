@@ -16,35 +16,44 @@ class WardenAuditCommandTest extends TestCase
         return [WardenServiceProvider::class];
     }
 
-    public function testAuditCommandHandlesNoFindings()
+    public function testAuditCommandHandlesNoFindings(): void
     {
         $this->mock(ParallelAuditExecutor::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('addAudit')->zeroOrMoreTimes();
             $mock->shouldReceive('execute')->once()->andReturn([]);
         });
 
         $this->artisan('warden:audit')
-            ->expectsOutputToContain('Warden Security Audit')
-            ->expectsOutputToContain('✅ No security issues found.')
+            ->expectsOutputToContain('Warden Audit Version')
+            ->expectsOutputToContain('No security issues found.')
             ->assertExitCode(0);
     }
 
-    public function testAuditCommandHandlesFindings()
+    public function testAuditCommandHandlesFindings(): void
     {
         $findings = [
             [
                 'source' => 'composer',
                 'title' => 'some/package - High severity vulnerability',
                 'severity' => 'high',
+                'package' => 'some/package',
             ],
         ];
 
         $this->mock(ParallelAuditExecutor::class, function (MockInterface $mock) use ($findings): void {
-            $mock->shouldReceive('execute')->once()->andReturn($findings);
+            $mock->shouldReceive('addAudit')->zeroOrMoreTimes();
+            $mock->shouldReceive('execute')->once()->andReturn([
+                'composer' => [
+                    'success' => true,
+                    'findings' => $findings,
+                    'service' => new \stdClass(),
+                ],
+            ]);
         });
 
-        $this->artisan('warden:audit')
-            ->expectsOutputToContain('Warden Security Audit')
-            ->expectsOutputToContain('1 security issues found.')
+        $this->artisan('warden:audit', ['--no-notify' => true])
+            ->expectsOutputToContain('Warden Audit Version')
+            ->expectsOutputToContain('1 security issue found.')
             ->assertExitCode(1);
     }
 }
