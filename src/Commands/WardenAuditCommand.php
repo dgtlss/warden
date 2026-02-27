@@ -62,7 +62,14 @@ class WardenAuditCommand extends Command
         if ($this->option('no-notify')) {
             return true;
         }
-        return $this->output->isSilent();
+
+        // Check if isSilent() exists (Symfony Console 7.2+/Laravel 11+)
+        if (method_exists($this->output, 'isSilent')) {
+            return $this->output->isSilent();
+        }
+
+        // Fallback for older Symfony Console versions
+        return !$this->output->isVerbose();
     }
 
     /**
@@ -316,9 +323,10 @@ class WardenAuditCommand extends Command
      */
     protected function handleAuditFailure(AuditServiceInterface $auditService): void
     {
-        $serviceName = $auditService instanceof \Dgtlss\Warden\Services\Audits\AbstractAuditService || $auditService instanceof CustomAuditWrapper
-            ? $auditService->getName()
-            : 'Unknown service';
+        $serviceName = $auditService->getName();
+        if ($serviceName === '' || $serviceName === null) {
+            $serviceName = 'Unknown service';
+        }
         $this->error($serviceName . ' audit failed to run.');
         if ($auditService instanceof ComposerAuditService) {
             $findings = $auditService->getFindings();

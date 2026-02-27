@@ -33,19 +33,19 @@ Perfect for continuous security monitoring and DevOps pipelines.
 
 ## 📋 Table of Contents
 
-- [Installation](#-installation)
-- [Quick Start](#-quick-start)
-- [Command Reference](#-command-reference)
-- [Configuration](#-configuration)
-- [Security Audits](#-security-audits)
-- [Usage Examples](#-usage-examples)
-- [Notifications](#-notifications)
-- [Custom Audits](#-custom-audits)
-- [Scheduling](#-scheduling)
-- [CI/CD Integration](#-cicd-integration)
-- [Advanced Features](#-advanced-features)
-- [FAQ](#-faq)
-- [Troubleshooting](#-troubleshooting)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Command Reference](#command-reference)
+- [Configuration](#configuration)
+- [Security Audits](#security-audits)
+- [Usage Examples](#usage-examples)
+- [Notifications](#notifications)
+- [Custom Audits](#custom-audits)
+- [Scheduling](#scheduling)
+- [CI/CD Integration](#cicd-integration)
+- [Advanced Features](#advanced-features)
+- [FAQ](#faq)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -516,7 +516,7 @@ pipeline {
 ],
 ```
 
-> **Output & severity:** Use `--output` and `--severity` CLI options (not config). See [Command Reference](#-command-reference) below.
+> **Output & severity:** Use `--output` and `--severity` CLI options (not config). See [Command Reference](#-command-reference) above.
 
 ---
 
