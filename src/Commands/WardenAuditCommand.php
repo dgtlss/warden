@@ -68,8 +68,8 @@ class WardenAuditCommand extends Command
             return $this->output->isSilent();
         }
 
-        // Fallback for older Symfony Console versions
-        return !$this->output->isVerbose();
+        // Fallback for older Symfony Console versions: do not suppress notifications
+        return false;
     }
 
     /**
