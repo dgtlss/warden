@@ -6,7 +6,7 @@ use Dgtlss\Warden\Commands\WardenAuditCommand;
 use Illuminate\Support\Facades\Artisan;
 use Orchestra\Testbench\TestCase;
 use Dgtlss\Warden\Providers\WardenServiceProvider;
-use Dgtlss\Warden\Services\ParallelAuditExecutor;
+use Dgtlss\Warden\Services\AuditExecutor;
 use Mockery\MockInterface;
 
 class WardenAuditCommandTest extends TestCase
@@ -18,7 +18,7 @@ class WardenAuditCommandTest extends TestCase
 
     public function testAuditCommandHandlesNoFindings(): void
     {
-        $this->mock(ParallelAuditExecutor::class, function (MockInterface $mock): void {
+        $this->mock(AuditExecutor::class, function (MockInterface $mock): void {
             $mock->shouldReceive('addAudit')->zeroOrMoreTimes();
             $mock->shouldReceive('execute')->once()->andReturn([]);
         });
@@ -40,7 +40,7 @@ class WardenAuditCommandTest extends TestCase
             ],
         ];
 
-        $this->mock(ParallelAuditExecutor::class, function (MockInterface $mock) use ($findings): void {
+        $this->mock(AuditExecutor::class, function (MockInterface $mock) use ($findings): void {
             $mock->shouldReceive('addAudit')->zeroOrMoreTimes();
             $mock->shouldReceive('execute')->once()->andReturn([
                 'composer' => [

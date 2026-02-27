@@ -14,7 +14,7 @@ use Dgtlss\Warden\Services\Audits\EnvAuditService;
 use Dgtlss\Warden\Services\Audits\StorageAuditService;
 use Dgtlss\Warden\Services\Audits\DebugModeAuditService;
 use Dgtlss\Warden\Services\AuditCacheService;
-use Dgtlss\Warden\Services\ParallelAuditExecutor;
+use Dgtlss\Warden\Services\AuditExecutor;
 use Dgtlss\Warden\Notifications\Channels\SlackChannel;
 use Dgtlss\Warden\Notifications\Channels\DiscordChannel;
 use Dgtlss\Warden\Notifications\Channels\EmailChannel;
@@ -39,13 +39,13 @@ class WardenAuditCommand extends Command
 
     protected AuditCacheService $cacheService;
 
-    protected ParallelAuditExecutor $parallelExecutor;
+    protected AuditExecutor $executor;
 
-    public function __construct(AuditCacheService $auditCacheService, ParallelAuditExecutor $parallelAuditExecutor)
+    public function __construct(AuditCacheService $auditCacheService, AuditExecutor $auditExecutor)
     {
         parent::__construct();
         $this->cacheService = $auditCacheService;
-        $this->parallelExecutor = $parallelAuditExecutor;
+        $this->executor = $auditExecutor;
     }
 
     /**
@@ -82,14 +82,14 @@ class WardenAuditCommand extends Command
         $auditServices = $this->initializeAuditServices();
 
         foreach ($auditServices as $auditService) {
-            $this->parallelExecutor->addAudit($auditService);
+            $this->executor->addAudit($auditService);
         }
 
         if (!$isMachineOutput) {
             $this->info('Running security audits...');
         }
 
-        $results = $this->parallelExecutor->execute(!$isMachineOutput);
+        $results = $this->executor->execute(!$isMachineOutput);
 
         // Collect findings and abandoned packages
         $allFindings = [];

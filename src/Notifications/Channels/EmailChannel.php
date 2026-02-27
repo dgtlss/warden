@@ -8,6 +8,7 @@ use Carbon\Carbon;
 
 class EmailChannel implements NotificationChannel
 {
+    use \Dgtlss\Warden\Notifications\Concerns\HasSeverityHelpers;
     protected ?string $recipients;
 
     protected ?string $fromAddress;
@@ -108,68 +109,6 @@ class EmailChannel implements NotificationChannel
             'abandonedPackages' => $abandonedPackages,
             'packagesWithReplacements' => array_filter($abandonedPackages, fn($pkg) => !empty($pkg['replacement'])),
         ];
-    }
-
-    /**
-     * @param array<array<string, mixed>> $findings
-     * @return array<string, int>
-     */
-    protected function getSeverityCounts(array $findings): array
-    {
-        $counts = [
-            'critical' => 0,
-            'high' => 0,
-            'medium' => 0,
-            'low' => 0
-        ];
-
-        foreach ($findings as $finding) {
-            $severity = $finding['severity'] ?? 'low';
-            if (isset($counts[$severity])) {
-                $counts[$severity]++;
-            }
-        }
-
-        return $counts;
-    }
-
-    /**
-     * @param array<array<string, mixed>> $findings
-     * @return array<string, array<array<string, mixed>>>
-     */
-    protected function groupFindingsBySource(array $findings): array
-    {
-        $grouped = [];
-
-        foreach ($findings as $finding) {
-            $source = $finding['source'] ?? 'unknown';
-            if (!isset($grouped[$source])) {
-                $grouped[$source] = [];
-            }
-
-            $grouped[$source][] = $finding;
-        }
-
-        return $grouped;
-    }
-
-    protected function getHighestSeverity(array $findings): string
-    {
-        $severityLevels = ['critical' => 4, 'high' => 3, 'medium' => 2, 'low' => 1];
-        $highest = 'low';
-        $highestLevel = 1;
-
-        foreach ($findings as $finding) {
-            $severity = $finding['severity'] ?? 'low';
-            $level = $severityLevels[$severity] ?? 1;
-
-            if ($level > $highestLevel) {
-                $highest = $severity;
-                $highestLevel = $level;
-            }
-        }
-
-        return $highest;
     }
 
     protected function generateSummary(array $findings, array $severityCounts): string

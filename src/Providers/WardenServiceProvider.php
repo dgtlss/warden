@@ -8,7 +8,7 @@ use Dgtlss\Warden\Commands\WardenAuditCommand;
 use Dgtlss\Warden\Commands\WardenScheduleCommand;
 use Dgtlss\Warden\Commands\WardenSyntaxCommand;
 use Dgtlss\Warden\Services\AuditCacheService;
-use Dgtlss\Warden\Services\ParallelAuditExecutor;
+use Dgtlss\Warden\Services\AuditExecutor;
 
 class WardenServiceProvider extends ServiceProvider
 {
@@ -21,8 +21,8 @@ class WardenServiceProvider extends ServiceProvider
             return new AuditCacheService();
         });
         
-        $this->app->bind(ParallelAuditExecutor::class, function ($app) {
-            return new ParallelAuditExecutor();
+        $this->app->bind(AuditExecutor::class, function ($app) {
+            return new AuditExecutor();
         });
     }
 
