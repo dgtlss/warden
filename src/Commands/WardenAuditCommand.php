@@ -159,9 +159,7 @@ class WardenAuditCommand extends Command
         // Apply severity filtering if specified
         if ($this->option('severity')) {
             $severityOption = $this->option('severity');
-            if (is_string($severityOption)) {
-                $allFindings = $this->filterBySeverity($allFindings, $severityOption);
-            }
+            $allFindings = $this->filterBySeverity($allFindings, (string) $severityOption);
         }
 
         // Handle abandoned packages
@@ -253,7 +251,9 @@ class WardenAuditCommand extends Command
      */
     protected function handleAuditFailure(object $service): void
     {
-        $serviceName = method_exists($service, 'getName') ? $service->getName() : 'Unknown service';
+        $serviceName = $service instanceof \Dgtlss\Warden\Services\Audits\AbstractAuditService || $service instanceof CustomAuditWrapper
+            ? $service->getName()
+            : 'Unknown service';
         $this->error($serviceName . ' audit failed to run.');
         if ($service instanceof ComposerAuditService) {
             $findings = $service->getFindings();
