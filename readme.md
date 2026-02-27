@@ -33,17 +33,19 @@ Perfect for continuous security monitoring and DevOps pipelines.
 
 ## 📋 Table of Contents
 
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Configuration](#configuration)
-- [Security Audits](#security-audits)
-- [Usage Examples](#usage-examples)
-- [Notifications](#notifications)
-- [Custom Audits](#custom-audits)
-- [Scheduling](#scheduling)
-- [CI/CD Integration](#cicd-integration)
-- [Advanced Features](#advanced-features)
-- [FAQ](#faq)
+- [Installation](#-installation)
+- [Quick Start](#-quick-start)
+- [Command Reference](#-command-reference)
+- [Configuration](#-configuration)
+- [Security Audits](#-security-audits)
+- [Usage Examples](#-usage-examples)
+- [Notifications](#-notifications)
+- [Custom Audits](#-custom-audits)
+- [Scheduling](#-scheduling)
+- [CI/CD Integration](#-cicd-integration)
+- [Advanced Features](#-advanced-features)
+- [FAQ](#-faq)
+- [Troubleshooting](#-troubleshooting)
 
 ---
 
@@ -89,11 +91,32 @@ Generate machine-readable reports for automated pipelines:
 php artisan warden:audit --output=json --severity=high
 ```
 
-### Silent Mode (No Notifications)
-Perform audits without triggering notifications:
+### No Notifications
+Run audits without sending notifications (useful for CI or local checks):
 ```bash
-php artisan warden:audit --silent
+php artisan warden:audit --no-notify
 ```
+> **Note:** `--silent` still works for backward compatibility.
+
+---
+
+## 📌 Command Reference
+
+Quick reference for all commands and options.
+
+| Command | Options | Description |
+|--------|---------|-------------|
+| `warden:audit` | — | Run all security audits |
+| | `--no-notify` | Suppress notifications (CI/local use) |
+| | `--npm` | Include NPM dependency scan |
+| | `--ignore-abandoned` | Don't fail on abandoned packages |
+| | `--output=json\|github\|gitlab\|jenkins` | Machine-readable output |
+| | `--severity=low\|medium\|high\|critical` | Filter by minimum severity |
+| | `--force` | Clear cache and re-run all audits |
+| `warden:syntax` | — | PHP syntax validation only |
+| `warden:schedule` | `--enable` | Enable scheduled audits |
+| | `--disable` | Disable scheduled audits |
+| | `--status` | Show schedule status |
 
 ---
 
@@ -130,19 +153,17 @@ WARDEN_CACHE_DURATION=3600        # Cache for 1 hour
 WARDEN_PARALLEL_EXECUTION=true    # Enable parallel audits
 ```
 
+#### 🔬 PHP Syntax Audit
+```env
+WARDEN_PHP_SYNTAX_AUDIT_ENABLED=false   # Enable via warden:syntax or config
+```
+
 #### ⏰ Scheduling
 ```env
 WARDEN_SCHEDULE_ENABLED=false
 WARDEN_SCHEDULE_FREQUENCY=daily   # hourly|daily|weekly|monthly
 WARDEN_SCHEDULE_TIME=03:00
 WARDEN_SCHEDULE_TIMEZONE=UTC
-```
-
-#### 📊 Output & Filtering
-```env
-WARDEN_SEVERITY_FILTER=           # null|low|medium|high|critical
-WARDEN_OUTPUT_JSON=false
-WARDEN_OUTPUT_JUNIT=false
 ```
 
 ---
@@ -222,7 +243,7 @@ php artisan warden:audit --output=jenkins
 
 ```bash
 # Combined options
-php artisan warden:audit --npm --severity=high --output=json --silent
+php artisan warden:audit --npm --severity=high --output=json --no-notify
 
 # PHP syntax check
 php artisan warden:syntax
@@ -308,6 +329,7 @@ class DatabasePasswordAudit implements CustomAudit
     {
         return [
             [
+                'source' => 'Database Password Security',
                 'package' => 'environment',
                 'title' => 'Weak Database Password',
                 'severity' => 'critical',
@@ -397,7 +419,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.1'
+          php-version: '8.4'
       
       - name: Install dependencies
         run: composer install --no-progress --prefer-dist
@@ -409,11 +431,11 @@ jobs:
 ### GitLab CI
 
 ```yaml
-security_audit:
+  security_audit:
   stage: test
   script:
     - composer install --no-progress --prefer-dist
-    - php artisan warden:audit --output=gitlab --silent > gl-dependency-scanning-report.json
+    - php artisan warden:audit --output=gitlab --no-notify > gl-dependency-scanning-report.json
   artifacts:
     reports:
       dependency_scanning: gl-dependency-scanning-report.json
@@ -479,9 +501,7 @@ pipeline {
 
 'audits' => [
     'parallel_execution' => true,
-    'timeout' => 300,
-    'retry_attempts' => 3,
-    'severity_filter' => 'medium',
+    'timeout' => 300, // seconds
 ],
 
 'cache' => [
@@ -495,6 +515,8 @@ pipeline {
     'AWS_SECRET_ACCESS_KEY',
 ],
 ```
+
+> **Output & severity:** Use `--output` and `--severity` CLI options (not config). See [Command Reference](#-command-reference) below.
 
 ---
 
@@ -514,7 +536,7 @@ pipeline {
 Warden extends beyond Composer audit with NPM scanning, environment checks, storage permissions, Laravel-specific configurations, and custom audit rules for comprehensive security monitoring.
 
 ### Can Warden run in CI/CD without notifications?
-Yes! Use the `--silent` flag to suppress notifications while still generating reports for your pipeline.
+Yes! Use `--no-notify` to suppress notifications while still generating reports for your pipeline. (`--silent` also works.)
 
 ### What are the performance impacts?
 Minimal! Parallel execution and intelligent caching ensure audits complete in seconds, with configurable timeouts and retry logic.
