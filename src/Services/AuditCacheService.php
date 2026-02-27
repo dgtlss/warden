@@ -7,6 +7,18 @@ use Carbon\Carbon;
 
 class AuditCacheService
 {
+    /**
+     * Audit names used for cache key generation. Must be kept in sync with registered audits.
+     */
+    private const AUDIT_NAMES = [
+        'composer',
+        'npm',
+        'environment',
+        'storage',
+        'debug-mode',
+        'PHP Syntax',
+    ];
+
     protected string $cachePrefix = 'warden:audit:';
 
     protected int $cacheDuration;
@@ -77,8 +89,9 @@ class AuditCacheService
         if ($auditName) {
             Cache::forget($this->getCacheKey($auditName));
         } else {
-            // Clear all Warden audit cache
-            Cache::flush(); // Note: In production, you might want to use tags instead
+            foreach (self::AUDIT_NAMES as $name) {
+                Cache::forget($this->getCacheKey($name));
+            }
         }
     }
 

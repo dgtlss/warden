@@ -76,10 +76,6 @@ return [
     'audits' => [
         'parallel_execution' => env('WARDEN_PARALLEL_EXECUTION', true),
         'timeout' => env('WARDEN_AUDIT_TIMEOUT', 300), // seconds
-        'retry_attempts' => env('WARDEN_RETRY_ATTEMPTS', 3),
-        'retry_delay' => env('WARDEN_RETRY_DELAY', 1000), // milliseconds
-        'severity_filter' => env('WARDEN_SEVERITY_FILTER'), // null|low|medium|high|critical
-
         'php_syntax' => [
             'enabled' => env('WARDEN_PHP_SYNTAX_AUDIT_ENABLED', false),
             'exclude' => [
@@ -135,21 +131,6 @@ return [
         'enabled' => env('WARDEN_HISTORY_ENABLED', false),
         'table' => env('WARDEN_HISTORY_TABLE', 'warden_audit_history'),
         'retention_days' => env('WARDEN_HISTORY_RETENTION_DAYS', 90),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Output Formats
-    |--------------------------------------------------------------------------
-    |
-    | Configure available output formats for audit results.
-    |
-    */
-
-    'output_formats' => [
-        'json' => env('WARDEN_OUTPUT_JSON', false),
-        'junit' => env('WARDEN_OUTPUT_JUNIT', false), // For CI/CD integration
-        'markdown' => env('WARDEN_OUTPUT_MARKDOWN', false),
     ],
 
     /*

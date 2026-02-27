@@ -22,9 +22,6 @@ class ComposerAuditService extends AbstractAuditService
         $process->setWorkingDirectory(base_path());
         $process->setTimeout(60);
         
-        // Add debug output before running
-        info("Running composer audit from: " . base_path());
-        
         try {
             $process->run();
             
@@ -82,7 +79,6 @@ class ComposerAuditService extends AbstractAuditService
                 'error' => $exception->getMessage()
             ]);
             
-            info("Composer audit exception: " . $exception->getMessage());
             return false;
         }
     }

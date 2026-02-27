@@ -14,37 +14,63 @@ use Dgtlss\Warden\Services\Audits\EnvAuditService;
 use Dgtlss\Warden\Services\Audits\StorageAuditService;
 use Dgtlss\Warden\Services\Audits\DebugModeAuditService;
 use Dgtlss\Warden\Services\AuditCacheService;
-use Dgtlss\Warden\Services\ParallelAuditExecutor;
+use Dgtlss\Warden\Services\AuditExecutor;
 use Dgtlss\Warden\Notifications\Channels\SlackChannel;
 use Dgtlss\Warden\Notifications\Channels\DiscordChannel;
 use Dgtlss\Warden\Notifications\Channels\EmailChannel;
 use Dgtlss\Warden\Notifications\Channels\TeamsChannel;
+use Dgtlss\Warden\Contracts\AuditServiceInterface;
 use Dgtlss\Warden\Contracts\CustomAudit;
 use Dgtlss\Warden\Contracts\NotificationChannel;
+use Dgtlss\Warden\Services\CustomAuditWrapper;
 use function Laravel\Prompts\info;
 use function Laravel\Prompts\table;
 
 class WardenAuditCommand extends Command
 {
     protected $signature = 'warden:audit 
-    {--silent : Run the audit without sending notifications} 
+    {--no-notify : Run the audit without sending notifications (replaces --silent)} 
     {--npm : Run the npm audit}
     {--ignore-abandoned : Ignore abandoned packages, without throwing an error}
     {--output= : Output format (json|github|gitlab|jenkins)}
     {--severity= : Filter by severity level (low|medium|high|critical)}
     {--force : Force cache refresh and ignore cached results}';
 
-    protected $description = 'Performs a composer audit and reports findings via Warden.';
+    protected $description = 'Run security audits on your application dependencies and configuration.';
 
     protected AuditCacheService $cacheService;
 
-    protected ParallelAuditExecutor $parallelExecutor;
+    protected AuditExecutor $executor;
 
-    public function __construct(AuditCacheService $auditCacheService, ParallelAuditExecutor $parallelAuditExecutor)
+    public function __construct(AuditCacheService $auditCacheService, AuditExecutor $auditExecutor)
     {
         parent::__construct();
         $this->cacheService = $auditCacheService;
-        $this->parallelExecutor = $parallelAuditExecutor;
+        $this->executor = $auditExecutor;
+    }
+
+    /**
+     * Check whether notifications should be suppressed.
+     *
+     * Supports both the new --no-notify flag and the legacy --silent flag.
+     * On Symfony Console 7.2+ (Laravel 11+), --silent is a framework-level
+     * option that also suppresses output. We detect it via output verbosity
+     * so that existing users passing --silent still get notification suppression.
+     */
+    protected function shouldSuppressNotifications(): bool
+    {
+        if ($this->option('no-notify')) {
+            return true;
+        }
+
+        // Check if isSilent() exists (Symfony Console 7.2+/Laravel 11+)
+        // @phpstan-ignore function.alreadyNarrowedType (runtime check needed for older Symfony versions)
+        if (method_exists($this->output, 'isSilent')) {
+            return $this->output->isSilent();
+        }
+
+        // Fallback for older Symfony Console versions: do not suppress notifications
+        return false;
     }
 
     /**
@@ -54,35 +80,41 @@ class WardenAuditCommand extends Command
      */
     public function handle(): int
     {
-        $this->displayVersion();
+        $isMachineOutput = $this->option('output') !== null;
 
-        // Handle cache clearing if force option is used
-        if ($this->option('force')) {
-            $this->cacheService->clearCache();
-            $this->info('Cache cleared.');
+        if (!$isMachineOutput) {
+            $this->displayVersion();
         }
 
-        // Check if we should use parallel execution
+        if ($this->option('force')) {
+            $this->cacheService->clearCache();
+            if (!$isMachineOutput) {
+                $this->info('Cache cleared.');
+            }
+        }
+
         $useParallel = config('warden.audits.parallel_execution', true);
 
         if ($useParallel) {
-            return $this->runParallelAudits();
-        } else {
-            return $this->runSequentialAudits();
+            return $this->runParallelAudits($isMachineOutput);
         }
+
+        return $this->runSequentialAudits($isMachineOutput);
     }
 
-    protected function runParallelAudits(): int
+    protected function runParallelAudits(bool $isMachineOutput = false): int
     {
         $auditServices = $this->initializeAuditServices();
 
-        // Add services to parallel executor
         foreach ($auditServices as $auditService) {
-            $this->parallelExecutor->addAudit($auditService);
+            $this->executor->addAudit($auditService);
         }
 
-        $this->info('Running security audits in parallel...');
-        $results = $this->parallelExecutor->execute(true);
+        $progress = $isMachineOutput ? null : function (string $name, string $status, ?float $durationMs): void {
+            $this->renderAuditProgress($name, $status, $durationMs);
+        };
+
+        $results = $this->executor->execute($progress);
 
         // Collect findings and abandoned packages
         $allFindings = [];
@@ -109,7 +141,7 @@ class WardenAuditCommand extends Command
         return $this->processResults($allFindings, $abandonedPackages, $hasFailures);
     }
 
-    protected function runSequentialAudits(): int
+    protected function runSequentialAudits(bool $isMachineOutput = false): int
     {
         $auditServices = $this->initializeAuditServices();
         $hasFailures = false;
@@ -121,7 +153,10 @@ class WardenAuditCommand extends Command
 
             // Check cache first (unless force is used)
             if (!$this->option('force') && $this->cacheService->hasRecentAudit($auditName)) {
-                $this->info(sprintf('Using cached results for %s audit...', $auditName));
+                if (!$isMachineOutput) {
+                    $this->info(sprintf('Using cached results for %s audit...', $auditName));
+                }
+
                 $cached = $this->cacheService->getCachedResult($auditName);
                 if (!empty($cached['result'])) {
                     $allFindings = array_merge($allFindings, $cached['result']);
@@ -130,7 +165,9 @@ class WardenAuditCommand extends Command
                 continue;
             }
 
-            $this->info(sprintf('Running %s audit...', $auditName));
+            if (!$isMachineOutput) {
+                $this->info(sprintf('Running %s audit...', $auditName));
+            }
 
             if (!$auditService->run()) {
                 $this->handleAuditFailure($auditService);
@@ -156,38 +193,42 @@ class WardenAuditCommand extends Command
 
     protected function processResults(array $allFindings, array $abandonedPackages, bool $hasFailures): int
     {
+        $totalBeforeFilter = count($allFindings);
+        $severityOption = null;
+
         // Apply severity filtering if specified
         if ($this->option('severity')) {
-            $severityOption = $this->option('severity');
-            if (is_string($severityOption)) {
-                $allFindings = $this->filterBySeverity($allFindings, $severityOption);
-            }
+            $severityOption = (string) $this->option('severity');
+            $allFindings = $this->filterBySeverity($allFindings, $severityOption);
         }
 
-        // Handle abandoned packages
-        $this->handleAbandonedPackages($abandonedPackages);
-
-        // Handle output formatting
         $outputFormat = $this->option('output');
         if ($outputFormat) {
             $this->outputFormattedResults($allFindings, (string) $outputFormat);
-            return $allFindings === [] ? ($hasFailures ? 2 : 0) : (1);
+            return $allFindings === [] ? ($hasFailures ? 2 : 0) : 1;
         }
 
-        // Display and handle findings (default console output)
+        $this->handleAbandonedPackages($abandonedPackages);
+
+        $this->newLine();
+
         if ($allFindings !== []) {
             $this->displayFindings($allFindings);
 
-            if (!$this->option('silent')) {
+            if (!$this->shouldSuppressNotifications()) {
                 $this->sendNotifications($allFindings);
-                $this->newLine();
-                info('Notifications sent.');
             }
 
             return 1;
         }
 
-        info('No vulnerabilities found.');
+        $filtered = $totalBeforeFilter - count($allFindings);
+        if ($filtered > 0 && $severityOption !== null) {
+            info(sprintf('No issues at %s severity or above (%d lower-severity %s filtered).', $severityOption, $filtered, $filtered === 1 ? 'issue' : 'issues'));
+        } else {
+            info('✅ No security issues found.');
+        }
+
         return $hasFailures ? 2 : 0;
     }
 
@@ -196,25 +237,55 @@ class WardenAuditCommand extends Command
      */
     protected function displayVersion(): void
     {
-        $this->info('Warden Audit Version ' . $this->getWardenVersion());
+        $this->newLine();
+        $this->line(sprintf('  <fg=cyan;options=bold>Warden</> <fg=white>v%s</>', $this->getWardenVersion()));
+        $this->newLine();
+    }
+
+    /**
+     * Render per-audit progress line.
+     */
+    protected function renderAuditProgress(string $name, string $status, ?float $durationMs): void
+    {
+        $label = ucfirst($name);
+
+        if ($status === 'running') {
+            $this->output->write(sprintf('  <fg=blue>⏳</> Running <options=bold>%s</> audit ...', $label));
+            return;
+        }
+
+        // Overwrite the "running" line if terminal supports it
+        if (stream_isatty(STDOUT)) {
+            $this->output->write("\r\033[2K");
+        } else {
+            $this->newLine();
+        }
+
+        $duration = $durationMs !== null ? sprintf(' <fg=gray>(%sms)</>', number_format($durationMs, 0)) : '';
+
+        if ($status === 'done') {
+            $this->line(sprintf('  <fg=green>✓</> %s audit%s', $label, $duration));
+        } else {
+            $this->line(sprintf('  <fg=red>✗</> %s audit <fg=red>failed</>%s', $label, $duration));
+        }
     }
 
     /**
      * Initialize and return all audit services based on command options.
      *
-     * @return array<int, object> Array of audit service instances
+     * @return array<int, AuditServiceInterface> Array of audit service instances
      */
     protected function initializeAuditServices(): array
     {
         $services = [
-            new ComposerAuditService(),
-            new EnvAuditService(),
-            new StorageAuditService(),
-            new DebugModeAuditService(),
+            app(ComposerAuditService::class),
+            app(EnvAuditService::class),
+            app(StorageAuditService::class),
+            app(DebugModeAuditService::class),
         ];
 
         if ($this->option('npm')) {
-            $services[] = new NpmAuditService();
+            $services[] = app(NpmAuditService::class);
         }
 
         // Load custom audits from configuration
@@ -249,14 +320,17 @@ class WardenAuditCommand extends Command
     /**
      * Handle a failed audit service.
      *
-     * @param object $service The audit service that failed
+     * @param AuditServiceInterface $auditService The audit service that failed
      */
-    protected function handleAuditFailure(object $service): void
+    protected function handleAuditFailure(AuditServiceInterface $auditService): void
     {
-        $serviceName = method_exists($service, 'getName') ? $service->getName() : 'Unknown service';
+        $serviceName = $auditService->getName();
+        if ($serviceName === '') {
+            $serviceName = 'Unknown service';
+        }
         $this->error($serviceName . ' audit failed to run.');
-        if ($service instanceof ComposerAuditService) {
-            $findings = $service->getFindings();
+        if ($auditService instanceof ComposerAuditService) {
+            $findings = $auditService->getFindings();
             $error = Collection::make($findings)->last()['error'] ?? 'Unknown error';
             $this->error("Error: " . $error);
         }
@@ -295,7 +369,7 @@ class WardenAuditCommand extends Command
             rows: $rows
         );
 
-        if (!$this->option('silent')) {
+        if (!$this->shouldSuppressNotifications()) {
             $this->sendAbandonedPackagesNotification($abandonedPackages);
         }
     }
@@ -307,21 +381,41 @@ class WardenAuditCommand extends Command
      */
     protected function displayFindings(array $findings): void
     {
-        $this->error(count($findings) . ' vulnerabilities found.');
+        $count = count($findings);
+        $this->error($count . ' security ' . ($count === 1 ? 'issue' : 'issues') . ' found.');
 
-        $headers = ['Source', 'Package', 'Title', 'Severity', 'CVE', 'Link', 'Affected Versions'];
+        $hasCveData = collect($findings)->contains(fn ($f) => !empty($f['cve']));
+
+        $headers = ['Source', 'Package', 'Title', 'Severity'];
+        if ($hasCveData) {
+            $headers = array_merge($headers, ['CVE', 'Affected Versions']);
+        }
+
         $rows = [];
-
         foreach ($findings as $finding) {
-            $rows[] = [
+            $severity = $finding['severity'] ?? 'unknown';
+            $severityDisplay = match ($severity) {
+                'critical' => '🔴 Critical',
+                'high' => '🟠 High',
+                'medium' => '🟡 Medium',
+                'low' => '🟢 Low',
+                default => $severity,
+            };
+
+            $row = [
                 $finding['source'],
                 $finding['package'],
                 $finding['title'],
-                $finding['severity'],
-                $finding['cve'] ?? '-',
-                $finding['cve'] ? 'https://www.cve.org/CVERecord?id=' . $finding['cve'] : '-',
-                $finding['affected_versions'] ?? '-'
+                $severityDisplay,
             ];
+
+            if ($hasCveData) {
+                $cve = $finding['cve'] ?? null;
+                $row[] = $cve ?: '-';
+                $row[] = $finding['affected_versions'] ?? '-';
+            }
+
+            $rows[] = $row;
         }
 
         table(
@@ -364,18 +458,24 @@ class WardenAuditCommand extends Command
     protected function sendNotifications(array $findings): void
     {
         $channels = $this->getNotificationChannels();
+        $sent = false;
 
         foreach ($channels as $channel) {
             try {
                 $channel->send($findings);
                 $this->info('Notification sent via ' . $channel->getName());
+                $sent = true;
             } catch (\Exception $e) {
                 $this->warn(sprintf('Failed to send notification via %s: %s', $channel->getName(), $e->getMessage()));
             }
         }
 
-        // Legacy support
-        $this->sendLegacyNotifications($findings);
+        $legacySent = $this->sendLegacyNotifications($findings);
+        $sent = $sent || $legacySent;
+
+        if (!$sent) {
+            $this->warn('No notification channels configured. Set up Slack, Discord, Teams, or Email in config/warden.php.');
+        }
     }
 
     /**
@@ -419,19 +519,24 @@ class WardenAuditCommand extends Command
      *
      * @param array<array<string, mixed>> $findings List of vulnerability findings
      */
-    protected function sendLegacyNotifications(array $findings): void
+    protected function sendLegacyNotifications(array $findings): bool
     {
         $webhookUrl = config('warden.webhook_url');
         $emailRecipients = config('warden.email_recipients');
+        $sent = false;
 
         if ($webhookUrl) {
             $this->sendWebhookNotification($webhookUrl, $findings);
+            $sent = true;
         }
 
         if ($emailRecipients) {
             $recipients = is_string($emailRecipients) ? explode(',', $emailRecipients) : $emailRecipients;
             $this->sendEmailReport($findings, $recipients);
+            $sent = true;
         }
+
+        return $sent;
     }
 
     /**
@@ -618,12 +723,23 @@ class WardenAuditCommand extends Command
      */
     protected function outputGitHubActions(array $findings): void
     {
+        if ($findings === []) {
+            $this->output->writeln('::notice title=Warden Security Audit::No security issues found.');
+            return;
+        }
+
         foreach ($findings as $finding) {
             $level = in_array($finding['severity'], ['critical', 'high']) ? 'error' : 'warning';
             $title = $finding['title'] ?? 'Security vulnerability';
             $package = $finding['package'] ?? 'unknown';
+            $severity = $finding['severity'] ?? 'unknown';
 
-            $this->output->writeln(sprintf('::%s title=%s::%s - %s severity vulnerability found', $level, $title, $package, $finding['severity']));
+            $titleEncoded = $this->escapeGitHubWorkflowKeyValue($title);
+            $messageEncoded = $this->escapeGitHubWorkflowMessage(
+                sprintf('%s - %s severity vulnerability found', $package, $severity)
+            );
+
+            $this->output->writeln(sprintf('::%s title=%s::%s', $level, $titleEncoded, $messageEncoded));
         }
     }
 
@@ -687,6 +803,24 @@ class WardenAuditCommand extends Command
     }
 
     /**
+     * Escape a value for GitHub Actions workflow command key=value pairs.
+     * Must escape: % → %25, \r → %0D, \n → %0A, : → %3A, , → %2C
+     */
+    protected function escapeGitHubWorkflowKeyValue(string $value): string
+    {
+        return str_replace(['%', "\r", "\n", ':', ','], ['%25', '%0D', '%0A', '%3A', '%2C'], $value);
+    }
+
+    /**
+     * Escape message content for GitHub Actions workflow command.
+     * Must escape: % → %25, \r → %0D, \n → %0A
+     */
+    protected function escapeGitHubWorkflowMessage(string $value): string
+    {
+        return str_replace(['%', "\r", "\n"], ['%25', '%0D', '%0A'], $value);
+    }
+
+    /**
      * Get the current Warden version.
      */
     protected function getWardenVersion(): string
@@ -708,49 +842,5 @@ class WardenAuditCommand extends Command
         }
 
         return $composerJson['version'];
-    }
-}
-
-/**
- * Wrapper class to adapt CustomAudit interface to AbstractAuditService pattern.
- */
-class CustomAuditWrapper
-{
-    protected CustomAudit $customAudit;
-
-    protected array $findings = [];
-
-    public function __construct(CustomAudit $customAudit)
-    {
-        $this->customAudit = $customAudit;
-    }
-
-    public function getName(): string
-    {
-        return $this->customAudit->getName();
-    }
-
-    public function run(): bool
-    {
-        $success = $this->customAudit->audit();
-
-        if (!$success) {
-            $this->findings = $this->customAudit->getFindings();
-        }
-
-        return $success;
-    }
-
-    /**
-     * @return array<array<string, mixed>>
-     */
-    public function getFindings(): array
-    {
-        return $this->findings;
-    }
-
-    public function shouldRun(): bool
-    {
-        return $this->customAudit->shouldRun();
     }
 }

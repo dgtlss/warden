@@ -14,7 +14,7 @@ class WardenSyntaxCommandTest extends TestCase
         return [WardenServiceProvider::class];
     }
 
-    public function testSyntaxCommandHandlesNoFindings()
+    public function testSyntaxCommandHandlesNoFindings(): void
     {
         $this->mock(PhpSyntaxAuditService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('run')->once()->andReturn(true);
@@ -22,11 +22,11 @@ class WardenSyntaxCommandTest extends TestCase
 
         $this->artisan('warden:syntax')
             ->expectsOutputToContain('Warden PHP Syntax Audit')
-            ->expectsOutputToContain('✅ No PHP syntax errors found.')
+            ->expectsOutputToContain('No PHP syntax errors found.')
             ->assertExitCode(0);
     }
 
-    public function testSyntaxCommandHandlesFindings()
+    public function testSyntaxCommandHandlesFindings(): void
     {
         $findings = [
             [
@@ -42,11 +42,11 @@ class WardenSyntaxCommandTest extends TestCase
 
         $this->artisan('warden:syntax')
             ->expectsOutputToContain('Warden PHP Syntax Audit')
-            ->expectsOutputToContain('1 syntax errors found.')
+            ->expectsOutputToContain('1 syntax error found.')
             ->assertExitCode(1);
     }
 
-    public function testSyntaxCommandHandlesAuditError()
+    public function testSyntaxCommandHandlesAuditError(): void
     {
         $findings = [
             [
@@ -63,7 +63,7 @@ class WardenSyntaxCommandTest extends TestCase
 
         $this->artisan('warden:syntax')
             ->expectsOutputToContain('Warden PHP Syntax Audit')
-            ->expectsOutputToContain('1 syntax errors found.')
+            ->expectsOutputToContain('1 syntax error found.')
             ->assertExitCode(2);
     }
-} 
+}
