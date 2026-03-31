@@ -1,7 +1,15 @@
 {
     "name": "dgtlss/warden",
     "description": "A Laravel package that proactively monitors your dependencies for security vulnerabilities by running automated composer audits and sending notifications via webhooks and email",
-    "keywords": ["laravel", "composer", "security", "vulnerabilities", "audits", "notifications", "CVE"],
+    "keywords": [
+        "laravel",
+        "composer",
+        "security",
+        "vulnerabilities",
+        "audits",
+        "notifications",
+        "CVE"
+    ],
     "version": "1.5.0",
     "license": "MIT",
     "autoload": {
@@ -19,8 +27,8 @@
     "prefer-stable": true,
     "require": {
         "php": ">=8.3",
-        "illuminate/support": "^7.0|^8.0|^9.0|^10.0|^11.0|^12.0",
-        "illuminate/cache": "^7.0|^8.0|^9.0|^10.0|^11.0|^12.0",
+        "illuminate/support": "^7.0|^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
+        "illuminate/cache": "^7.0|^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
         "guzzlehttp/guzzle": "^7.0",
         "laravel/prompts": "^0.3"
     },
@@ -35,7 +43,7 @@
         "phpstan/phpstan": "^2.1",
         "rector/rector": "^2.2",
         "larastan/larastan": "^3.0",
-        "orchestra/testbench": "^10.9"
+        "orchestra/testbench": "^10.9|^11.0"
     },
     "scripts": {
         "phpstan": "vendor/bin/phpstan analyse --memory-limit=2G"
