@@ -12,7 +12,32 @@ It is designed to give your pipeline an extra layer of protection before code is
 
 Warden also works well locally. You can run the same checks before pushing, adopt stricter rules gradually with baselines, and use `warden:resolve` to preview or apply dependency remediations outside CI.
 
-## What Warden is good at
+## Contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Upgrading existing projects](#upgrading-existing-projects)
+- [Quick start](#quick-start)
+- [Exit codes](#exit-codes)
+- [Profiles](#profiles)
+- [Audit coverage](#audit-coverage)
+- [Command reference](#command-reference)
+- [Output formats](#output-formats)
+- [Typical workflows](#typical-workflows)
+- [Baselines and suppressions](#baselines-and-suppressions)
+- [Auto resolve](#auto-resolve)
+- [Configuration](#configuration)
+- [Notifications](#notifications)
+- [Audit history](#audit-history)
+- [Warden Cloud](#warden-cloud)
+- [Scheduling](#scheduling)
+- [Custom audits](#custom-audits)
+- [CI example](#ci-example)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
+
+## Features
 
 - Catching vulnerable Composer dependencies with `composer audit`
 - Catching vulnerable JavaScript dependencies when you opt into `--npm`
@@ -47,27 +72,51 @@ php artisan vendor:publish --tag=warden-config
 
 That creates `config/warden.php`, which is where most of the newer Warden features are configured.
 
+## Upgrading existing projects
+
+If you already use Warden, v2 is designed to be additive:
+
+- Existing command names stay the same
+- Existing `warden:audit`, `warden:syntax`, and `warden:schedule` flows still work
+- The default profile remains `legacy`, so upgrades do not automatically turn on the broader rulesets
+
+For most teams, the safe upgrade path is:
+
+1. Upgrade the package
+2. Publish or review `config/warden.php`
+3. Run `php artisan warden:audit --no-notify`
+4. Create a baseline if the project already has known findings
+5. Move from `legacy` to `recommended` when you are ready
+
 ## Quick start
 
-Run the default audit profile:
+For a typical first run:
 
-```bash
-php artisan warden:audit
-```
-
-Include JavaScript dependency auditing:
-
-```bash
-php artisan warden:audit --npm
-```
-
-Validate setup and integration readiness:
+- Validate the local environment:
 
 ```bash
 php artisan warden:doctor
 ```
 
-Start with a machine-readable CI output:
+- Run the default audit profile:
+
+```bash
+php artisan warden:audit
+```
+
+- Include JavaScript dependency auditing if the project has frontend dependencies:
+
+```bash
+php artisan warden:audit --npm
+```
+
+- If this is an existing codebase, create a baseline before enforcing stricter CI behavior:
+
+```bash
+php artisan warden:baseline --reason="Initial Warden adoption"
+```
+
+- Use a CI-oriented output format in pipelines:
 
 ```bash
 php artisan warden:audit --output=github --no-notify
@@ -218,7 +267,7 @@ php artisan warden:audit --output=markdown > warden-report.md
 php artisan warden:audit --output=html > warden-report.html
 ```
 
-## Common workflows
+## Typical workflows
 
 ### 1. Local audit before you push
 
@@ -634,3 +683,7 @@ php artisan warden:baseline --reason="Initial adoption"
 ```
 
 Then move from `legacy` to `recommended` once the baseline is in place.
+
+## License
+
+Warden is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
