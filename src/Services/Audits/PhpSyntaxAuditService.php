@@ -26,9 +26,12 @@ class PhpSyntaxAuditService extends AbstractAuditService
             $this->addFinding([
                 'package' => 'Application Code',
                 'title' => 'PHP Syntax Error in ' . $filePath,
+                'rule_id' => 'php.syntax.error',
+                'category' => 'code',
                 'severity' => 'high',
                 'description' => $error['message'],
                 'remediation' => 'Fix the syntax error in the specified file.',
+                'file' => $filePath,
             ]);
         }
         
@@ -37,6 +40,8 @@ class PhpSyntaxAuditService extends AbstractAuditService
             $this->addFinding([
                 'package' => 'Application Code',
                 'title' => 'PHP Syntax Audit Failed to Run',
+                'rule_id' => 'php.syntax.execution-failed',
+                'category' => 'code',
                 'severity' => 'error',
                 'description' => 'The PHP syntax audit process failed without reporting specific syntax errors.',
                 'remediation' => 'Ensure `find`, `xargs`, and `php` are available. Error: ' . $process->getErrorOutput(),

@@ -16,12 +16,21 @@ interface CustomAudit
      *
      * @return array Array of findings with structure:
      *               [
-     *                   'package' => 'package-name',
-     *                   'title' => 'Issue title',
+     *                   'rule_id' => 'custom.rule-id', // optional, generated when omitted
+     *                   'category' => 'security|dependency|laravel|ci|container|...', // optional
      *                   'severity' => 'critical|high|medium|low',
-     *                   'description' => 'Detailed description',
+     *                   'title' => 'Issue title',
+     *                   'description' => 'Detailed description', // optional, defaults to title
+     *                   'package' => 'package-name',
+     *                   'file' => 'config/app.php', // optional
+     *                   'line' => 10, // optional
+     *                   'remediation' => 'Suggested remediation', // optional
+     *                   'references' => [
+     *                       ['label' => 'Advisory', 'url' => 'https://example.test/advisory'],
+     *                   ], // optional
      *                   'cve' => 'CVE-2023-XXXXX', // optional
      *                   'affected_versions' => '< 2.0', // optional
+     *                   // Additional keys are preserved as metadata
      *               ]
      */
     public function getFindings(): array;

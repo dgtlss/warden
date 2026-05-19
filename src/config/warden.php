@@ -17,6 +17,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Active Profile
+    |--------------------------------------------------------------------------
+    |
+    | Warden v2 introduces audit profiles so stronger rulesets can be adopted
+    | without breaking existing CI pipelines. "legacy" preserves v1 behavior.
+    |
+    */
+
+    'profile' => 'legacy',
+
+    /*
+    |--------------------------------------------------------------------------
     | Notification Settings
     |--------------------------------------------------------------------------
     |
@@ -75,6 +87,7 @@ return [
 
     'audits' => [
         'parallel_execution' => env('WARDEN_PARALLEL_EXECUTION', true),
+        'max_concurrency' => env('WARDEN_MAX_CONCURRENCY', 4),
         'timeout' => env('WARDEN_AUDIT_TIMEOUT', 300), // seconds
         'php_syntax' => [
             'enabled' => env('WARDEN_PHP_SYNTAX_AUDIT_ENABLED', false),
@@ -90,6 +103,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Profile Definitions
+    |--------------------------------------------------------------------------
+    */
+
+    'profiles' => [
+        'legacy' => [
+            'description' => 'Preserves the original Warden audit footprint for existing users.',
+        ],
+        'recommended' => [
+            'description' => 'CI-first security profile with additional repository and Laravel posture checks.',
+        ],
+        'ci-strict' => [
+            'description' => 'Most comprehensive CI profile for security-focused pipelines.',
+        ],
+        'runtime-safe' => [
+            'description' => 'Application-safe profile intended for scheduled and in-environment audits.',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Custom Audits
     |--------------------------------------------------------------------------
     |
@@ -100,6 +134,30 @@ return [
 
     'custom_audits' => [
         // \App\Audits\MyCustomAudit::class,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Baseline And Policy Configuration
+    |--------------------------------------------------------------------------
+    */
+
+    'baseline' => [
+        'enabled' => true,
+        'path' => '.warden-baseline.json',
+    ],
+
+    'policy' => [
+        'suppressions' => [
+            // [
+            //     'fingerprint' => 'sha256...',
+            //     'reason' => 'Accepted until dependency upgrade lands.',
+            //     'expires_at' => '2026-12-31T00:00:00+00:00',
+            // ],
+        ],
+        'composer' => [
+            'include_dev_dependencies' => true,
+        ],
     ],
 
     /*
@@ -128,9 +186,71 @@ return [
     */
 
     'history' => [
-        'enabled' => env('WARDEN_HISTORY_ENABLED', false),
-        'table' => env('WARDEN_HISTORY_TABLE', 'warden_audit_history'),
-        'retention_days' => env('WARDEN_HISTORY_RETENTION_DAYS', 90),
+        'enabled' => false,
+        'table' => 'warden_audit_history',
+        'retention_days' => 90,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | CI Integrations
+    |--------------------------------------------------------------------------
+    |
+    | These values are optional manual overrides. Warden still detects runtime
+    | CI context directly from GitHub, GitLab, and Jenkins environment
+    | variables when the package is running inside a pipeline.
+    */
+
+    'integrations' => [
+        'github' => [
+            'repository' => null,
+        ],
+        'gitlab' => [
+            'project' => null,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Warden Cloud
+    |--------------------------------------------------------------------------
+    |
+    | Core Warden remains fully offline-capable. These settings activate the
+    | optional cloud sync path when you are ready to layer on hosted features.
+    |
+    */
+
+    'cloud' => [
+        'enabled' => false,
+        'base_url' => null,
+        'token' => null,
+        'auto_sync' => false,
+        'fail_closed' => false,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Auto Resolve
+    |--------------------------------------------------------------------------
+    |
+    | Warden resolve is intentionally conservative in v1 and focuses on
+    | dependency-level remediations that can be previewed and explained before
+    | being applied.
+    |
+    */
+
+    'resolve' => [
+        'enabled' => true,
+        'allow_in_ci' => false,
+        'default_verify' => true,
+        'allow_dirty' => false,
+        'auto_branch' => false,
+        'package_managers' => [
+            'composer' => true,
+            'npm' => true,
+            'pnpm' => true,
+            'yarn' => true,
+        ],
     ],
 
     /*

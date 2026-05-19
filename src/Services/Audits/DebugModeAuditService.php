@@ -24,9 +24,13 @@ class DebugModeAuditService extends AbstractAuditService
             $this->addFinding([
                 'package' => 'app-config',
                 'title' => 'Debug mode is enabled in production',
+                'rule_id' => 'laravel.debug.production-enabled',
+                'category' => 'laravel',
                 'severity' => 'critical',
                 'cve' => null,
-                'affected_versions' => null
+                'affected_versions' => null,
+                'description' => 'APP_DEBUG should never be enabled when the application is running in production.',
+                'file' => '.env',
             ]);
         }
 
@@ -40,9 +44,13 @@ class DebugModeAuditService extends AbstractAuditService
                     $this->addFinding([
                         'package' => $devPackage,
                         'title' => 'Development package detected in production',
+                        'rule_id' => 'laravel.production.dev-package',
+                        'category' => 'dependency',
                         'severity' => 'high',
                         'cve' => null,
-                        'affected_versions' => null
+                        'affected_versions' => null,
+                        'description' => 'Development-only packages should not be present in production deployments.',
+                        'file' => 'composer.lock',
                     ]);
                 }
             }
@@ -52,9 +60,12 @@ class DebugModeAuditService extends AbstractAuditService
                 $this->addFinding([
                     'package' => 'laravel/telescope',
                     'title' => 'Laravel Telescope is enabled in production',
+                    'rule_id' => 'laravel.telescope.production-enabled',
+                    'category' => 'laravel',
                     'severity' => 'high',
                     'cve' => null,
-                    'affected_versions' => null
+                    'affected_versions' => null,
+                    'description' => 'Telescope should be disabled or protected in production environments.',
                 ]);
             }
 
@@ -63,9 +74,12 @@ class DebugModeAuditService extends AbstractAuditService
                 $this->addFinding([
                     'package' => 'laravel/horizon',
                     'title' => 'Laravel Horizon dashboard is enabled in production',
+                    'rule_id' => 'laravel.horizon.dashboard-exposed',
+                    'category' => 'laravel',
                     'severity' => 'medium',
                     'cve' => null,
-                    'affected_versions' => null
+                    'affected_versions' => null,
+                    'description' => 'Unprotected Horizon dashboards expose operational data and control surfaces.',
                 ]);
             }
         }
@@ -75,9 +89,12 @@ class DebugModeAuditService extends AbstractAuditService
             $this->addFinding([
                 'package' => 'routes',
                 'title' => 'Testing routes are exposed',
+                'rule_id' => 'laravel.routes.testing-exposed',
+                'category' => 'laravel',
                 'severity' => 'high',
                 'cve' => null,
-                'affected_versions' => null
+                'affected_versions' => null,
+                'description' => 'Testing and diagnostic routes should not be reachable in production deployments.',
             ]);
         }
 

@@ -23,9 +23,13 @@ class EnvAuditService extends AbstractAuditService
             $this->addFinding([
                 'package' => 'environment',
                 'title' => 'Missing .env file',
+                'rule_id' => 'env.file.missing',
+                'category' => 'configuration',
                 'severity' => 'critical',
                 'cve' => null,
-                'affected_versions' => null
+                'affected_versions' => null,
+                'description' => 'The application is missing its .env file, which usually indicates broken runtime configuration.',
+                'file' => '.env',
             ]);
             return false;
         }
@@ -35,9 +39,13 @@ class EnvAuditService extends AbstractAuditService
             $this->addFinding([
                 'package' => 'environment',
                 'title' => '.env file not listed in .gitignore',
+                'rule_id' => 'env.file.not-ignored',
+                'category' => 'secrets',
                 'severity' => 'high',
                 'cve' => null,
-                'affected_versions' => null
+                'affected_versions' => null,
+                'description' => 'The .env file should be excluded from version control to prevent accidental secret commits.',
+                'file' => '.gitignore',
             ]);
         }
 
@@ -48,9 +56,13 @@ class EnvAuditService extends AbstractAuditService
                 $this->addFinding([
                     'package' => 'environment',
                     'title' => 'Missing sensitive environment variable: ' . $sensitiveKey,
+                    'rule_id' => sprintf('env.sensitive-key.%s.missing', strtolower($sensitiveKey)),
+                    'category' => 'configuration',
                     'severity' => 'medium',
                     'cve' => null,
-                    'affected_versions' => null
+                    'affected_versions' => null,
+                    'description' => sprintf('The sensitive environment variable [%s] is missing or empty.', $sensitiveKey),
+                    'file' => '.env',
                 ]);
             }
         }

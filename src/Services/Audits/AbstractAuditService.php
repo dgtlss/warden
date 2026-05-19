@@ -23,6 +23,14 @@ abstract class AbstractAuditService implements AuditServiceInterface
         return $this->findings;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function getMetadata(): array
+    {
+        return [];
+    }
+
     protected function addFinding(array $finding): void
     {
         $this->findings[] = array_merge($finding, [

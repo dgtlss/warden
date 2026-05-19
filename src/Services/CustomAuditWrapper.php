@@ -41,4 +41,12 @@ class CustomAuditWrapper implements AuditServiceInterface
     {
         return $this->customAudit->shouldRun();
     }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getMetadata(): array
+    {
+        return [];
+    }
 }

@@ -27,9 +27,13 @@ class StorageAuditService extends AbstractAuditService
                 $this->addFinding([
                     'package' => 'storage',
                     'title' => 'Missing directory: ' . $directory,
+                    'rule_id' => sprintf('storage.directory.%s.missing', str_replace(['/', '\\'], '.', $directory)),
+                    'category' => 'filesystem',
                     'severity' => 'high',
                     'cve' => null,
-                    'affected_versions' => null
+                    'affected_versions' => null,
+                    'description' => sprintf('The required Laravel writable directory [%s] is missing.', $directory),
+                    'file' => $directory,
                 ]);
                 continue;
             }
@@ -38,9 +42,13 @@ class StorageAuditService extends AbstractAuditService
                 $this->addFinding([
                     'package' => 'storage',
                     'title' => 'Directory not writable: ' . $directory,
+                    'rule_id' => sprintf('storage.directory.%s.not-writable', str_replace(['/', '\\'], '.', $directory)),
+                    'category' => 'filesystem',
                     'severity' => 'high',
                     'cve' => null,
-                    'affected_versions' => null
+                    'affected_versions' => null,
+                    'description' => sprintf('The Laravel runtime directory [%s] is not writable.', $directory),
+                    'file' => $directory,
                 ]);
             }
         }
