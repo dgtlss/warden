@@ -10,7 +10,7 @@
         "notifications",
         "CVE"
     ],
-    "version": "1.5.1",
+    "version": "1.5.3",
     "license": "MIT",
     "autoload": {
         "psr-4": {
