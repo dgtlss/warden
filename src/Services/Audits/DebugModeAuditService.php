@@ -7,7 +7,6 @@ class DebugModeAuditService extends AbstractAuditService
     private array $devPackages = [
         'barryvdh/laravel-debugbar',
         'laravel/telescope',
-        'laravel/horizon',
         'beyondcode/laravel-dump-server',
         'laravel/dusk',
     ];
@@ -124,7 +123,6 @@ class DebugModeAuditService extends AbstractAuditService
             // Check other testing routes that should never be exposed in production
             $testingRoutes = [
                 'telescope',
-                'horizon',
                 '_dusk',
             ];
 

@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Symfony\Component\Process\Process;
 use Dgtlss\Warden\Services\Audits\ComposerAuditService;
@@ -193,6 +194,7 @@ class WardenAuditCommand extends Command
 
     protected function processResults(array $allFindings, array $abandonedPackages, bool $hasFailures): int
     {
+        $allFindings = $this->filterIgnoredFindings($allFindings);
         $totalBeforeFilter = count($allFindings);
         $severityOption = null;
 
@@ -230,6 +232,75 @@ class WardenAuditCommand extends Command
         }
 
         return $hasFailures ? 2 : 0;
+    }
+
+    /**
+     * Remove findings that match configured ignore rules.
+     *
+     * @param array<array<string, mixed>> $findings
+     * @return array<array<string, mixed>>
+     */
+    protected function filterIgnoredFindings(array $findings): array
+    {
+        $ignoreRules = config('warden.ignore_findings', []);
+
+        if (!is_array($ignoreRules) || $ignoreRules === []) {
+            return $findings;
+        }
+
+        return array_values(array_filter(
+            $findings,
+            fn (array $finding): bool => !$this->shouldIgnoreFinding($finding, $ignoreRules)
+        ));
+    }
+
+    /**
+     * @param array<string, mixed> $finding
+     * @param array<mixed> $ignoreRules
+     */
+    protected function shouldIgnoreFinding(array $finding, array $ignoreRules): bool
+    {
+        foreach ($ignoreRules as $rule) {
+            if (!is_array($rule) || !$this->findingMatchesIgnoreRule($finding, $rule)) {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<string, mixed> $finding
+     * @param array<mixed> $rule
+     */
+    protected function findingMatchesIgnoreRule(array $finding, array $rule): bool
+    {
+        $matchedKey = false;
+
+        foreach ($rule as $key => $expectedValue) {
+            if (!is_string($key) || $key === '' || !array_key_exists($key, $finding)) {
+                return false;
+            }
+
+            $matchedKey = true;
+
+            if (!$this->findingValueMatchesRule($finding[$key], $expectedValue)) {
+                return false;
+            }
+        }
+
+        return $matchedKey;
+    }
+
+    protected function findingValueMatchesRule(mixed $actualValue, mixed $expectedValue): bool
+    {
+        if (is_string($actualValue) && is_string($expectedValue)) {
+            return Str::is($expectedValue, $actualValue);
+        }
+
+        return $actualValue === $expectedValue;
     }
 
     /**

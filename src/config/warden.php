@@ -90,6 +90,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Ignored Findings
+    |--------------------------------------------------------------------------
+    |
+    | Suppress accepted or context-specific findings without forking the package.
+    | Each rule is matched against the final finding payload and all provided
+    | keys must match for the finding to be ignored.
+    |
+    | Examples:
+    | - ['source' => 'debug-mode', 'package' => 'laravel/horizon']
+    | - ['source' => 'debug-mode', 'title' => 'Testing routes*']
+    |
+    */
+
+    'ignore_findings' => [
+        // ['source' => 'debug-mode', 'package' => 'laravel/horizon'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Custom Audits
     |--------------------------------------------------------------------------
     |
