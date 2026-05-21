@@ -166,6 +166,19 @@ WARDEN_SCHEDULE_TIME=03:00
 WARDEN_SCHEDULE_TIMEZONE=UTC
 ```
 
+### Ignoring Accepted Findings
+
+If your team has reviewed a finding and wants to suppress it without forking the package, add an `ignore_findings` rule to `config/warden.php`.
+
+```php
+'ignore_findings' => [
+    ['source' => 'debug-mode', 'package' => 'laravel/horizon'],
+    ['source' => 'debug-mode', 'title' => 'Testing routes*'],
+],
+```
+
+All provided keys in a rule must match for the finding to be ignored. String values support wildcard matching.
+
 ---
 
 ## 🔍 Security Audits
