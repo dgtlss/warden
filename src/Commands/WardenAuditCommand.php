@@ -13,6 +13,7 @@ use Dgtlss\Warden\ValueObjects\AuditContext;
 use Dgtlss\Warden\ValueObjects\AuditError;
 use Dgtlss\Warden\ValueObjects\AuditReport;
 use Illuminate\Console\Command;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 use Throwable;
 
 final class WardenAuditCommand extends Command
@@ -66,7 +67,13 @@ final class WardenAuditCommand extends Command
         $progress = $format === 'console' && $outputFile === '-'
             ? function (string $audit, string $status, ?float $duration): void {
                 if ($status !== 'running') {
-                    $this->line(sprintf('%s %s (%sms)', $status === 'done' ? '✓' : '✗', $audit, number_format($duration ?? 0, 1)));
+                    $symbol = $status === 'done' ? '<fg=green>✓</>' : '<fg=red>✗</>';
+                    $this->line(sprintf(
+                        '%s  <options=bold>%-20s</> <fg=gray>%9s</>',
+                        $symbol,
+                        OutputFormatter::escape($audit),
+                        number_format($duration ?? 0, 1) . 'ms',
+                    ));
                 }
             }
             : null;
@@ -77,7 +84,10 @@ final class WardenAuditCommand extends Command
             : new AuditReport($auditContext, [], configurationErrors: $suppressionErrors, scannedAt: $scannedAt);
 
         try {
-            $rendered = $this->reportFormatterFactory->make($format)->format($auditReport);
+            $rendered = $this->reportFormatterFactory->make(
+                $format,
+                $format === 'console' && $outputFile === '-' && $this->output->isDecorated(),
+            )->format($auditReport);
         } catch (Throwable $throwable) {
             $this->writeError('Report generation failed: ' . $throwable->getMessage());
 

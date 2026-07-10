@@ -1,8 +1,20 @@
-# Upgrading from Warden 1.x to 2.0
+<h1 align="center">Upgrading to Warden 2.0</h1>
+
+<p align="center">A migration guide for Warden 1.x applications.</p>
+
+<p align="center">
+    <a href="https://github.com/dgtlss/warden/actions"><img src="https://github.com/dgtlss/warden/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
+    <a href="https://packagist.org/packages/dgtlss/warden"><img src="https://img.shields.io/packagist/v/dgtlss/warden?style=flat-square" alt="Latest Version on Packagist"></a>
+    <a href="https://packagist.org/packages/dgtlss/warden"><img src="https://img.shields.io/packagist/dt/dgtlss/warden?style=flat-square" alt="Total Downloads"></a>
+    <a href="https://packagist.org/packages/dgtlss/warden"><img src="https://img.shields.io/packagist/php-v/dgtlss/warden?style=flat-square" alt="PHP Version"></a>
+    <a href="https://github.com/dgtlss/warden/blob/main/LICENSE"><img src="https://img.shields.io/github/license/dgtlss/warden?style=flat-square" alt="License"></a>
+</p>
+
+## Introduction
 
 Warden 2.0 is a CI-first major release. Review the following changes before updating pipeline configuration.
 
-## Supported platforms
+## Supported Platforms
 
 - PHP 8.3–8.5
 - Laravel 12–13

@@ -7,6 +7,7 @@ namespace Dgtlss\Warden\Tests\Reporters;
 use Carbon\CarbonImmutable;
 use DOMDocument;
 use Dgtlss\Warden\Enums\Severity;
+use Dgtlss\Warden\Reporters\ConsoleReporter;
 use Dgtlss\Warden\Reporters\GitLabReporter;
 use Dgtlss\Warden\Reporters\JsonReporter;
 use Dgtlss\Warden\Reporters\JunitReporter;
@@ -67,6 +68,90 @@ final class ReporterTest extends TestCase
 
         self::assertTrue($domDocument->loadXML((new JunitReporter())->format($this->report())));
         self::assertSame(1, $domDocument->getElementsByTagName('failure')->length);
+    }
+
+    public function testConsoleReportGroupsRepeatedFindingsIntoReadableSections(): void
+    {
+        $first = new Finding(
+            'source.secrets.provider-credential',
+            'source',
+            'Google API key appears to be committed in source',
+            Severity::Critical,
+            'A credential was detected at app/First.php:10.',
+            'Rotate the credential and move it to a secret store.',
+            path: 'app/First.php',
+            line: 10,
+            blocking: false,
+            identity: 'first',
+        );
+        $second = new Finding(
+            'source.secrets.provider-credential',
+            'source',
+            'Google API key appears to be committed in source',
+            Severity::Critical,
+            'A credential was detected at app/Second.php:20.',
+            'Rotate the credential and move it to a secret store.',
+            path: 'app/Second.php',
+            line: 20,
+            blocking: false,
+            identity: 'second',
+        );
+        $auditReport = new AuditReport(
+            new AuditContext(),
+            [AuditResult::complete('source', [$first, $second])->withDuration(123.4)],
+            scannedAt: CarbonImmutable::parse('2026-01-01T00:00:00Z'),
+        );
+
+        $output = (new ConsoleReporter())->format($auditReport);
+
+        self::assertStringContainsString('WARDEN 2.0  SECURITY AUDIT', $output);
+        self::assertStringContainsString('2 active findings', $output);
+        self::assertStringContainsString('CHECK RESULTS', $output);
+        self::assertStringContainsString('CHECK                RESULT        SEVERITY', $output);
+        self::assertStringContainsString('SOURCE               2 findings    C   2  H   0  M   0  L   0   0 blocking    2 advisory', $output);
+        self::assertStringContainsString('SOURCE  2 findings  • C 2', $output);
+        self::assertStringContainsString('CRITICAL  2', $output);
+        self::assertStringContainsString('· 2 occurrences', $output);
+        self::assertStringContainsString('ADVISORY', $output);
+        self::assertStringContainsString('app/First.php:10', $output);
+        self::assertStringContainsString('app/Second.php:20', $output);
+        self::assertSame(1, substr_count($output, 'Google API key appears to be committed in source'));
+        self::assertSame(1, substr_count($output, 'Rotate the credential and move it to a secret store.'));
+        self::assertStringNotContainsString('A credential was detected at app/First.php:10.', $output);
+    }
+
+    public function testConsoleReportMakesPerCheckCountsAndFailuresExplicit(): void
+    {
+        $composerFinding = new Finding(
+            'composer.advisory.example',
+            'composer',
+            'Vulnerable Composer dependency',
+            Severity::High,
+            'A dependency is vulnerable.',
+        );
+        $auditReport = new AuditReport(new AuditContext(), [
+            AuditResult::complete('composer', [$composerFinding])->withDuration(334.1),
+            AuditResult::complete('npm')->withDuration(155.4),
+            AuditResult::failed('source', 'file_too_large', 'main.js is too large.')->withDuration(3426.2),
+        ]);
+
+        $output = (new ConsoleReporter())->format($auditReport);
+
+        self::assertStringContainsString('COMPOSER             1 finding     C   0  H   1  M   0  L   0   1 blocking    0 advisory', $output);
+        self::assertStringContainsString('NPM                  clean', $output);
+        self::assertStringContainsString('SOURCE               incomplete', $output);
+        self::assertStringContainsString('SOURCE  file_too_large', $output);
+        self::assertStringContainsString('COMPOSER  1 finding  • H 1', $output);
+
+        $rows = array_values(array_filter(
+            explode(PHP_EOL, $output),
+            static fn (string $line): bool => str_starts_with($line, '✓  COMPOSER')
+                || str_starts_with($line, '✓  NPM')
+                || str_starts_with($line, '✗  SOURCE'),
+        ));
+        self::assertCount(3, $rows);
+        self::assertSame(strlen($rows[0]), strlen($rows[1]));
+        self::assertSame(strlen($rows[0]), strlen($rows[2]));
     }
 
     public function testAdvisoriesAreSarifNotesAndJunitSkippedCases(): void

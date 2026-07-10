@@ -1,6 +1,18 @@
-# Warden
+<h1 align="center">Warden</h1>
 
-Warden is a deterministic Laravel security gate for CI and deployment pipelines. It audits locked production dependencies, supply-chain configuration, and high-confidence Laravel production settings without becoming part of the deployed application.
+<p align="center">A deterministic security gate for Laravel CI and deployment pipelines.</p>
+
+<p align="center">
+    <a href="https://github.com/dgtlss/warden/actions"><img src="https://github.com/dgtlss/warden/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
+    <a href="https://packagist.org/packages/dgtlss/warden"><img src="https://img.shields.io/packagist/v/dgtlss/warden?style=flat-square" alt="Latest Version on Packagist"></a>
+    <a href="https://packagist.org/packages/dgtlss/warden"><img src="https://img.shields.io/packagist/dt/dgtlss/warden?style=flat-square" alt="Total Downloads"></a>
+    <a href="https://packagist.org/packages/dgtlss/warden"><img src="https://img.shields.io/packagist/php-v/dgtlss/warden?style=flat-square" alt="PHP Version"></a>
+    <a href="https://github.com/dgtlss/warden/blob/main/LICENSE"><img src="https://img.shields.io/github/license/dgtlss/warden?style=flat-square" alt="License"></a>
+</p>
+
+## Introduction
+
+Warden audits locked production dependencies, supply-chain configuration, and high-confidence Laravel production settings without becoming part of the deployed application.
 
 ## Requirements
 
@@ -16,6 +28,10 @@ Install Warden as a development dependency:
 ```bash
 composer require --dev dgtlss/warden
 ```
+
+Laravel discovers Warden automatically. If package discovery is disabled, register `Dgtlss\Warden\Providers\WardenServiceProvider::class` in your application's providers array.
+
+## Usage
 
 Run Warden **before** pruning development dependencies from the production artifact:
 
@@ -34,7 +50,7 @@ php artisan warden:init --ci=github
 
 `warden:init` never overwrites an existing `config/warden.php` or root GitLab pipeline. `--force` may replace only Warden-owned generated CI files. Publishing with `vendor:publish --tag=warden-config` remains available for manual setups.
 
-## CI usage
+### CI usage
 
 The default command uses the CI profile, audits production dependencies, reports every finding, and fails on low severity or higher:
 
@@ -127,7 +143,7 @@ See the complete [rule catalogue](docs/rules.md) for stable IDs, default disposi
 
 Composer packages released within three days produce an advisory. A recent package becomes a blocking critical finding when it is a Composer plugin or registers `autoload.files`, because it can execute automatically. The window is offline, uses `composer.lock` timestamps, respects `--scope`, and is configurable with `warden.audits.supply_chain.minimum_release_age_days`.
 
-## Reviewed suppressions
+### Reviewed suppressions
 
 Suppressions are exact, documented, and expiring. Wildcards are not supported.
 
@@ -144,7 +160,7 @@ Suppressions are exact, documented, and expiring. Wildcards are not supported.
 
 An expired or malformed suppression is a configuration error and exits `2`.
 
-## Baselines
+### Baselines
 
 Legacy applications can commit an explicit fingerprint baseline while continuing to fail on new findings:
 
@@ -156,7 +172,7 @@ php artisan warden:baseline \
 
 This creates `warden-baseline.json`. Baseline generation refuses to write a file if any audit is incomplete.
 
-## Reports
+### Reports
 
 Warden supports:
 
@@ -171,7 +187,7 @@ Advisory findings render as notices in GitHub and skipped tests in JUnit. SARIF 
 
 `--output-file=-` writes to stdout. Relative file paths are resolved from the Laravel application root.
 
-## Notifications
+### Notifications
 
 Notifications are opt-in and never affect the audit exit code:
 
@@ -191,7 +207,7 @@ WARDEN_EMAIL_FROM=warden@example.com
 
 Each channel is dispatched once. Delivery failures are written to stderr after the report is produced.
 
-## Custom audits
+### Custom audits
 
 Custom audits receive the immutable audit context and return a typed result:
 
@@ -229,7 +245,7 @@ final class PublicBucketAudit implements CustomAudit
 
 Register the class in `config/warden.php` under `custom_audits`.
 
-## Development
+## Testing
 
 ```bash
 composer install
@@ -239,9 +255,21 @@ composer rector
 composer validate --strict
 ```
 
-See [contributing.md](contributing.md) for contribution guidelines.
+## Changelog
 
-Upgrading from Warden 1.x? Read [UPGRADE.md](UPGRADE.md) before changing the dependency constraint.
+Please see [the releases page](https://github.com/dgtlss/warden/releases) for a list of changes.
+
+## Contributing
+
+Please see [contributing.md](contributing.md) for contribution guidelines. Upgrading from Warden 1.x? Read [UPGRADE.md](UPGRADE.md) before changing the dependency constraint.
+
+## Security Vulnerabilities
+
+Please report security vulnerabilities privately using [GitHub Security Advisories](https://github.com/dgtlss/warden/security/advisories/new).
+
+## License
+
+Warden is open-sourced software licensed under the [MIT license](LICENSE).
 
 ## License
 

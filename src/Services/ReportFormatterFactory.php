@@ -15,10 +15,10 @@ use InvalidArgumentException;
 
 final class ReportFormatterFactory
 {
-    public function make(string $format): ReportFormatter
+    public function make(string $format, bool $decorated = false): ReportFormatter
     {
         return match ($format) {
-            'console' => new ConsoleReporter(),
+            'console' => new ConsoleReporter($decorated),
             'json' => new JsonReporter(),
             'github' => new GitHubReporter(),
             'gitlab' => new GitLabReporter(),
