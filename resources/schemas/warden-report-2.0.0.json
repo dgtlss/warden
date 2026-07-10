@@ -1,0 +1,136 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/dgtlss/warden/main/resources/schemas/warden-report-2.0.0.json",
+    "title": "Warden 2.0 Audit Report",
+    "type": "object",
+    "required": [
+        "schema_version",
+        "warden_version",
+        "run",
+        "summary",
+        "audits",
+        "findings",
+        "ignored_findings",
+        "errors"
+    ],
+    "properties": {
+        "schema_version": { "const": "2.0.0" },
+        "warden_version": { "type": "string" },
+        "run": {
+            "type": "object",
+            "required": ["status", "profile", "scope", "scanned_at"],
+            "properties": {
+                "status": { "enum": ["completed", "failed"] },
+                "profile": { "enum": ["ci", "production", "local"] },
+                "scope": { "enum": ["production", "all"] },
+                "scanned_at": { "type": "string", "format": "date-time" }
+            },
+            "additionalProperties": false
+        },
+        "summary": {
+            "type": "object",
+            "required": ["total", "ignored", "errors", "severity"],
+            "properties": {
+                "total": { "type": "integer", "minimum": 0 },
+                "ignored": { "type": "integer", "minimum": 0 },
+                "errors": { "type": "integer", "minimum": 0 },
+                "severity": {
+                    "type": "object",
+                    "required": ["critical", "high", "medium", "low"],
+                    "properties": {
+                        "critical": { "type": "integer", "minimum": 0 },
+                        "high": { "type": "integer", "minimum": 0 },
+                        "medium": { "type": "integer", "minimum": 0 },
+                        "low": { "type": "integer", "minimum": 0 }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "additionalProperties": false
+        },
+        "audits": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/audit" }
+        },
+        "findings": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/finding" }
+        },
+        "ignored_findings": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/finding" }
+        },
+        "errors": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/error" }
+        }
+    },
+    "definitions": {
+        "error": {
+            "type": "object",
+            "required": ["audit", "code", "message"],
+            "properties": {
+                "audit": { "type": "string", "minLength": 1 },
+                "code": { "type": "string", "minLength": 1 },
+                "message": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+        },
+        "audit": {
+            "type": "object",
+            "required": ["id", "status", "duration_ms", "findings", "errors"],
+            "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "status": { "enum": ["completed", "failed"] },
+                "duration_ms": { "type": "number", "minimum": 0 },
+                "findings": { "type": "integer", "minimum": 0 },
+                "errors": {
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/error" }
+                }
+            },
+            "additionalProperties": false
+        },
+        "finding": {
+            "type": "object",
+            "required": [
+                "id",
+                "fingerprint",
+                "source",
+                "title",
+                "severity",
+                "description",
+                "blocking"
+            ],
+            "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "fingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+                "source": { "type": "string", "minLength": 1 },
+                "title": { "type": "string", "minLength": 1 },
+                "severity": { "enum": ["critical", "high", "medium", "low"] },
+                "description": { "type": "string", "minLength": 1 },
+                "remediation": { "type": "string" },
+                "package": { "type": "string" },
+                "reference": { "type": "string" },
+                "location": {
+                    "type": "object",
+                    "required": ["path"],
+                    "properties": {
+                        "path": { "type": "string", "minLength": 1 },
+                        "line": { "type": "integer", "minimum": 1 }
+                    },
+                    "additionalProperties": false
+                },
+                "blocking": { "type": "boolean" },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": ["string", "number", "integer", "boolean", "null"]
+                    }
+                }
+            },
+            "additionalProperties": false
+        }
+    },
+    "additionalProperties": false
+}

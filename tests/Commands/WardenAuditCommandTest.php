@@ -1,199 +1,107 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dgtlss\Warden\Tests\Commands;
 
-use Dgtlss\Warden\Providers\WardenServiceProvider;
-use Dgtlss\Warden\Services\AuditCacheService;
-use Dgtlss\Warden\Services\AuditExecutor;
-use Dgtlss\Warden\Services\Audits\ComposerAuditService;
-use Dgtlss\Warden\Services\Audits\DebugModeAuditService;
-use Dgtlss\Warden\Services\Audits\EnvAuditService;
-use Dgtlss\Warden\Services\Audits\StorageAuditService;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Mail;
+use Carbon\CarbonImmutable;
+use Dgtlss\Warden\Enums\Severity;
+use Dgtlss\Warden\Services\AuditRunner;
+use Dgtlss\Warden\Tests\TestCase;
+use Dgtlss\Warden\ValueObjects\AuditContext;
+use Dgtlss\Warden\ValueObjects\AuditReport;
+use Dgtlss\Warden\ValueObjects\AuditResult;
+use Dgtlss\Warden\ValueObjects\Finding;
+use Illuminate\Support\Facades\Artisan;
 use Mockery\MockInterface;
-use Orchestra\Testbench\TestCase;
 
-class WardenAuditCommandTest extends TestCase
+final class WardenAuditCommandTest extends TestCase
 {
-    protected function getPackageProviders($app): array
+    public function testJsonReportAndFindingExitCodeAreDeterministic(): void
     {
-        return [WardenServiceProvider::class];
+        $finding = new Finding('test.high', 'test', 'High issue', Severity::High, 'Description', path: 'composer.lock');
+        $this->bindReport(new AuditReport(
+            new AuditContext(),
+            [AuditResult::complete('test', [$finding])],
+            scannedAt: CarbonImmutable::parse('2026-01-01T00:00:00Z'),
+        ));
+
+        $exitCode = Artisan::call('warden:audit', ['--format' => 'json']);
+        $output = Artisan::output();
+
+        self::assertStringContainsString('"schema_version": "2.0.0"', $output);
+        self::assertStringContainsString('"id": "test.high"', $output);
+        self::assertSame(1, $exitCode);
     }
 
-    public function testAuditCommandHandlesNoFindings(): void
+    public function testFailOnChangesOnlyTheGateNotTheReport(): void
     {
-        $this->mock(AuditExecutor::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('addAudit')->zeroOrMoreTimes();
-            $mock->shouldReceive('execute')->once()->andReturn([]);
-        });
+        $finding = new Finding('test.medium', 'test', 'Medium issue', Severity::Medium, 'Description');
+        $this->bindReport(new AuditReport(new AuditContext(), [AuditResult::complete('test', [$finding])]));
 
-        $this->artisan('warden:audit')
-            ->expectsOutputToContain('Warden')
-            ->expectsOutputToContain('No security issues found.')
-            ->assertExitCode(0);
+        $exitCode = Artisan::call('warden:audit', ['--format' => 'json', '--fail-on' => 'high']);
+
+        self::assertStringContainsString('"id": "test.medium"', Artisan::output());
+        self::assertSame(0, $exitCode);
     }
 
-    public function testAuditCommandHandlesFindings(): void
+    public function testAuditFailureIsMachineReadableAndExitsTwo(): void
     {
-        $findings = [
-            [
-                'source' => 'composer',
-                'title' => 'some/package - High severity vulnerability',
-                'severity' => 'high',
-                'package' => 'some/package',
-            ],
-        ];
+        $this->bindReport(new AuditReport(
+            new AuditContext(),
+            [AuditResult::failed('composer', 'scanner_failed', 'Registry offline')],
+        ));
 
-        $this->mock(AuditExecutor::class, function (MockInterface $mock) use ($findings): void {
-            $mock->shouldReceive('addAudit')->zeroOrMoreTimes();
-            $mock->shouldReceive('execute')->once()->andReturn([
-                'composer' => [
-                    'success' => true,
-                    'findings' => $findings,
-                    'service' => new \stdClass(),
-                ],
-            ]);
-        });
+        $exitCode = Artisan::call('warden:audit', ['--format' => 'json', '--fail-on' => 'never']);
+        $output = Artisan::output();
 
-        $this->artisan('warden:audit', ['--no-notify' => true])
-            ->expectsOutputToContain('Warden')
-            ->expectsOutputToContain('1 security issue found.')
-            ->assertExitCode(1);
+        self::assertStringContainsString('"status": "failed"', $output);
+        self::assertStringContainsString('"code": "scanner_failed"', $output);
+        self::assertSame(2, $exitCode);
     }
 
-    public function testAuditCommandIgnoresConfiguredFindingsBeforeNotifications(): void
+    public function testInvalidMachineOptionReturnsStructuredErrorBeforeAuditsRun(): void
     {
-        Http::fake();
-        Mail::fake();
-
-        config([
-            'warden.webhook_url' => 'https://example.com/webhook',
-            'warden.email_recipients' => '[email protected]',
-            'warden.ignore_findings' => [
-                ['source' => 'debug-mode', 'package' => 'laravel/horizon'],
-            ],
-        ]);
-
-        $findings = [
-            [
-                'source' => 'debug-mode',
-                'title' => 'Development package detected in production',
-                'severity' => 'high',
-                'package' => 'laravel/horizon',
-            ],
-        ];
-
-        $this->mock(AuditExecutor::class, function (MockInterface $mock) use ($findings): void {
-            $mock->shouldReceive('addAudit')->zeroOrMoreTimes();
-            $mock->shouldReceive('execute')->once()->andReturn([
-                'debug-mode' => [
-                    'success' => true,
-                    'findings' => $findings,
-                    'service' => new \stdClass(),
-                ],
-            ]);
+        $this->mock(AuditRunner::class, function (MockInterface $mock): void {
+            $mock->shouldNotReceive('run');
         });
 
-        $this->artisan('warden:audit')
-            ->expectsOutputToContain('Warden')
-            ->expectsOutputToContain('No security issues found.')
-            ->assertExitCode(0);
+        $exitCode = Artisan::call('warden:audit', ['--format' => 'json', '--profile' => 'invalid']);
 
-        Http::assertNothingSent();
-        Mail::assertNothingSent();
+        self::assertStringContainsString('"code": "invalid_option"', Artisan::output());
+        self::assertSame(2, $exitCode);
     }
 
-    public function testAuditCommandSupportsWildcardIgnoreRulesInJsonOutput(): void
+    public function testUnknownAuditIsRejectedBeforeExecution(): void
     {
-        config([
-            'warden.ignore_findings' => [
-                ['source' => 'debug-mode', 'title' => 'Testing routes*'],
-            ],
-        ]);
-
-        $findings = [
-            [
-                'source' => 'debug-mode',
-                'title' => 'Testing routes are exposed',
-                'severity' => 'high',
-                'package' => 'routes',
-            ],
-        ];
-
-        $this->mock(AuditExecutor::class, function (MockInterface $mock) use ($findings): void {
-            $mock->shouldReceive('addAudit')->zeroOrMoreTimes();
-            $mock->shouldReceive('execute')->once()->andReturn([
-                'debug-mode' => [
-                    'success' => true,
-                    'findings' => $findings,
-                    'service' => new \stdClass(),
-                ],
-            ]);
+        $this->mock(AuditRunner::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('availableAuditIds')->once()->andReturn(['composer']);
+            $mock->shouldNotReceive('run');
         });
 
-        $this->artisan('warden:audit', ['--output' => 'json'])
-            ->expectsOutputToContain('"vulnerabilities_found": 0')
-            ->assertExitCode(0);
+        $exitCode = Artisan::call('warden:audit', ['--format' => 'json', '--only' => 'unknown']);
+
+        self::assertStringContainsString('Unknown audit', Artisan::output());
+        self::assertSame(2, $exitCode);
     }
 
-    public function testAuditCommandFiltersCachedFindingsInSequentialMode(): void
+    public function testInvalidSuppressionIsRejectedBeforeExecution(): void
     {
-        config([
-            'warden.audits.parallel_execution' => false,
-            'warden.ignore_findings' => [
-                ['source' => 'debug-mode', 'package' => 'laravel/horizon'],
-            ],
-        ]);
-
-        $this->mock(AuditCacheService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('hasRecentAudit')
-                ->times(4)
-                ->andReturnUsing(fn (string $auditName): bool => $auditName === 'debug-mode');
-
-            $mock->shouldReceive('getCachedResult')
-                ->once()
-                ->with('debug-mode')
-                ->andReturn([
-                    'result' => [
-                        [
-                            'source' => 'debug-mode',
-                            'title' => 'Development package detected in production',
-                            'severity' => 'high',
-                            'package' => 'laravel/horizon',
-                        ],
-                    ],
-                    'timestamp' => now()->toIso8601String(),
-                    'cached' => true,
-                ]);
+        config(['warden.ignore_findings' => [['id' => 'missing-review-metadata']]]);
+        $this->mock(AuditRunner::class, function (MockInterface $mock): void {
+            $mock->shouldNotReceive('run');
         });
 
-        $this->mock(ComposerAuditService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('getName')->once()->andReturn('composer');
-            $mock->shouldReceive('run')->once()->andReturn(true);
-            $mock->shouldReceive('getFindings')->once()->andReturn([]);
-            $mock->shouldReceive('getAbandonedPackages')->once()->andReturn([]);
-        });
+        $exitCode = Artisan::call('warden:audit', ['--format' => 'json']);
 
-        $this->mock(EnvAuditService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('getName')->once()->andReturn('environment');
-            $mock->shouldReceive('run')->once()->andReturn(true);
-            $mock->shouldReceive('getFindings')->once()->andReturn([]);
-        });
+        self::assertStringContainsString('"code": "suppression_invalid"', Artisan::output());
+        self::assertSame(2, $exitCode);
+    }
 
-        $this->mock(StorageAuditService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('getName')->once()->andReturn('storage');
-            $mock->shouldReceive('run')->once()->andReturn(true);
-            $mock->shouldReceive('getFindings')->once()->andReturn([]);
+    private function bindReport(AuditReport $auditReport): void
+    {
+        $this->mock(AuditRunner::class, function (MockInterface $mock) use ($auditReport): void {
+            $mock->shouldReceive('run')->once()->andReturn($auditReport);
         });
-
-        $this->mock(DebugModeAuditService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('getName')->once()->andReturn('debug-mode');
-        });
-
-        $this->artisan('warden:audit', ['--no-notify' => true])
-            ->expectsOutputToContain('Warden')
-            ->expectsOutputToContain('No security issues found.')
-            ->assertExitCode(0);
     }
 }

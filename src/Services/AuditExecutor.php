@@ -1,87 +1,90 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dgtlss\Warden\Services;
 
 use Dgtlss\Warden\Contracts\AuditServiceInterface;
-use Illuminate\Support\Collection;
+use Dgtlss\Warden\ValueObjects\AuditContext;
+use Dgtlss\Warden\ValueObjects\AuditError;
+use Dgtlss\Warden\ValueObjects\AuditResult;
+use Dgtlss\Warden\ValueObjects\Finding;
+use Throwable;
 
-class AuditExecutor
+final class AuditExecutor
 {
-    protected array $audits = [];
-
-    protected array $results = [];
-
-    public function addAudit(AuditServiceInterface $auditService): void
-    {
-        $this->audits[$auditService->getName()] = $auditService;
-    }
-
     /**
-     * @return array<string, AuditServiceInterface> Registered audit services keyed by name.
+     * @param list<AuditServiceInterface> $audits
+     * @param callable(string, string, ?float): void|null $onProgress
+     * @return list<AuditResult>
      */
-    public function getAudits(): array
+    public function execute(AuditContext $auditContext, array $audits, ?callable $onProgress = null): array
     {
-        return $this->audits;
-    }
-
-    /**
-     * Execute all registered audits.
-     *
-     * @param callable|null $onProgress Called with (string $name, string $status, ?float $durationMs) per audit
-     * @return array<string, array{success: bool, findings: array, service: AuditServiceInterface}>
-     */
-    public function execute(?callable $onProgress = null): array
-    {
-        if ($this->audits === []) {
-            return [];
-        }
-
         $results = [];
 
-        foreach ($this->audits as $name => $auditService) {
+        foreach ($audits as $audit) {
+            $name = $audit->getName();
             if ($onProgress !== null) {
                 $onProgress($name, 'running', null);
             }
 
-            $start = microtime(true);
-            $success = $auditService->run();
-            $durationMs = round((microtime(true) - $start) * 1000, 1);
+            $startedAt = microtime(true);
 
-            $results[$name] = [
-                'success' => $success,
-                'findings' => $auditService->getFindings(),
-                'service' => $auditService,
-            ];
+            try {
+                $result = $audit->run($auditContext);
+                if (!$this->isValidResult($name, $result)) {
+                    $result = AuditResult::failed($name, 'invalid_result', 'The audit returned an invalid or mismatched result.');
+                }
+            } catch (Throwable $throwable) {
+                $result = AuditResult::failed($name, 'unhandled_exception', $throwable->getMessage());
+            }
 
+            $duration = round((microtime(true) - $startedAt) * 1000, 1);
+            $result = $result->withDuration($duration);
+            $results[] = $result;
             if ($onProgress !== null) {
-                $status = $success ? 'done' : 'failed';
-                $onProgress($name, $status, $durationMs);
+                $onProgress($name, $result->succeeded() ? 'done' : 'failed', $duration);
             }
         }
-
-        $this->results = $results;
 
         return $results;
     }
 
-    public function getAllFindings(): Collection
+    private function isValidResult(string $audit, AuditResult $auditResult): bool
     {
-        return collect($this->results)
-            ->filter(fn($result) => !empty($result['findings']))
-            ->pluck('findings')
-            ->flatten(1);
+        if ($auditResult->audit !== $audit) {
+            return false;
+        }
+
+        if (!$this->containsOnly($auditResult->findings, Finding::class)) {
+            return false;
+        }
+
+        if (!$this->containsOnly($auditResult->errors, AuditError::class)) {
+            return false;
+        }
+
+        foreach ($auditResult->errors as $error) {
+            if ($error->audit !== $audit) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    public function hasFailures(): bool
+    /**
+     * @param array<mixed> $items
+     * @param class-string $type
+     */
+    private function containsOnly(array $items, string $type): bool
     {
-        return collect($this->results)
-            ->contains(fn($result) => !$result['success']);
-    }
+        foreach ($items as $item) {
+            if (!$item instanceof $type) {
+                return false;
+            }
+        }
 
-    public function getFailedAudits(): Collection
-    {
-        return collect($this->results)
-            ->filter(fn($result) => !$result['success'])
-            ->keys();
+        return true;
     }
 }

@@ -1,16 +1,22 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dgtlss\Warden\Contracts;
 
 interface NotificationChannel
 {
     /**
      * Send audit findings through this channel.
+     *
+     * @param array<array<string, mixed>> $findings
      */
     public function send(array $findings): void;
 
     /**
      * Send abandoned packages notification through this channel.
+     *
+     * @param array<array<string, mixed>> $abandonedPackages
      */
     public function sendAbandonedPackages(array $abandonedPackages): void;
 
@@ -23,4 +29,4 @@ interface NotificationChannel
      * Get the channel name.
      */
     public function getName(): string;
-} 
+}

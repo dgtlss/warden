@@ -1,19 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dgtlss\Warden\Services;
 
 use Dgtlss\Warden\Contracts\AuditServiceInterface;
 use Dgtlss\Warden\Contracts\CustomAudit;
+use Dgtlss\Warden\ValueObjects\AuditContext;
+use Dgtlss\Warden\ValueObjects\AuditResult;
 
-class CustomAuditWrapper implements AuditServiceInterface
+final readonly class CustomAuditWrapper implements AuditServiceInterface
 {
-    protected CustomAudit $customAudit;
-
-    protected array $findings = [];
-
-    public function __construct(CustomAudit $customAudit)
+    public function __construct(private CustomAudit $customAudit)
     {
-        $this->customAudit = $customAudit;
     }
 
     public function getName(): string
@@ -21,24 +20,8 @@ class CustomAuditWrapper implements AuditServiceInterface
         return $this->customAudit->getName();
     }
 
-    public function run(): bool
+    public function run(AuditContext $auditContext): AuditResult
     {
-        $success = $this->customAudit->audit();
-        $this->findings = $this->customAudit->getFindings();
-
-        return $success;
-    }
-
-    /**
-     * @return array<array<string, mixed>>
-     */
-    public function getFindings(): array
-    {
-        return $this->findings;
-    }
-
-    public function shouldRun(): bool
-    {
-        return $this->customAudit->shouldRun();
+        return $this->customAudit->run($auditContext);
     }
 }

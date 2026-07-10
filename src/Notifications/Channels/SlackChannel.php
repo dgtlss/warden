@@ -14,6 +14,7 @@ class SlackChannel implements NotificationChannel
         $this->webhookUrl = config('warden.notifications.slack.webhook_url');
     }
 
+    /** @param array<array<string, mixed>> $findings */
     public function send(array $findings): void
     {
         if (!$this->isConfigured()) {
@@ -31,9 +32,10 @@ class SlackChannel implements NotificationChannel
         Http::post($this->webhookUrl, [
             'blocks' => $blocks,
             'text' => sprintf('🚨 [%s] Warden Security Audit: %d vulnerabilities found', $appName, count($findings))
-        ]);
+        ])->throw();
     }
 
+    /** @param array<array<string, mixed>> $abandonedPackages */
     public function sendAbandonedPackages(array $abandonedPackages): void
     {
         if (!$this->isConfigured()) {
@@ -51,7 +53,7 @@ class SlackChannel implements NotificationChannel
         Http::post($this->webhookUrl, [
             'blocks' => $blocks,
             'text' => sprintf('⚠️ [%s] Warden Audit: %d abandoned packages found', $appName, count($abandonedPackages))
-        ]);
+        ])->throw();
     }
 
     public function isConfigured(): bool
@@ -111,22 +113,26 @@ class SlackChannel implements NotificationChannel
                         $severityEmoji,
                         ucfirst($finding['severity']),
                         $finding['title'],
-                        $finding['package'],
-                        $finding['source']
+                        $finding['package'] ?? 'application',
+                        $finding['source'] ?? 'unknown'
                     )
                 ]
             ];
 
             if (!empty($finding['cve'])) {
+                $reference = (string) $finding['cve'];
+                $referenceUrl = filter_var($reference, FILTER_VALIDATE_URL)
+                    ? $reference
+                    : 'https://www.cve.org/CVERecord?id=' . rawurlencode($reference);
                 $blocks[] = [
                     'type' => 'context',
                     'elements' => [
                         [
                             'type' => 'mrkdwn',
                             'text' => sprintf(
-                                '*CVE:* <%s|%s>',
-                                'https://www.cve.org/CVERecord?id=' . $finding['cve'],
-                                $finding['cve']
+                                '*Reference:* <%s|%s>',
+                                $referenceUrl,
+                                $reference
                             )
                         ]
                     ]
@@ -183,4 +189,4 @@ class SlackChannel implements NotificationChannel
 
         return $blocks;
     }
-} 
+}

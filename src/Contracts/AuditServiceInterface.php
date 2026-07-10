@@ -1,15 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dgtlss\Warden\Contracts;
+
+use Dgtlss\Warden\ValueObjects\AuditContext;
+use Dgtlss\Warden\ValueObjects\AuditResult;
 
 interface AuditServiceInterface
 {
-    public function run(): bool;
-
     public function getName(): string;
 
-    /**
-     * @return array<array<string, mixed>>
-     */
-    public function getFindings(): array;
+    public function run(AuditContext $auditContext): AuditResult;
 }

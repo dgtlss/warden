@@ -37,12 +37,16 @@ If you have ideas for new features or improvements:
 6. Push to the branch (`git push origin feature/amazing-feature`)
 7. Open a Pull Request
 
+Warden targets PHP 8.3–8.5 and Laravel 12–13. New behavior must work across that declared compatibility matrix.
+
 #### Pull Request Guidelines
 
 - Follow the existing code style and conventions
 - Update documentation as needed
 - Add tests for new features
-- Ensure the test suite passes
+- Ensure `composer test`, `composer phpstan`, `composer rector`, and `composer validate --strict` pass
+- Preserve the documented exit-code and machine-report contracts
+- Use stable finding IDs and include remediation for every new rule
 - Keep pull requests focused - one feature/fix per PR
 
 ### Have fun, and thank you for your contribution.

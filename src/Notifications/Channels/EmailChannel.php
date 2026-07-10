@@ -23,6 +23,7 @@ class EmailChannel implements NotificationChannel
         $this->fromName = config('warden.notifications.email.from_name', 'Warden Security');
     }
 
+    /** @param array<array<string, mixed>> $findings */
     public function send(array $findings): void
     {
         if (!$this->isConfigured()) {
@@ -39,6 +40,7 @@ class EmailChannel implements NotificationChannel
         });
     }
 
+    /** @param array<array<string, mixed>> $abandonedPackages */
     public function sendAbandonedPackages(array $abandonedPackages): void
     {
         if (!$this->isConfigured()) {
@@ -112,6 +114,10 @@ class EmailChannel implements NotificationChannel
         ];
     }
 
+    /**
+     * @param array<array<string, mixed>> $findings
+     * @param array{critical: int, high: int, medium: int, low: int} $severityCounts
+     */
     protected function generateSummary(array $findings, array $severityCounts): string
     {
         $totalFindings = count($findings);
@@ -133,6 +139,7 @@ class EmailChannel implements NotificationChannel
         return $severityCounts['low'] . ' low severity vulnerabilities detected.';
     }
 
+    /** @param array<array<string, mixed>> $findings */
     protected function generateSubject(array $findings): string
     {
         $appName = config('warden.app_name', 'Application');
@@ -156,6 +163,7 @@ class EmailChannel implements NotificationChannel
                sprintf(' found (%s severity)', $highestSeverity);
     }
 
+    /** @param array<array<string, mixed>> $abandonedPackages */
     protected function generateAbandonedPackagesSubject(array $abandonedPackages): string
     {
         $appName = config('warden.app_name', 'Application');
