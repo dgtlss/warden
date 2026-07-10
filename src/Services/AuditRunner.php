@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Dgtlss\Warden\Services;
 
-use Carbon\CarbonImmutable;
 use Dgtlss\Warden\Contracts\AuditServiceInterface;
 use Dgtlss\Warden\Contracts\CustomAudit;
 use Dgtlss\Warden\Services\Audits\ComposerAuditService;
 use Dgtlss\Warden\Services\Audits\LaravelConfigAuditService;
 use Dgtlss\Warden\Services\Audits\NpmAuditService;
+use Dgtlss\Warden\Services\Audits\PlatformAuditService;
 use Dgtlss\Warden\Services\Audits\StorageAuditService;
 use Dgtlss\Warden\Services\Audits\SupplyChainAuditService;
+use Dgtlss\Warden\Services\Audits\SourceAuditService;
 use Dgtlss\Warden\ValueObjects\AuditContext;
 use Dgtlss\Warden\ValueObjects\AuditError;
 use Dgtlss\Warden\ValueObjects\AuditReport;
@@ -23,6 +24,7 @@ class AuditRunner
     public function __construct(
         private readonly Container $container,
         private readonly AuditExecutor $auditExecutor,
+        private readonly RulePolicy $rulePolicy,
     ) {
     }
 
@@ -31,20 +33,25 @@ class AuditRunner
      */
     public function run(AuditContext $auditContext, ?callable $onProgress = null): AuditReport
     {
-        [$services, $errors] = $this->services($auditContext);
-        if ($errors !== []) {
-            return new AuditReport($auditContext, [], configurationErrors: $errors, scannedAt: CarbonImmutable::now());
+        $policyErrors = $this->rulePolicy->errors();
+        if ($policyErrors !== []) {
+            return new AuditReport($auditContext, [], configurationErrors: $policyErrors, scannedAt: $auditContext->scanTime());
         }
 
-        $results = $this->auditExecutor->execute($auditContext, $services, $onProgress);
+        [$services, $errors] = $this->services($auditContext);
+        if ($errors !== []) {
+            return new AuditReport($auditContext, [], configurationErrors: $errors, scannedAt: $auditContext->scanTime());
+        }
 
-        return new AuditReport($auditContext, $results, configurationErrors: $errors, scannedAt: CarbonImmutable::now());
+        $results = $this->rulePolicy->apply($this->auditExecutor->execute($auditContext, $services, $onProgress));
+
+        return new AuditReport($auditContext, $results, configurationErrors: $errors, scannedAt: $auditContext->scanTime());
     }
 
     /** @return list<string> */
     public function availableAuditIds(): array
     {
-        $ids = ['supply-chain', 'composer', 'npm', 'laravel-config', 'storage'];
+        $ids = ['supply-chain', 'composer', 'npm', 'laravel-config', 'platform', 'source', 'storage'];
         $customAudits = config('warden.custom_audits', []);
         if (is_array($customAudits)) {
             foreach ($customAudits as $customAudit) {
@@ -76,6 +83,8 @@ class AuditRunner
             $this->container->make(ComposerAuditService::class),
             $this->container->make(NpmAuditService::class),
             $this->container->make(LaravelConfigAuditService::class),
+            $this->container->make(PlatformAuditService::class),
+            $this->container->make(SourceAuditService::class),
             $this->container->make(StorageAuditService::class),
         ];
         $errors = [];

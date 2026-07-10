@@ -22,6 +22,11 @@ class SupplyChainAuditService implements AuditServiceInterface
 
     public function run(AuditContext $auditContext): AuditResult
     {
+        $minimumAgeDays = config('warden.audits.supply_chain.minimum_release_age_days', 3);
+        if (!is_int($minimumAgeDays) || $minimumAgeDays < 0 || $minimumAgeDays > 30) {
+            return AuditResult::failed($this->getName(), 'invalid_configuration', 'minimum_release_age_days must be between 0 and 30.');
+        }
+
         $composer = $this->readJson('composer.json');
         if ($composer === null) {
             return AuditResult::failed($this->getName(), 'invalid_composer_json', 'composer.json is missing or invalid JSON.');
@@ -31,6 +36,7 @@ class SupplyChainAuditService implements AuditServiceInterface
         $findings = [
             ...$composerFindings,
             ...$this->composerConfigurationFindings($composer),
+            ...$this->composerReleaseFindings($auditContext),
             ...$this->javascriptLockFindings(),
         ];
 
@@ -210,6 +216,99 @@ class SupplyChainAuditService implements AuditServiceInterface
         }
 
         return [];
+    }
+
+    /** @return list<Finding> */
+    private function composerReleaseFindings(AuditContext $auditContext): array
+    {
+        $minimumAgeDays = config('warden.audits.supply_chain.minimum_release_age_days', 3);
+        if ($minimumAgeDays === 0) {
+            return [];
+        }
+
+        $lock = $this->readJson('composer.lock');
+        if ($lock === null) {
+            return [];
+        }
+
+        $sections = $auditContext->scope === 'production' ? ['packages'] : ['packages', 'packages-dev'];
+        $threshold = $auditContext->scanTime()->subDays($minimumAgeDays);
+        $findings = [];
+
+        foreach ($sections as $section) {
+            $packages = $lock[$section] ?? [];
+            if (!is_array($packages)) {
+                continue;
+            }
+
+            foreach ($packages as $package) {
+                if (!is_array($package) || !is_string($package['name'] ?? null)) {
+                    continue;
+                }
+
+                $name = $package['name'];
+                $version = is_string($package['version'] ?? null) ? $package['version'] : 'unknown';
+                $releasedAt = is_string($package['time'] ?? null) ? $package['time'] : null;
+                if ($releasedAt === null) {
+                    $findings[] = $this->releaseTimeMissingFinding($name, $version);
+                    continue;
+                }
+
+                try {
+                    $release = \Carbon\CarbonImmutable::parse($releasedAt);
+                } catch (\Throwable) {
+                    $release = null;
+                }
+
+                if (!$release instanceof \Carbon\CarbonImmutable) {
+                    $findings[] = $this->releaseTimeMissingFinding($name, $version);
+                    continue;
+                }
+
+                if ($release->lessThan($threshold)) {
+                    continue;
+                }
+
+                $autoload = is_array($package['autoload'] ?? null) ? $package['autoload'] : [];
+                $hasAutoloadFiles = is_array($autoload['files'] ?? null) && $autoload['files'] !== [];
+                $isPlugin = ($package['type'] ?? null) === 'composer-plugin';
+                $executable = $hasAutoloadFiles || $isPlugin;
+
+                $findings[] = new Finding(
+                    id: $executable ? 'supply-chain.composer.recent-executable-package' : 'supply-chain.composer.recent-package',
+                    source: $this->getName(),
+                    title: $executable ? 'Recently released package can execute code automatically' : 'Composer package was released recently',
+                    severity: $executable ? Severity::Critical : Severity::Medium,
+                    description: sprintf('%s %s was released at %s%s.', $name, $version, $release->toISOString(), $executable ? ' and registers automatic execution behavior' : ''),
+                    remediation: $executable
+                        ? 'Verify the release provenance and source diff before allowing it into the deployment.'
+                        : 'Delay deployment until the review window passes or explicitly accept the advisory.',
+                    package: $name,
+                    path: 'composer.lock',
+                    blocking: $executable,
+                    metadata: ['released_at' => $release->toISOString(), 'scope' => $section === 'packages-dev' ? 'development' : 'production'],
+                    identity: $name . '@' . $version,
+                );
+            }
+        }
+
+        return $findings;
+    }
+
+    private function releaseTimeMissingFinding(string $name, string $version): Finding
+    {
+        return new Finding(
+            id: 'supply-chain.composer.release-time-missing',
+            source: $this->getName(),
+            title: 'Composer package release time is unavailable',
+            severity: Severity::Low,
+            description: sprintf('%s %s cannot be evaluated by the release-age policy.', $name, $version),
+            remediation: 'Review the private package provenance and provide release metadata when possible.',
+            package: $name,
+            path: 'composer.lock',
+            blocking: false,
+            identity: $name . '@' . $version,
+        );
     }
 
     /** @return array<string, mixed>|null */

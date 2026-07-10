@@ -90,6 +90,7 @@ final class WardenBaselineCommand extends Command
             timeout: $timeout,
             only: $only,
             skip: $skip,
+            scannedAt: CarbonImmutable::now(),
         );
         $suppressionErrors = $this->suppressionService->errors(includeBaseline: false);
         if ($suppressionErrors !== []) {

@@ -6,6 +6,7 @@ namespace Dgtlss\Warden\Providers;
 
 use Dgtlss\Warden\Commands\WardenAuditCommand;
 use Dgtlss\Warden\Commands\WardenBaselineCommand;
+use Dgtlss\Warden\Commands\WardenInitCommand;
 use Dgtlss\Warden\Commands\WardenSyntaxCommand;
 use Illuminate\Support\ServiceProvider;
 
@@ -26,6 +27,7 @@ final class WardenServiceProvider extends ServiceProvider
             $this->commands([
                 WardenAuditCommand::class,
                 WardenBaselineCommand::class,
+                WardenInitCommand::class,
                 WardenSyntaxCommand::class,
             ]);
         }

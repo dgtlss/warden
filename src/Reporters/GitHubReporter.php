@@ -17,7 +17,9 @@ final class GitHubReporter implements ReportFormatter
         }
 
         foreach ($auditReport->findings() as $finding) {
-            $level = in_array($finding->severity->value, ['critical', 'high'], true) ? 'error' : 'warning';
+            $level = $finding->blocking
+                ? (in_array($finding->severity->value, ['critical', 'high'], true) ? 'error' : 'warning')
+                : ('notice');
             $properties = ['title=' . $this->key($finding->id)];
             if ($finding->path !== null) {
                 $properties[] = 'file=' . $this->key($finding->path);

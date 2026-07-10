@@ -37,7 +37,7 @@ final class JunitReporter implements ReportFormatter
                 );
             } else {
                 $cases[] = sprintf(
-                    '  <testcase classname="%s" name="%s"><system-out>%s</system-out></testcase>',
+                    '  <testcase classname="%s" name="%s"><skipped message="advisory finding"/><system-out>%s</system-out></testcase>',
                     $className,
                     $name,
                     $this->escape($finding->description),
@@ -50,10 +50,11 @@ final class JunitReporter implements ReportFormatter
         }
 
         return sprintf(
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuite name=\"Warden Security Audit\" tests=\"%d\" failures=\"%d\" errors=\"%d\">\n%s\n</testsuite>\n",
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuite name=\"Warden Security Audit\" tests=\"%d\" failures=\"%d\" errors=\"%d\" skipped=\"%d\">\n%s\n</testsuite>\n",
             count($cases),
             count(array_filter($auditReport->findings(), static fn ($finding): bool => $finding->blocking)),
             count($auditReport->errors()),
+            count(array_filter($auditReport->findings(), static fn ($finding): bool => !$finding->blocking)),
             implode("\n", $cases),
         );
     }

@@ -16,6 +16,27 @@ return [
                 '.git',
             ],
         ],
+        'source' => [
+            'php_paths' => ['app', 'bootstrap', 'config', 'routes'],
+            'blade_paths' => ['resources/views'],
+            'exclude' => [
+                'vendor',
+                'node_modules',
+                'storage',
+                'bootstrap/cache',
+                'tests',
+                'database',
+                'public/build',
+                '.git',
+            ],
+            'max_file_size_kb' => 1024,
+        ],
+        'supply_chain' => [
+            'minimum_release_age_days' => 3,
+        ],
+        'platform' => [
+            'warning_days' => 90,
+        ],
     ],
 
     /*
@@ -33,6 +54,11 @@ return [
 
     'baseline' => [
         'file' => env('WARDEN_BASELINE_FILE', 'warden-baseline.json'),
+    ],
+
+    /* Override a built-in rule with enforced, advisory, or off. */
+    'rule_overrides' => [
+        // 'source.blade.unescaped-output' => 'enforced',
     ],
 
     'custom_audits' => [

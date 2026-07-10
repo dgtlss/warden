@@ -29,9 +29,11 @@
         },
         "summary": {
             "type": "object",
-            "required": ["total", "ignored", "errors", "severity"],
+            "required": ["total", "blocking", "advisory", "ignored", "errors", "severity"],
             "properties": {
                 "total": { "type": "integer", "minimum": 0 },
+                "blocking": { "type": "integer", "minimum": 0 },
+                "advisory": { "type": "integer", "minimum": 0 },
                 "ignored": { "type": "integer", "minimum": 0 },
                 "errors": { "type": "integer", "minimum": 0 },
                 "severity": {

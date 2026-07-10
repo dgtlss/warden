@@ -27,6 +27,8 @@ final class ReporterTest extends TestCase
         self::assertSame('2.0.0', $decoded['schema_version']);
         self::assertSame('completed', $decoded['run']['status']);
         self::assertSame('reporter.high', $decoded['findings'][0]['id']);
+        self::assertSame(1, $decoded['summary']['blocking']);
+        self::assertSame(0, $decoded['summary']['advisory']);
         self::assertArrayHasKey('audits', $decoded);
         self::assertArrayHasKey('errors', $decoded);
 
@@ -65,6 +67,19 @@ final class ReporterTest extends TestCase
 
         self::assertTrue($domDocument->loadXML((new JunitReporter())->format($this->report())));
         self::assertSame(1, $domDocument->getElementsByTagName('failure')->length);
+    }
+
+    public function testAdvisoriesAreSarifNotesAndJunitSkippedCases(): void
+    {
+        $finding = new Finding('review.me', 'source', 'Review me', Severity::High, 'Advisory only.', blocking: false);
+        $auditReport = new AuditReport(new AuditContext(), [AuditResult::complete('source', [$finding])]);
+        $sarif = json_decode((new SarifReporter())->format($auditReport), true, 512, JSON_THROW_ON_ERROR);
+        $domDocument = new DOMDocument();
+        $domDocument->loadXML((new JunitReporter())->format($auditReport));
+
+        self::assertSame('note', $sarif['runs'][0]['results'][0]['level']);
+        self::assertFalse($sarif['runs'][0]['results'][0]['properties']['blocking']);
+        self::assertSame(1, $domDocument->getElementsByTagName('skipped')->length);
     }
 
     private function report(): AuditReport

@@ -98,6 +98,16 @@ final class WardenAuditCommandTest extends TestCase
         self::assertSame(2, $exitCode);
     }
 
+    public function testInvalidRuleOverrideIsAConfigurationErrorBeforeScanning(): void
+    {
+        config(['warden.rule_overrides' => ['unknown.rule' => 'off']]);
+
+        $exitCode = Artisan::call('warden:audit', ['--format' => 'json', '--only' => 'source']);
+
+        self::assertSame(2, $exitCode);
+        self::assertStringContainsString('"code": "unknown_rule"', Artisan::output());
+    }
+
     private function bindReport(AuditReport $auditReport): void
     {
         $this->mock(AuditRunner::class, function (MockInterface $mock) use ($auditReport): void {

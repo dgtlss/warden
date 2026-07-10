@@ -31,6 +31,8 @@ final class LaravelConfigAuditServiceTest extends TestCase
             'session.http_only' => true,
             'session.same_site' => 'lax',
             'telescope.enabled' => false,
+            'cors.allowed_origins' => ['https://example.com'],
+            'cors.supports_credentials' => false,
         ]);
 
         $auditResult = (new LaravelConfigAuditService())->run(new AuditContext(profile: 'production'));

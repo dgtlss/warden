@@ -51,6 +51,15 @@ final class AuditReportTest extends TestCase
         self::assertSame(0, $auditReport->exitCode('low'));
     }
 
+    public function testExplicitIdentityKeepsFingerprintStableAcrossLineChanges(): void
+    {
+        $first = new Finding('source.rule', 'source', 'Finding', Severity::High, 'Description', path: 'app/Test.php', line: 10, identity: 'normalized-node');
+        $second = new Finding('source.rule', 'source', 'Finding', Severity::High, 'Description', path: 'app/Test.php', line: 99, identity: 'normalized-node');
+
+        self::assertSame($first->fingerprint(), $second->fingerprint());
+        self::assertArrayNotHasKey('identity', $first->jsonSerialize());
+    }
+
     private function finding(string $id, Severity $severity): Finding
     {
         return new Finding($id, 'test', 'Finding', $severity, 'Description', package: 'vendor/package', path: 'composer.lock');

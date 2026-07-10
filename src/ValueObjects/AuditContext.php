@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dgtlss\Warden\ValueObjects;
 
+use Carbon\CarbonImmutable;
 use InvalidArgumentException;
 
 final readonly class AuditContext
@@ -18,6 +19,7 @@ final readonly class AuditContext
         public int $timeout = 300,
         public array $only = [],
         public array $skip = [],
+        public ?CarbonImmutable $scannedAt = null,
     ) {
         if (!in_array($this->profile, ['ci', 'production', 'local'], true)) {
             throw new InvalidArgumentException(sprintf('Invalid audit profile "%s".', $this->profile));
@@ -42,5 +44,10 @@ final readonly class AuditContext
     {
         return !in_array($auditId, $this->skip, true)
             && ($this->only === [] || in_array($auditId, $this->only, true));
+    }
+
+    public function scanTime(): CarbonImmutable
+    {
+        return $this->scannedAt ?? CarbonImmutable::now();
     }
 }

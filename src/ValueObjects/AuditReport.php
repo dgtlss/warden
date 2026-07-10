@@ -91,8 +91,10 @@ final readonly class AuditReport implements JsonSerializable
     public function jsonSerialize(): array
     {
         $counts = ['critical' => 0, 'high' => 0, 'medium' => 0, 'low' => 0];
+        $blocking = 0;
         foreach ($this->findings() as $finding) {
             $counts[$finding->severity->value]++;
+            $blocking += $finding->blocking ? 1 : 0;
         }
 
         return [
@@ -106,6 +108,8 @@ final readonly class AuditReport implements JsonSerializable
             ],
             'summary' => [
                 'total' => count($this->findings()),
+                'blocking' => $blocking,
+                'advisory' => count($this->findings()) - $blocking,
                 'ignored' => count($this->ignoredFindings),
                 'errors' => count($this->errors()),
                 'severity' => $counts,

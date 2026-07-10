@@ -24,6 +24,7 @@ final readonly class Finding implements JsonSerializable
         public ?int $line = null,
         public bool $blocking = true,
         public array $metadata = [],
+        public ?string $identity = null,
     ) {
         if ($this->id === '' || $this->source === '' || $this->title === '' || $this->description === '') {
             throw new InvalidArgumentException('A finding requires a non-empty ID, source, title, and description.');
@@ -31,6 +32,10 @@ final readonly class Finding implements JsonSerializable
 
         if ($this->line !== null && $this->line < 1) {
             throw new InvalidArgumentException('A finding line number must be positive.');
+        }
+
+        if ($this->identity === '') {
+            throw new InvalidArgumentException('A finding identity cannot be empty.');
         }
     }
 
@@ -41,8 +46,27 @@ final readonly class Finding implements JsonSerializable
             $this->package ?? '',
             $this->reference ?? '',
             $this->path ?? '',
-            (string) ($this->line ?? ''),
+            $this->identity ?? (string) ($this->line ?? ''),
         ]));
+    }
+
+    public function withBlocking(bool $blocking): self
+    {
+        return new self(
+            $this->id,
+            $this->source,
+            $this->title,
+            $this->severity,
+            $this->description,
+            $this->remediation,
+            $this->package,
+            $this->reference,
+            $this->path,
+            $this->line,
+            $blocking,
+            $this->metadata,
+            $this->identity,
+        );
     }
 
     /** @return array<string, mixed> */

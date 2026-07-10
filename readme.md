@@ -25,11 +25,14 @@ php artisan warden:audit --profile=production --scope=production
 composer install --no-dev --no-interaction --optimize-autoloader
 ```
 
-Publishing the configuration is optional:
+Initialize Warden safely and optionally generate a dedicated CI file:
 
 ```bash
-php artisan vendor:publish --tag=warden-config
+php artisan warden:init --ci=github
+# or: --ci=gitlab|both|none
 ```
+
+`warden:init` never overwrites an existing `config/warden.php` or root GitLab pipeline. `--force` may replace only Warden-owned generated CI files. Publishing with `vendor:publish --tag=warden-config` remains available for manual setups.
 
 ## CI usage
 
@@ -52,7 +55,7 @@ php artisan warden:audit --profile=production
 php artisan warden:audit --scope=all
 
 # Select or skip audits
-php artisan warden:audit --only=supply-chain,composer,laravel-config
+php artisan warden:audit --only=supply-chain,composer,laravel-config,platform,source
 php artisan warden:audit --skip=npm,storage
 
 # Produce CI artifacts
@@ -88,9 +91,41 @@ CI environment variables do not disable production checks. Use `--profile=produc
 - `composer`: Composer advisories, malware, and abandoned production packages from `composer.lock`
 - `npm`: npm advisories from `package-lock.json`, auto-detected without a flag
 - `laravel-config`: tracked `.env` detection and production application/session/tooling rules
+- `platform`: offline PHP and Laravel support-window enforcement, including Composer's exact platform target
+- `source`: parser-backed PHP taint analysis, Blade review, and redacted credential detection
 - `storage`: production-only operational warnings; these do not fail the security gate
 
 Yarn, pnpm, and Bun lockfiles are detected but are not yet parsed. Warden reports the limitation so the package-manager-native audit can be added as a separate CI step.
+
+### Source security model
+
+Warden parses each selected PHP file once and distinguishes enforcement from review guidance:
+
+- Blocking rules require a high-confidence condition such as request-controlled data reaching a command, raw output, outbound URL, redirect, deserializer, or filesystem sink. Other blocking rules cover interpolated raw SQL, disabled TLS verification, provider-format credentials, weak constant ciphers, and explicit CSRF middleware removal.
+- Advisory rules highlight unescaped Blade output, forms without an obvious CSRF directive, mass-assignment disabling, debug calls, sensitive logging, weak contextual hashing/randomness, and secret-like literals.
+
+Credentials are never copied into reports. Warden emits only the provider, location, and a redacted description; the secret contributes only a one-way hash to the stable fingerprint.
+
+Default PHP scan paths are `app`, `bootstrap`, `config`, and `routes`; Blade templates are read from `resources/views`. File paths, exclusions, and the 1 MiB file limit are configurable under `warden.audits.source`. A selected file that cannot be read or parsed makes the scan incomplete and exits `2`.
+
+### Rule policy
+
+Every configurable rule has a stable ID and a built-in disposition. Override one without suppressing individual occurrences:
+
+```php
+'rule_overrides' => [
+    'source.blade.unescaped-output' => 'enforced',
+    'source.php.debug-call' => 'off',
+],
+```
+
+Allowed values are `enforced`, `advisory`, and `off`. Unknown rule IDs and invalid values are configuration errors. Advisory findings remain visible in every report but do not affect exit `1`; suppressions and baselines still apply to them.
+
+See the complete [rule catalogue](docs/rules.md) for stable IDs, default dispositions, and rationale.
+
+### Supply-chain review window
+
+Composer packages released within three days produce an advisory. A recent package becomes a blocking critical finding when it is a Composer plugin or registers `autoload.files`, because it can execute automatically. The window is offline, uses `composer.lock` timestamps, respects `--scope`, and is configurable with `warden.audits.supply_chain.minimum_release_age_days`.
 
 ## Reviewed suppressions
 
@@ -126,11 +161,13 @@ This creates `warden-baseline.json`. Baseline generation refuses to write a file
 Warden supports:
 
 - `console`: readable terminal report
-- `json`: versioned Warden schema with audits, findings, ignored findings, errors, and summary; the schema ships at `resources/schemas/warden-report-2.0.0.json`
+- `json`: versioned Warden schema with audits, blocking/advisory counts, findings, ignored findings, errors, and summary; the schema ships at `resources/schemas/warden-report-2.0.0.json`
 - `github`: GitHub Actions workflow annotations
 - `gitlab`: GitLab dependency scanning report schema 15.2.4
 - `sarif`: SARIF 2.1.0 for GitHub code scanning and compatible platforms
 - `junit`: portable JUnit XML for Jenkins and other CI systems
+
+Advisory findings render as notices in GitHub and skipped tests in JUnit. SARIF and JSON preserve the `blocking` property.
 
 `--output-file=-` writes to stdout. Relative file paths are resolved from the Laravel application root.
 

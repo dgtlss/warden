@@ -54,12 +54,14 @@ final class WardenAuditCommand extends Command
             return $this->renderInvalidConfiguration($validationError, $profile, $scope, $format, $outputFile);
         }
 
+        $scannedAt = CarbonImmutable::now();
         $auditContext = new AuditContext(
             profile: $profile,
             scope: $scope,
             timeout: (int) $timeout,
             only: $only,
             skip: $skip,
+            scannedAt: $scannedAt,
         );
         $progress = $format === 'console' && $outputFile === '-'
             ? function (string $audit, string $status, ?float $duration): void {
@@ -69,7 +71,6 @@ final class WardenAuditCommand extends Command
             }
             : null;
 
-        $scannedAt = CarbonImmutable::now();
         $suppressionErrors = $this->suppressionService->errors(now: $scannedAt);
         $auditReport = $suppressionErrors === []
             ? $this->suppressionService->apply($this->auditRunner->run($auditContext, $progress))

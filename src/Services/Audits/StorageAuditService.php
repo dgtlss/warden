@@ -27,8 +27,41 @@ final class StorageAuditService implements AuditServiceInterface
         }
 
         $findings = [];
+        $envPath = base_path('.env');
+        if (is_file($envPath)) {
+            $permissions = fileperms($envPath);
+            if (is_int($permissions) && (($permissions & 0004) !== 0 || ($permissions & 0002) !== 0)) {
+                $findings[] = new Finding(
+                    id: 'deployment.env.permissions',
+                    source: $this->getName(),
+                    title: 'Environment file permissions are too broad',
+                    severity: Severity::Medium,
+                    description: sprintf('.env permissions are %s and permit world read or write access.', substr(sprintf('%o', $permissions), -4)),
+                    remediation: 'Restrict .env to the deployment owner/group, normally mode 600 or 640.',
+                    path: '.env',
+                    blocking: false,
+                    identity: 'env-permissions',
+                );
+            }
+        }
+
         foreach ($this->directories as $directory) {
             $path = base_path($directory);
+            $permissions = @fileperms($path);
+            if (is_int($permissions) && ($permissions & 0002) !== 0) {
+                $findings[] = new Finding(
+                    id: 'deployment.path.world-writable',
+                    source: $this->getName(),
+                    title: sprintf('Deployment path is world-writable: %s', $directory),
+                    severity: Severity::Medium,
+                    description: 'Any local user may modify files used by the Laravel runtime.',
+                    remediation: 'Grant write access only to the deployment user or service group.',
+                    path: $directory,
+                    blocking: false,
+                    identity: $directory,
+                );
+            }
+
             if (!is_dir($path) || !is_writable($path)) {
                 $findings[] = new Finding(
                     id: 'deployment.storage.not-writable',

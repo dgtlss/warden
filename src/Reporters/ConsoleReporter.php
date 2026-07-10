@@ -48,7 +48,7 @@ final class ConsoleReporter implements ReportFormatter
                     $finding->id,
                     $finding->title,
                     $location,
-                    $finding->blocking ? '' : ' (warning only)',
+                    $finding->blocking ? '' : ' [ADVISORY — non-blocking]',
                 );
                 $lines[] = '    ' . $finding->description;
                 if ($finding->remediation !== null) {

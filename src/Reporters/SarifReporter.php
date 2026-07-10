@@ -22,7 +22,10 @@ final class SarifReporter implements ReportFormatter
                 'shortDescription' => ['text' => $finding->title],
                 'fullDescription' => ['text' => $finding->description],
                 'help' => ['text' => $finding->remediation ?? $finding->description],
-                'properties' => ['security-severity' => (string) ($finding->severity->weight() * 2.5)],
+                'properties' => [
+                    'security-severity' => (string) ($finding->severity->weight() * 2.5),
+                    'blocking' => $finding->blocking,
+                ],
             ];
         }
 
@@ -50,13 +53,14 @@ final class SarifReporter implements ReportFormatter
     {
         $result = [
             'ruleId' => $finding->id,
-            'level' => match ($finding->severity->value) {
+            'level' => $finding->blocking ? match ($finding->severity->value) {
                 'critical', 'high' => 'error',
                 'medium' => 'warning',
                 default => 'note',
-            },
+            } : 'note',
             'message' => ['text' => $finding->title . ' — ' . $finding->description],
             'partialFingerprints' => ['wardenFingerprint/v1' => $finding->fingerprint()],
+            'properties' => ['blocking' => $finding->blocking],
         ];
 
         if ($finding->path !== null) {

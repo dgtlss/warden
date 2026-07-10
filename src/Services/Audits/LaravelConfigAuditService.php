@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dgtlss\Warden\Services\Audits;
 
+use Composer\InstalledVersions;
 use Dgtlss\Warden\Contracts\AuditServiceInterface;
 use Dgtlss\Warden\Enums\Severity;
 use Dgtlss\Warden\ValueObjects\AuditContext;
@@ -31,6 +32,7 @@ class LaravelConfigAuditService implements AuditServiceInterface
             ...$findings,
             ...$this->applicationFindings(),
             ...$this->sessionFindings(),
+            ...$this->corsFindings(),
             ...$this->toolingFindings(),
         ]);
     }
@@ -142,9 +144,10 @@ class LaravelConfigAuditService implements AuditServiceInterface
     /** @return list<Finding> */
     private function toolingFindings(): array
     {
+        $findings = [];
         if (class_exists(\Laravel\Telescope\Telescope::class) && config('telescope.enabled') === true) {
-            return [new Finding(
-                id: 'laravel.telescope.enabled',
+            $findings[] = new Finding(
+                id: 'laravel.debug-tool.enabled',
                 source: $this->getName(),
                 title: 'Laravel Telescope is enabled in production',
                 severity: Severity::High,
@@ -152,10 +155,59 @@ class LaravelConfigAuditService implements AuditServiceInterface
                 remediation: 'Disable Telescope or verify access authorization and data filtering before deployment.',
                 package: 'laravel/telescope',
                 path: 'config/telescope.php',
-            )];
+                identity: 'laravel/telescope',
+            );
         }
 
-        return [];
+        $tools = [
+            ['Barryvdh\\Debugbar\\LaravelDebugbar', 'debugbar.enabled', 'barryvdh/laravel-debugbar', 'Laravel Debugbar'],
+            ['Clockwork\\Clockwork', 'clockwork.enable', 'itsgoingd/clockwork', 'Clockwork'],
+        ];
+        foreach ($tools as [, $configKey, $package, $label]) {
+            if (InstalledVersions::isInstalled($package) && config()->get($configKey) === true) {
+                $findings[] = new Finding(
+                    id: 'laravel.debug-tool.enabled',
+                    source: $this->getName(),
+                    title: sprintf('%s is enabled in production', $label),
+                    severity: Severity::High,
+                    description: sprintf('%s may expose requests, queries, exceptions, and application internals.', $label),
+                    remediation: sprintf('Disable %s in the effective production configuration.', $label),
+                    package: $package,
+                    path: 'config',
+                    identity: $package,
+                );
+            }
+        }
+
+        return $findings;
+    }
+
+    /** @return list<Finding> */
+    private function corsFindings(): array
+    {
+        $origins = config('cors.allowed_origins', []);
+        $patterns = config('cors.allowed_origins_patterns', []);
+        $credentials = config('cors.supports_credentials') === true;
+        $wildcard = (is_array($origins) && in_array('*', $origins, true))
+            || (is_array($patterns) && in_array('.*', $patterns, true));
+
+        if (!$wildcard) {
+            return [];
+        }
+
+        return [new Finding(
+            id: $credentials ? 'laravel.cors.wildcard-credentials' : 'laravel.cors.wildcard-origin',
+            source: $this->getName(),
+            title: $credentials ? 'Credentialed CORS accepts every origin' : 'CORS accepts every origin',
+            severity: $credentials ? Severity::High : Severity::Low,
+            description: $credentials
+                ? 'Wildcard origins combined with credential support can expose authenticated responses cross-origin.'
+                : 'Every origin can call routes covered by the CORS configuration.',
+            remediation: 'Configure an explicit list of trusted production origins.',
+            path: 'config/cors.php',
+            blocking: $credentials,
+            identity: 'wildcard-origin',
+        )];
     }
 
     private function validEncryptionKey(string $key, string $cipher): bool

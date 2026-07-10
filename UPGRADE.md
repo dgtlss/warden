@@ -24,6 +24,8 @@ Run Warden before the production artifact is rebuilt with `composer install --no
 | `warden:schedule` | Removed; schedule the CI pipeline instead |
 | `--output=jenkins` | `--format=junit` |
 
+Warden 2.0 also adds `warden:init`, the default `source` and `platform` audits, and parser-backed application security findings.
+
 The exit code contract is now strict: findings return `1`, while an incomplete or invalid audit returns `2` even when `--fail-on=never` is used.
 
 ## Configuration changes
@@ -32,6 +34,8 @@ The exit code contract is now strict: findings return `1`, while an incomplete o
 - Replace wildcard `ignore_findings` rules with entries containing `id`, `reason`, and `expires_at`; add `fingerprint` when only one occurrence should be accepted.
 - Replace custom audit implementations with the typed `run(AuditContext): AuditResult` contract.
 - Configure notifications only under `warden.notifications`; the legacy webhook path is no longer dispatched.
+- Add optional `rule_overrides` values using `enforced`, `advisory`, or `off`; malformed overrides fail before any scan starts.
+- Review `audits.source`, `audits.supply_chain`, and `audits.platform` when merging published configuration.
 
 Republish the configuration or merge the new defaults manually:
 

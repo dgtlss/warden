@@ -36,6 +36,12 @@ final readonly class AuditResult implements JsonSerializable
         return new self($this->audit, $this->findings, $this->errors, $durationMs);
     }
 
+    /** @param list<Finding> $findings */
+    public function withFindings(array $findings): self
+    {
+        return new self($this->audit, $findings, $this->errors, $this->durationMs);
+    }
+
     public function succeeded(): bool
     {
         return $this->errors === [];
