@@ -1,96 +1,125 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dgtlss\Warden\Services\Audits;
 
+use Dgtlss\Warden\Contracts\AuditServiceInterface;
+use Dgtlss\Warden\Enums\Severity;
+use Dgtlss\Warden\ValueObjects\AuditContext;
+use Dgtlss\Warden\ValueObjects\AuditError;
+use Dgtlss\Warden\ValueObjects\AuditResult;
+use Dgtlss\Warden\ValueObjects\Finding;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use SplFileInfo;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 
-class PhpSyntaxAuditService extends AbstractAuditService
+class PhpSyntaxAuditService implements AuditServiceInterface
 {
     public function getName(): string
     {
-        return 'PHP Syntax';
+        return 'php-syntax';
     }
 
-    public function run(): bool
+    public function run(AuditContext $auditContext): AuditResult
     {
-        $process = $this->getProcess();
-        $process->setTimeout(config('warden.audits.timeout', 300));
-        $process->run();
+        $startedAt = microtime(true);
+        $findings = [];
+        foreach ($this->phpFiles() as $path) {
+            $relativePath = $this->relativePath($path);
+            $remaining = $auditContext->timeout - (microtime(true) - $startedAt);
+            if ($remaining <= 0) {
+                return new AuditResult($this->getName(), $findings, [new AuditError(
+                    $this->getName(),
+                    'timeout',
+                    sprintf('PHP syntax analysis exceeded the configured timeout before linting %s.', $relativePath),
+                )]);
+            }
 
-        // The command's output can be on stdout or stderr, so we combine them.
-        $output = $process->getOutput() . $process->getErrorOutput();
-        $errors = $this->parseOutput($output);
+            $process = $this->createProcess($path, $remaining);
+            try {
+                $process->run();
+            } catch (ProcessTimedOutException) {
+                return new AuditResult($this->getName(), $findings, [new AuditError(
+                    $this->getName(),
+                    'timeout',
+                    sprintf('PHP syntax analysis exceeded the configured timeout while linting %s.', $relativePath),
+                )]);
+            }
 
-        foreach ($errors as $error) {
-            $filePath = str_replace(base_path() . '/', '', $error['file']);
-            $this->addFinding([
-                'package' => 'Application Code',
-                'title' => 'PHP Syntax Error in ' . $filePath,
-                'severity' => 'high',
-                'description' => $error['message'],
-                'remediation' => 'Fix the syntax error in the specified file.',
-            ]);
+            if ($process->isSuccessful()) {
+                continue;
+            }
+
+            $findings[] = new Finding(
+                id: 'quality.php.syntax',
+                source: $this->getName(),
+                title: 'PHP syntax error',
+                severity: Severity::High,
+                description: trim($process->getErrorOutput() . "\n" . $process->getOutput()),
+                remediation: 'Correct the parse error before deployment.',
+                path: $relativePath,
+            );
         }
-        
-        // If the process failed for a reason other than finding lint errors (e.g., command not found).
-        if (!$process->isSuccessful() && $errors === []) {
-            $this->addFinding([
-                'package' => 'Application Code',
-                'title' => 'PHP Syntax Audit Failed to Run',
-                'severity' => 'error',
-                'description' => 'The PHP syntax audit process failed without reporting specific syntax errors.',
-                'remediation' => 'Ensure `find`, `xargs`, and `php` are available. Error: ' . $process->getErrorOutput(),
-            ]);
-        }
 
-        // The audit passes if no findings were added.
-        return $this->findings === [];
+        return AuditResult::complete($this->getName(), $findings);
     }
 
-    protected function getProcess(): Process
+    protected function createProcess(string $path, float $timeout): Process
     {
-        $excludedDirs = config('warden.audits.php_syntax.exclude', [
-            'vendor',
-            'node_modules',
-            'storage',
-            'bootstrap/cache',
-            '.git',
+        return new Process([PHP_BINARY, '-l', $path], base_path(), null, null, $timeout);
+    }
+
+    /** @return list<string> */
+    private function phpFiles(): array
+    {
+        $excluded = config('warden.audits.php_syntax.exclude', [
+            'vendor', 'node_modules', 'storage', 'bootstrap/cache', '.git',
         ]);
+        $excluded = is_array($excluded) ? array_values(array_filter($excluded, 'is_string')) : [];
 
-        $pathsToPrune = collect($excludedDirs)
-            ->map(fn ($dir) => sprintf("-path './%s' -prune", $dir))
-            ->implode(' -o ');
+        $files = [];
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator(base_path(), RecursiveDirectoryIterator::SKIP_DOTS),
+        );
 
-        $command = sprintf("find . %s -o -name '*.php' -print0 | xargs -0 -n1 -I{} php -l {}", $pathsToPrune);
+        /** @var SplFileInfo $file */
+        foreach ($iterator as $file) {
+            if (!$file->isFile() || $file->getExtension() !== 'php') {
+                continue;
+            }
 
-        // fromShellCommandline is used to properly handle shell piping.
-        return Process::fromShellCommandline($command, base_path());
+            $relativePath = ltrim(str_replace(base_path(), '', $file->getPathname()), DIRECTORY_SEPARATOR);
+            if ($this->isExcluded($relativePath, $excluded)) {
+                continue;
+            }
+
+            $files[] = $file->getPathname();
+        }
+
+        sort($files);
+
+        return $files;
     }
 
-    protected function parseOutput(string $output): array
+    /** @param list<string> $excluded */
+    private function isExcluded(string $path, array $excluded): bool
     {
-        $errors = [];
-        $lines = explode("\n", trim($output));
-        $counter = count($lines);
-
-        for ($i = 0; $i < $counter; $i++) {
-            if (str_contains($lines[$i], 'Errors parsing')) {
-                // The filename is on the same line as "Errors parsing".
-                $file = trim(substr($lines[$i], strpos($lines[$i], 'parsing') + 7));
-                $errorMessage = 'Syntax error detected.';
-
-                // The detailed parse error message is usually on the next line.
-                if (isset($lines[$i + 1]) && str_contains($lines[$i + 1], 'Parse error:')) {
-                    $errorMessage = trim($lines[$i + 1]);
-                }
-
-                $errors[] = [
-                    'file' => $file,
-                    'message' => $errorMessage,
-                ];
+        $normalisedPath = str_replace('\\', '/', $path);
+        foreach ($excluded as $directory) {
+            $normalisedDirectory = rtrim(str_replace('\\', '/', $directory), '/');
+            if ($normalisedPath === $normalisedDirectory || str_starts_with($normalisedPath, $normalisedDirectory . '/')) {
+                return true;
             }
         }
 
-        return $errors;
+        return false;
     }
-} 
+
+    private function relativePath(string $path): string
+    {
+        return ltrim(str_replace(base_path(), '', $path), DIRECTORY_SEPARATOR);
+    }
+}

@@ -4,6 +4,10 @@ namespace Dgtlss\Warden\Notifications\Concerns;
 
 trait HasSeverityHelpers
 {
+    /**
+     * @param array<array<string, mixed>> $findings
+     * @return array{critical: int, high: int, medium: int, low: int}
+     */
     protected function getSeverityCounts(array $findings): array
     {
         $counts = ['critical' => 0, 'high' => 0, 'medium' => 0, 'low' => 0];
@@ -18,6 +22,7 @@ trait HasSeverityHelpers
         return $counts;
     }
 
+    /** @param array<array<string, mixed>> $findings */
     protected function getHighestSeverity(array $findings): string
     {
         $severityLevels = ['critical' => 4, 'high' => 3, 'medium' => 2, 'low' => 1];
@@ -48,6 +53,10 @@ trait HasSeverityHelpers
         };
     }
 
+    /**
+     * @param array<array<string, mixed>> $findings
+     * @return array<string, array<array<string, mixed>>>
+     */
     protected function groupFindingsBySource(array $findings): array
     {
         $grouped = [];

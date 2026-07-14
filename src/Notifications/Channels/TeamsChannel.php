@@ -16,6 +16,7 @@ class TeamsChannel implements NotificationChannel
         $this->webhookUrl = config('warden.notifications.teams.webhook_url');
     }
 
+    /** @param array<array<string, mixed>> $findings */
     public function send(array $findings): void
     {
         if (!$this->isConfigured()) {
@@ -28,9 +29,10 @@ class TeamsChannel implements NotificationChannel
             return;
         }
         
-        Http::post($this->webhookUrl, $card);
+        Http::post($this->webhookUrl, $card)->throw();
     }
 
+    /** @param array<array<string, mixed>> $abandonedPackages */
     public function sendAbandonedPackages(array $abandonedPackages): void
     {
         if (!$this->isConfigured()) {
@@ -43,7 +45,7 @@ class TeamsChannel implements NotificationChannel
             return;
         }
         
-        Http::post($this->webhookUrl, $card);
+        Http::post($this->webhookUrl, $card)->throw();
     }
 
     public function isConfigured(): bool
@@ -225,6 +227,10 @@ class TeamsChannel implements NotificationChannel
         };
     }
 
+    /**
+     * @param array<array<string, mixed>> $findings
+     * @param array{critical: int, high: int, medium: int, low: int} $severityCounts
+     */
     protected function generateSummary(array $findings, array $severityCounts): string
     {
         $criticalAndHigh = $severityCounts['critical'] + $severityCounts['high'];

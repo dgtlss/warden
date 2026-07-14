@@ -14,6 +14,7 @@ class DiscordChannel implements NotificationChannel
         $this->webhookUrl = config('warden.notifications.discord.webhook_url');
     }
 
+    /** @param array<array<string, mixed>> $findings */
     public function send(array $findings): void
     {
         if (!$this->isConfigured()) {
@@ -32,9 +33,10 @@ class DiscordChannel implements NotificationChannel
             'avatar_url' => 'https://raw.githubusercontent.com/dgtlss/warden/main/public/warden-logo.png',
             'content' => sprintf('🚨 **[%s] Security Audit Alert** - %d vulnerabilities found', $appName, count($findings)),
             'embeds' => $embeds
-        ]);
+        ])->throw();
     }
 
+    /** @param array<array<string, mixed>> $abandonedPackages */
     public function sendAbandonedPackages(array $abandonedPackages): void
     {
         if (!$this->isConfigured()) {
@@ -53,7 +55,7 @@ class DiscordChannel implements NotificationChannel
             'avatar_url' => 'https://raw.githubusercontent.com/dgtlss/warden/main/public/warden-logo.png',
             'content' => sprintf('⚠️ **[%s] Abandoned Packages Alert** - %d packages need attention', $appName, count($abandonedPackages)),
             'embeds' => [$embed]
-        ]);
+        ])->throw();
     }
 
     public function isConfigured(): bool
@@ -97,7 +99,11 @@ class DiscordChannel implements NotificationChannel
 
                 $value = $finding['title'] ?? 'Unknown vulnerability';
                 if (!empty($finding['cve'])) {
-                    $value .= sprintf("\n[CVE: %s](https://www.cve.org/CVERecord?id=%s)", $finding['cve'], $finding['cve']);
+                    $reference = (string) $finding['cve'];
+                    $referenceUrl = filter_var($reference, FILTER_VALIDATE_URL)
+                        ? $reference
+                        : 'https://www.cve.org/CVERecord?id=' . rawurlencode($reference);
+                    $value .= sprintf("\n[Reference: %s](%s)", $reference, $referenceUrl);
                 }
 
                 $fields[] = [
@@ -175,6 +181,7 @@ class DiscordChannel implements NotificationChannel
         ];
     }
 
+    /** @param array<array<string, mixed>> $findings */
     protected function getSeverityColor(array $findings): int
     {
         $hasCritical = false;
@@ -205,4 +212,4 @@ class DiscordChannel implements NotificationChannel
 
         return 0x00FF00; // Green
     }
-} 
+}

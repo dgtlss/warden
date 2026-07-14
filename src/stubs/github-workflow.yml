@@ -1,0 +1,35 @@
+name: Warden Security Audit
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  warden:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@e8d4307400f9427dba7cb98e488d6ab85f1cec5f # immutable pin, reviewed 2026-07-10
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@93f351c169514bd9f4630bd31dd63fde23a79f9f # immutable pin, reviewed 2026-07-10
+        with:
+          php-version: '{{PHP_VERSION}}'
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache Composer downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # immutable pin, reviewed 2026-07-10
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+
+      - name: Install development dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run Warden
+        run: php artisan warden:audit --format=github

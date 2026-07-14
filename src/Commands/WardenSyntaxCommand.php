@@ -1,69 +1,45 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dgtlss\Warden\Commands;
 
-use Illuminate\Console\Command;
 use Dgtlss\Warden\Services\Audits\PhpSyntaxAuditService;
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\table;
-use function Laravel\Prompts\spin;
+use Dgtlss\Warden\ValueObjects\AuditContext;
+use Illuminate\Console\Command;
 
-class WardenSyntaxCommand extends Command
+final class WardenSyntaxCommand extends Command
 {
     protected $signature = 'warden:syntax';
 
-    protected $description = 'Performs a PHP syntax audit on your application code.';
+    protected $description = 'Check every application PHP file for syntax errors.';
 
-    protected PhpSyntaxAuditService $syntaxService;
-
-    public function __construct(PhpSyntaxAuditService $syntaxService)
+    public function __construct(private readonly PhpSyntaxAuditService $phpSyntaxAuditService)
     {
         parent::__construct();
-        $this->syntaxService = $syntaxService;
     }
 
     public function handle(): int
     {
-        $this->info('Warden PHP Syntax Audit');
-
-        $result = spin(
-            fn() => $this->syntaxService->run(),
-            'Running PHP syntax check...'
-        );
-
-        if ($result) {
-            info('✅ No PHP syntax errors found.');
-            return 0;
+        $auditResult = $this->phpSyntaxAuditService->run(new AuditContext(profile: 'ci', scope: 'all'));
+        foreach ($auditResult->findings as $finding) {
+            $this->error(sprintf('%s: %s', $finding->path ?? 'unknown', $finding->description));
         }
 
-        $findings = $this->syntaxService->getFindings();
-        $this->displayFindings($findings);
+        if ($auditResult->errors !== []) {
+            foreach ($auditResult->errors as $error) {
+                $this->error(sprintf('%s: %s', $error->code, $error->message));
+            }
 
-        if (collect($findings)->contains('severity', 'error')) {
             return 2;
         }
 
-        return 1;
-    }
-
-    protected function displayFindings(array $findings): void
-    {
-        $count = count($findings);
-        $this->error($count . ' syntax ' . ($count === 1 ? 'error' : 'errors') . ' found.');
-
-        $headers = ['File', 'Error Description'];
-        $rows = [];
-
-        foreach ($findings as $finding) {
-            $rows[] = [
-                $finding['title'],
-                $finding['description'],
-            ];
+        if ($auditResult->findings !== []) {
+            return 1;
         }
 
-        table(
-            headers: $headers,
-            rows: $rows
-        );
+        $this->info('No PHP syntax errors found.');
+
+        return 0;
     }
 }

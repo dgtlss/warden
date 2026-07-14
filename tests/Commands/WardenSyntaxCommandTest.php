@@ -1,69 +1,51 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dgtlss\Warden\Tests\Commands;
 
-use Dgtlss\Warden\Providers\WardenServiceProvider;
+use Dgtlss\Warden\Enums\Severity;
 use Dgtlss\Warden\Services\Audits\PhpSyntaxAuditService;
+use Dgtlss\Warden\Tests\TestCase;
+use Dgtlss\Warden\ValueObjects\AuditError;
+use Dgtlss\Warden\ValueObjects\AuditResult;
+use Dgtlss\Warden\ValueObjects\Finding;
 use Mockery\MockInterface;
-use Orchestra\Testbench\TestCase;
 
-class WardenSyntaxCommandTest extends TestCase
+final class WardenSyntaxCommandTest extends TestCase
 {
-    protected function getPackageProviders($app): array
-    {
-        return [WardenServiceProvider::class];
-    }
-
-    public function testSyntaxCommandHandlesNoFindings(): void
+    public function testCleanSyntaxExitsZero(): void
     {
         $this->mock(PhpSyntaxAuditService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('run')->once()->andReturn(true);
+            $mock->shouldReceive('run')->once()->andReturn(AuditResult::complete('php-syntax'));
         });
 
         $this->artisan('warden:syntax')
-            ->expectsOutputToContain('Warden PHP Syntax Audit')
             ->expectsOutputToContain('No PHP syntax errors found.')
             ->assertExitCode(0);
     }
 
-    public function testSyntaxCommandHandlesFindings(): void
+    public function testSyntaxFindingExitsOne(): void
     {
-        $findings = [
-            [
-                'title' => 'test.php',
-                'description' => 'Parse error: syntax error, unexpected T_STRING',
-            ],
-        ];
-
-        $this->mock(PhpSyntaxAuditService::class, function (MockInterface $mock) use ($findings): void {
-            $mock->shouldReceive('run')->once()->andReturn(false);
-            $mock->shouldReceive('getFindings')->once()->andReturn($findings);
+        $finding = new Finding('quality.php.syntax', 'php-syntax', 'Syntax error', Severity::High, 'Parse error', path: 'app/Broken.php');
+        $this->mock(PhpSyntaxAuditService::class, function (MockInterface $mock) use ($finding): void {
+            $mock->shouldReceive('run')->once()->andReturn(AuditResult::complete('php-syntax', [$finding]));
         });
 
         $this->artisan('warden:syntax')
-            ->expectsOutputToContain('Warden PHP Syntax Audit')
-            ->expectsOutputToContain('1 syntax error found.')
+            ->expectsOutputToContain('app/Broken.php: Parse error')
             ->assertExitCode(1);
     }
 
-    public function testSyntaxCommandHandlesAuditError(): void
+    public function testAuditErrorIsDisplayedAndExitsTwo(): void
     {
-        $findings = [
-            [
-                'title' => 'Error',
-                'description' => 'The audit could not be run.',
-                'severity' => 'error',
-            ],
-        ];
-
-        $this->mock(PhpSyntaxAuditService::class, function (MockInterface $mock) use ($findings): void {
-            $mock->shouldReceive('run')->once()->andReturn(false);
-            $mock->shouldReceive('getFindings')->once()->andReturn($findings);
+        $auditError = new AuditError('php-syntax', 'timeout', 'PHP syntax analysis timed out.');
+        $this->mock(PhpSyntaxAuditService::class, function (MockInterface $mock) use ($auditError): void {
+            $mock->shouldReceive('run')->once()->andReturn(new AuditResult('php-syntax', errors: [$auditError]));
         });
 
         $this->artisan('warden:syntax')
-            ->expectsOutputToContain('Warden PHP Syntax Audit')
-            ->expectsOutputToContain('1 syntax error found.')
+            ->expectsOutputToContain('timeout: PHP syntax analysis timed out.')
             ->assertExitCode(2);
     }
 }

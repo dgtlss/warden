@@ -1,119 +1,133 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dgtlss\Warden\Services\Audits;
 
+use Dgtlss\Warden\Contracts\AuditServiceInterface;
+use Dgtlss\Warden\Enums\Severity;
+use Dgtlss\Warden\ValueObjects\AuditContext;
+use Dgtlss\Warden\ValueObjects\AuditResult;
+use Dgtlss\Warden\ValueObjects\Finding;
+use JsonException;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 
-class NpmAuditService extends AbstractAuditService
+class NpmAuditService implements AuditServiceInterface
 {
     public function getName(): string
     {
         return 'npm';
     }
 
-    public function run(): bool
+    public function run(AuditContext $auditContext): AuditResult
     {
-        if (!file_exists(base_path('package.json'))) {
-            $this->addFinding([
-                'package' => 'npm',
-                'title' => 'Missing package.json',
-                'severity' => 'error',
-                'cve' => null,
-                'affected_versions' => null
-            ]);
-            return false;
+        if (!is_file(base_path('package-lock.json'))) {
+            return AuditResult::complete($this->getName());
         }
 
-        if (!file_exists(base_path('package-lock.json'))) {
-            $this->addFinding([
-                'package' => 'npm',
-                'title' => 'Missing package-lock.json',
-                'severity' => 'error',
-                'cve' => null,
-                'affected_versions' => null
-            ]);
-            return false;
+        $command = ['npm', 'audit', '--json', '--package-lock-only'];
+        if ($auditContext->scope === 'production') {
+            $command[] = '--omit=dev';
         }
 
-        $process = new Process(['npm', 'audit', '--json']);
-        $process->setWorkingDirectory(base_path());
-        $process->setTimeout(config('warden.audits.timeout', 300));
-
+        $process = $this->createProcess($command, $auditContext->timeout);
         try {
             $process->run();
-            
-            // npm audit returns non-zero exit codes when vulnerabilities are found, which is normal
-            // Only treat it as an error if we can't parse the JSON output
-            $output = json_decode($process->getOutput(), true);
-            if ($output === null) {
-                $errorOutput = $process->getErrorOutput() ?: $process->getOutput() ?: 'No error output available';
-                $exitCode = $process->getExitCode();
-                
-                $this->addFinding([
-                    'package' => 'npm',
-                    'title' => 'npm audit failed to run',
-                    'severity' => 'high',
-                    'cve' => null,
-                    'affected_versions' => null,
-                    'error' => "Exit Code: {$exitCode}\nError: {$errorOutput}"
-                ]);
-                return false;
-            }
-
-            // Handle modern npm audit format (npm 7+)
-            if (isset($output['vulnerabilities'])) {
-                foreach ($output['vulnerabilities'] as $package => $vulnerability) {
-                    // Modern format has vulnerability details in the 'via' array
-                    if (isset($vulnerability['via']) && is_array($vulnerability['via'])) {
-                        foreach ($vulnerability['via'] as $viaItem) {
-                            // Skip string entries (they're just package names), process array entries
-                            if (is_array($viaItem)) {
-                                $this->addFinding([
-                                    'package' => $package,
-                                    'title' => $viaItem['title'] ?? 'Unknown vulnerability',
-                                    'severity' => $viaItem['severity'] ?? 'unknown',
-                                    'cve' => $viaItem['url'] ?? null,
-                                    'affected_versions' => $viaItem['range'] ?? ($vulnerability['range'] ?? 'unknown')
-                                ]);
-                            }
-                        }
-                    } else {
-                        // Fallback for potential legacy format or missing via array
-                        $this->addFinding([
-                            'package' => $package,
-                            'title' => $vulnerability['title'] ?? 'Unknown vulnerability',
-                            'severity' => $vulnerability['severity'] ?? 'unknown',
-                            'cve' => $vulnerability['url'] ?? null,
-                            'affected_versions' => $vulnerability['range'] ?? 'unknown'
-                        ]);
-                    }
-                }
-            }
-            
-            // Handle legacy npm audit format (npm v6 and earlier) - advisories format
-            if (isset($output['advisories'])) {
-                foreach ($output['advisories'] as $advisory) {
-                    $this->addFinding([
-                        'package' => $advisory['module_name'] ?? 'unknown',
-                        'title' => $advisory['title'] ?? 'Unknown vulnerability',
-                        'severity' => $advisory['severity'] ?? 'unknown',
-                        'cve' => $advisory['cves'][0] ?? $advisory['url'] ?? null,
-                        'affected_versions' => $advisory['vulnerable_versions'] ?? 'unknown'
-                    ]);
-                }
-            }
-
-            return true;
-        } catch (\Exception $exception) {
-            $this->addFinding([
-                'package' => 'npm',
-                'title' => 'npm audit failed with exception',
-                'severity' => 'high',
-                'cve' => null,
-                'affected_versions' => null,
-                'error' => $exception->getMessage()
-            ]);
-            return false;
+        } catch (ProcessTimedOutException) {
+            return AuditResult::failed($this->getName(), 'timeout', 'npm audit exceeded the configured timeout.');
         }
+
+        try {
+            $decoded = json_decode($process->getOutput(), true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException $jsonException) {
+            return AuditResult::failed(
+                $this->getName(),
+                'malformed_output',
+                trim($process->getErrorOutput()) ?: $jsonException->getMessage(),
+            );
+        }
+
+        if (!is_array($decoded)) {
+            return AuditResult::failed($this->getName(), 'malformed_output', 'npm audit returned an unexpected JSON value.');
+        }
+
+        $findings = $this->findingsFrom($decoded['vulnerabilities'] ?? []);
+        if (!$process->isSuccessful() && $findings === []) {
+            return AuditResult::failed(
+                $this->getName(),
+                'scanner_failed',
+                $this->npmError($decoded, $process),
+            );
+        }
+
+        return AuditResult::complete($this->getName(), $findings);
+    }
+
+    /** @param list<string> $command */
+    protected function createProcess(array $command, int $timeout): Process
+    {
+        $process = new Process($command, base_path());
+        $process->setTimeout($timeout);
+
+        return $process;
+    }
+
+    /** @return list<Finding> */
+    private function findingsFrom(mixed $vulnerabilities): array
+    {
+        if (!is_array($vulnerabilities)) {
+            return [];
+        }
+
+        $findings = [];
+        foreach ($vulnerabilities as $package => $vulnerability) {
+            if (!is_string($package) || !is_array($vulnerability)) {
+                continue;
+            }
+
+            $advisories = array_values(array_filter(
+                is_array($vulnerability['via'] ?? null) ? $vulnerability['via'] : [],
+                'is_array',
+            ));
+            if ($advisories === []) {
+                $advisories = [$vulnerability];
+            }
+
+            foreach ($advisories as $advisory) {
+                $url = is_string($advisory['url'] ?? null) ? $advisory['url'] : null;
+                $identifier = is_int($advisory['source'] ?? null)
+                    ? (string) $advisory['source']
+                    : ($url ?? (is_string($advisory['title'] ?? null) ? $advisory['title'] : 'unknown'));
+                $findings[] = new Finding(
+                    id: 'npm.advisory.' . hash('sha256', $identifier),
+                    source: $this->getName(),
+                    title: is_string($advisory['title'] ?? null) ? $advisory['title'] : 'Dependency security advisory',
+                    severity: Severity::fromScannerValue($advisory['severity'] ?? $vulnerability['severity'] ?? null),
+                    description: sprintf('%s contains a known vulnerability.', $package),
+                    remediation: 'Upgrade the dependency using the remediation provided by npm.',
+                    package: $package,
+                    reference: $url,
+                    path: 'package-lock.json',
+                    metadata: array_filter([
+                        'affected_versions' => is_string($advisory['range'] ?? null)
+                            ? $advisory['range']
+                            : (is_string($vulnerability['range'] ?? null) ? $vulnerability['range'] : null),
+                    ], static fn (mixed $value): bool => $value !== null),
+                );
+            }
+        }
+
+        return $findings;
+    }
+
+    /** @param array<string, mixed> $decoded */
+    private function npmError(array $decoded, Process $process): string
+    {
+        $message = $decoded['error']['summary'] ?? $decoded['error']['detail'] ?? null;
+
+        return is_string($message) && $message !== ''
+            ? $message
+            : (trim($process->getErrorOutput()) ?: sprintf('npm audit exited with code %d.', $process->getExitCode()));
     }
 }

@@ -1,86 +1,37 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dgtlss\Warden\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Console\Scheduling\Schedule;
 use Dgtlss\Warden\Commands\WardenAuditCommand;
-use Dgtlss\Warden\Commands\WardenScheduleCommand;
+use Dgtlss\Warden\Commands\WardenBaselineCommand;
+use Dgtlss\Warden\Commands\WardenInitCommand;
 use Dgtlss\Warden\Commands\WardenSyntaxCommand;
-use Dgtlss\Warden\Services\AuditCacheService;
-use Dgtlss\Warden\Services\AuditExecutor;
+use Illuminate\Support\ServiceProvider;
 
-class WardenServiceProvider extends ServiceProvider
+final class WardenServiceProvider extends ServiceProvider
 {
-    public function register()
+    public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/warden.php', 'warden');
-        
-        // Register services
-        $this->app->singleton(AuditCacheService::class, function ($app) {
-            return new AuditCacheService();
-        });
-        
-        $this->app->bind(AuditExecutor::class, function () {
-            return new AuditExecutor();
-        });
+        $this->mergeConfigFrom(__DIR__ . '/../config/warden.php', 'warden');
     }
 
     public function boot(): void
     {
-        // Publish configuration
         $this->publishes([
-            __DIR__.'/../config/warden.php' => config_path('warden.php'),
+            __DIR__ . '/../config/warden.php' => config_path('warden.php'),
         ], 'warden-config');
 
-        // Publish migrations
-        if (config('warden.history.enabled', false)) {
-            $this->publishes([
-                __DIR__.'/../database/migrations/' => database_path('migrations'),
-            ], 'warden-migrations');
-        }
-
-        // Register commands
         if ($this->app->runningInConsole()) {
             $this->commands([
                 WardenAuditCommand::class,
-                WardenScheduleCommand::class,
+                WardenBaselineCommand::class,
+                WardenInitCommand::class,
                 WardenSyntaxCommand::class,
             ]);
-
-            // Schedule the command if enabled
-            if (config('warden.schedule.enabled', false)) {
-                $this->app->booted(function (): void {
-                    $schedule = $this->app->make(Schedule::class);
-                    $frequency = config('warden.schedule.frequency', 'daily');
-                    $time = config('warden.schedule.time', '03:00');
-                    
-                    $event = $schedule->command('warden:audit --no-notify');
-                    
-                    switch ($frequency) {
-                        case 'hourly':
-                            $event->hourly();
-                            break;
-                        case 'daily':
-                            $event->dailyAt($time);
-                            break;
-                        case 'weekly':
-                            $event->weeklyOn(1, $time); // Monday
-                            break;
-                        case 'monthly':
-                            $event->monthlyOn(1, $time); // 1st of month
-                            break;
-                        default:
-                            $event->daily();
-                    }
-                    
-                    if ($timezone = config('warden.schedule.timezone')) {
-                        $event->timezone($timezone);
-                    }
-                });
-            }
         }
 
-        $this->loadViewsFrom(__DIR__.'/../views', 'warden');
+        $this->loadViewsFrom(__DIR__ . '/../views', 'warden');
     }
 }

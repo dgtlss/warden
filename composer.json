@@ -1,20 +1,28 @@
 {
     "name": "dgtlss/warden",
-    "description": "A Laravel package that proactively monitors your dependencies for security vulnerabilities by running automated composer audits and sending notifications via webhooks and email",
+    "description": "A deterministic Laravel security gate for CI and deployment pipelines",
     "keywords": [
         "laravel",
         "composer",
         "security",
         "vulnerabilities",
         "audits",
+        "ci",
+        "sast",
+        "secret-scanning",
+        "supply-chain",
         "notifications",
         "CVE"
     ],
-    "version": "1.5.3",
     "license": "MIT",
     "autoload": {
         "psr-4": {
             "Dgtlss\\Warden\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Dgtlss\\Warden\\Tests\\": "tests/"
         }
     },
     "authors": [
@@ -23,14 +31,17 @@
             "email": "nathanlanger@googlemail.com"
         }
     ],
-    "minimum-stability": "dev",
-    "prefer-stable": true,
     "require": {
-        "php": ">=8.3",
-        "illuminate/support": "^7.0|^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
-        "illuminate/cache": "^7.0|^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
+        "php": ">=8.3 <8.6",
+        "illuminate/console": "^12.0|^13.0",
+        "illuminate/contracts": "^12.0|^13.0",
+        "illuminate/encryption": "^12.0|^13.0",
+        "illuminate/http": "^12.0|^13.0",
+        "illuminate/support": "^12.0|^13.0",
         "guzzlehttp/guzzle": "^7.0",
-        "laravel/prompts": "^0.3"
+        "nikic/php-parser": "^5.8",
+        "symfony/finder": "^7.2|^8.0",
+        "symfony/process": "^7.2|^8.0"
     },
     "extra": {
         "laravel": {
@@ -43,9 +54,12 @@
         "phpstan/phpstan": "^2.1",
         "rector/rector": "^2.2",
         "larastan/larastan": "^3.0",
-        "orchestra/testbench": "^10.9|^11.0"
+        "orchestra/testbench": "^10.9|^11.0",
+        "phpunit/phpunit": "^11.5|^12.0"
     },
     "scripts": {
-        "phpstan": "vendor/bin/phpstan analyse --memory-limit=2G"
+        "phpstan": "vendor/bin/phpstan analyse --memory-limit=2G",
+        "test": "vendor/bin/phpunit tests/",
+        "rector": "vendor/bin/rector process --dry-run --no-progress-bar"
     }
 }

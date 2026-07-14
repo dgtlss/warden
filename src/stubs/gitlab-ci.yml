@@ -1,0 +1,24 @@
+stages:
+  - security
+
+warden:
+  stage: security
+  image: composer:2
+  cache:
+    key:
+      files:
+        - composer.lock
+    paths:
+      - .composer-cache/
+  variables:
+    COMPOSER_CACHE_DIR: "$CI_PROJECT_DIR/.composer-cache"
+  script:
+    - composer install --prefer-dist --no-progress --no-interaction
+    - php artisan warden:audit --format=gitlab --output-file=gl-dependency-scanning-report.json
+  artifacts:
+    when: always
+    reports:
+      dependency_scanning: gl-dependency-scanning-report.json
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
