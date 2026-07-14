@@ -74,14 +74,27 @@ final class WardenInitCommand extends Command
     private function generateGithub(): bool
     {
         $target = base_path('.github/workflows/warden.yml');
+        $contents = $this->stub('github-workflow.yml');
+        if ($contents === null) {
+            $this->error('Unable to read bundled stub github-workflow.yml.');
 
-        return $this->writeOwnedFile($target, $this->stub('github-workflow.yml'), '.github/workflows/warden.yml');
+            return false;
+        }
+
+        return $this->writeOwnedFile($target, $contents, '.github/workflows/warden.yml');
     }
 
     private function generateGitlab(): bool
     {
         $target = base_path('.gitlab/warden.yml');
-        if (!$this->writeOwnedFile($target, $this->stub('gitlab-ci.yml'), '.gitlab/warden.yml')) {
+        $contents = $this->stub('gitlab-ci.yml');
+        if ($contents === null) {
+            $this->error('Unable to read bundled stub gitlab-ci.yml.');
+
+            return false;
+        }
+
+        if (!$this->writeOwnedFile($target, $contents, '.gitlab/warden.yml')) {
             return false;
         }
 
@@ -138,10 +151,13 @@ final class WardenInitCommand extends Command
         return true;
     }
 
-    private function stub(string $name): string
+    private function stub(string $name): ?string
     {
-        $contents = file_get_contents(__DIR__ . '/../stubs/' . $name);
+        $contents = @file_get_contents(__DIR__ . '/../stubs/' . $name);
+        if (!is_string($contents)) {
+            return null;
+        }
 
-        return str_replace('{{PHP_VERSION}}', PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION, is_string($contents) ? $contents : '');
+        return str_replace('{{PHP_VERSION}}', PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION, $contents);
     }
 }

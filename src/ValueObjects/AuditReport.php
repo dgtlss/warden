@@ -90,9 +90,11 @@ final readonly class AuditReport implements JsonSerializable
     /** @return array<string, mixed> */
     public function jsonSerialize(): array
     {
+        $findings = $this->findings();
+        $errors = $this->errors();
         $counts = ['critical' => 0, 'high' => 0, 'medium' => 0, 'low' => 0];
         $blocking = 0;
-        foreach ($this->findings() as $finding) {
+        foreach ($findings as $finding) {
             $counts[$finding->severity->value]++;
             $blocking += $finding->blocking ? 1 : 0;
         }
@@ -101,23 +103,23 @@ final readonly class AuditReport implements JsonSerializable
             'schema_version' => '2.0.0',
             'warden_version' => $this->wardenVersion(),
             'run' => [
-                'status' => $this->errors() === [] ? 'completed' : 'failed',
+                'status' => $errors === [] ? 'completed' : 'failed',
                 'profile' => $this->context->profile,
                 'scope' => $this->context->scope,
                 'scanned_at' => ($this->scannedAt ?? CarbonImmutable::now())->toISOString(),
             ],
             'summary' => [
-                'total' => count($this->findings()),
+                'total' => count($findings),
                 'blocking' => $blocking,
-                'advisory' => count($this->findings()) - $blocking,
+                'advisory' => count($findings) - $blocking,
                 'ignored' => count($this->ignoredFindings),
-                'errors' => count($this->errors()),
+                'errors' => count($errors),
                 'severity' => $counts,
             ],
             'audits' => $this->audits,
-            'findings' => $this->findings(),
+            'findings' => $findings,
             'ignored_findings' => $this->ignoredFindings,
-            'errors' => $this->errors(),
+            'errors' => $errors,
         ];
     }
 
@@ -127,8 +129,14 @@ final readonly class AuditReport implements JsonSerializable
             return InstalledVersions::getPrettyVersion('dgtlss/warden') ?? 'unknown';
         }
 
-        $root = InstalledVersions::getRootPackage();
+        return $this->prettyVersion(InstalledVersions::getRootPackage());
+    }
 
-        return $root['pretty_version'];
+    /** @param array<string, mixed> $package */
+    private function prettyVersion(array $package): string
+    {
+        $prettyVersion = $package['pretty_version'] ?? null;
+
+        return is_string($prettyVersion) && $prettyVersion !== '' ? $prettyVersion : 'unknown';
     }
 }

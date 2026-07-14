@@ -11,6 +11,7 @@ use Dgtlss\Warden\ValueObjects\AuditReport;
 use Dgtlss\Warden\ValueObjects\AuditResult;
 use Dgtlss\Warden\ValueObjects\Finding;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
 
 final class AuditReportTest extends TestCase
 {
@@ -58,6 +59,15 @@ final class AuditReportTest extends TestCase
 
         self::assertSame($first->fingerprint(), $second->fingerprint());
         self::assertArrayNotHasKey('identity', $first->jsonSerialize());
+    }
+
+    public function testMissingComposerRootPrettyVersionFallsBackToUnknown(): void
+    {
+        $reflectionMethod = new ReflectionMethod(AuditReport::class, 'prettyVersion');
+        $auditReport = new AuditReport(new AuditContext(), []);
+
+        self::assertSame('unknown', $reflectionMethod->invoke($auditReport, []));
+        self::assertSame('unknown', $reflectionMethod->invoke($auditReport, ['pretty_version' => null]));
     }
 
     private function finding(string $id, Severity $severity): Finding

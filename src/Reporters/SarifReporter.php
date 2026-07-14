@@ -67,9 +67,11 @@ final class SarifReporter implements ReportFormatter
             $result['locations'] = [[
                 'physicalLocation' => [
                     'artifactLocation' => ['uri' => $finding->path],
-                    'region' => ['startLine' => $finding->line ?? 1],
                 ],
             ]];
+            if ($finding->line !== null) {
+                $result['locations'][0]['physicalLocation']['region'] = ['startLine' => $finding->line];
+            }
         }
 
         return $result;

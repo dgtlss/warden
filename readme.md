@@ -270,7 +270,3 @@ Please report security vulnerabilities privately using [GitHub Security Advisori
 ## License
 
 Warden is open-sourced software licensed under the [MIT license](LICENSE).
-
-## License
-
-Warden is released under the [MIT License](LICENSE).

@@ -27,6 +27,10 @@ final class WardenSyntaxCommand extends Command
         }
 
         if ($auditResult->errors !== []) {
+            foreach ($auditResult->errors as $error) {
+                $this->error(sprintf('%s: %s', $error->code, $error->message));
+            }
+
             return 2;
         }
 

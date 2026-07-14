@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Dgtlss\Warden\Services\Audits;
 
-use Composer\InstalledVersions;
 use Dgtlss\Warden\Contracts\AuditServiceInterface;
 use Dgtlss\Warden\Enums\Severity;
 use Dgtlss\Warden\ValueObjects\AuditContext;
@@ -145,9 +144,9 @@ class LaravelConfigAuditService implements AuditServiceInterface
     private function toolingFindings(): array
     {
         $findings = [];
-        if (class_exists(\Laravel\Telescope\Telescope::class) && config('telescope.enabled') === true) {
+        if ($this->classAvailable('Laravel\\Telescope\\Telescope') && config('telescope.enabled') === true) {
             $findings[] = new Finding(
-                id: 'laravel.debug-tool.enabled',
+                id: 'laravel.debug-tool.telescope-enabled',
                 source: $this->getName(),
                 title: 'Laravel Telescope is enabled in production',
                 severity: Severity::High,
@@ -160,13 +159,13 @@ class LaravelConfigAuditService implements AuditServiceInterface
         }
 
         $tools = [
-            ['Barryvdh\\Debugbar\\LaravelDebugbar', 'debugbar.enabled', 'barryvdh/laravel-debugbar', 'Laravel Debugbar'],
-            ['Clockwork\\Clockwork', 'clockwork.enable', 'itsgoingd/clockwork', 'Clockwork'],
+            ['Barryvdh\\Debugbar\\LaravelDebugbar', 'debugbar.enabled', 'laravel.debug-tool.debugbar-enabled', 'barryvdh/laravel-debugbar', 'Laravel Debugbar'],
+            ['Clockwork\\Clockwork', 'clockwork.enable', 'laravel.debug-tool.clockwork-enabled', 'itsgoingd/clockwork', 'Clockwork'],
         ];
-        foreach ($tools as [, $configKey, $package, $label]) {
-            if (InstalledVersions::isInstalled($package) && config()->get($configKey) === true) {
+        foreach ($tools as [$class, $configKey, $id, $package, $label]) {
+            if ($this->classAvailable($class) && config()->get($configKey) === true) {
                 $findings[] = new Finding(
-                    id: 'laravel.debug-tool.enabled',
+                    id: $id,
                     source: $this->getName(),
                     title: sprintf('%s is enabled in production', $label),
                     severity: Severity::High,
@@ -180,6 +179,12 @@ class LaravelConfigAuditService implements AuditServiceInterface
         }
 
         return $findings;
+    }
+
+    /** @param class-string|string $class */
+    private function classAvailable(string $class): bool
+    {
+        return class_exists($class);
     }
 
     /** @return list<Finding> */

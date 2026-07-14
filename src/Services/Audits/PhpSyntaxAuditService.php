@@ -7,11 +7,13 @@ namespace Dgtlss\Warden\Services\Audits;
 use Dgtlss\Warden\Contracts\AuditServiceInterface;
 use Dgtlss\Warden\Enums\Severity;
 use Dgtlss\Warden\ValueObjects\AuditContext;
+use Dgtlss\Warden\ValueObjects\AuditError;
 use Dgtlss\Warden\ValueObjects\AuditResult;
 use Dgtlss\Warden\ValueObjects\Finding;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 
 class PhpSyntaxAuditService implements AuditServiceInterface
@@ -23,15 +25,34 @@ class PhpSyntaxAuditService implements AuditServiceInterface
 
     public function run(AuditContext $auditContext): AuditResult
     {
+        $startedAt = microtime(true);
         $findings = [];
         foreach ($this->phpFiles() as $path) {
-            $process = new Process([PHP_BINARY, '-l', $path], base_path(), null, null, $auditContext->timeout);
-            $process->run();
+            $relativePath = $this->relativePath($path);
+            $remaining = $auditContext->timeout - (microtime(true) - $startedAt);
+            if ($remaining <= 0) {
+                return new AuditResult($this->getName(), $findings, [new AuditError(
+                    $this->getName(),
+                    'timeout',
+                    sprintf('PHP syntax analysis exceeded the configured timeout before linting %s.', $relativePath),
+                )]);
+            }
+
+            $process = $this->createProcess($path, $remaining);
+            try {
+                $process->run();
+            } catch (ProcessTimedOutException) {
+                return new AuditResult($this->getName(), $findings, [new AuditError(
+                    $this->getName(),
+                    'timeout',
+                    sprintf('PHP syntax analysis exceeded the configured timeout while linting %s.', $relativePath),
+                )]);
+            }
+
             if ($process->isSuccessful()) {
                 continue;
             }
 
-            $relativePath = ltrim(str_replace(base_path(), '', $path), DIRECTORY_SEPARATOR);
             $findings[] = new Finding(
                 id: 'quality.php.syntax',
                 source: $this->getName(),
@@ -44,6 +65,11 @@ class PhpSyntaxAuditService implements AuditServiceInterface
         }
 
         return AuditResult::complete($this->getName(), $findings);
+    }
+
+    protected function createProcess(string $path, float $timeout): Process
+    {
+        return new Process([PHP_BINARY, '-l', $path], base_path(), null, null, $timeout);
     }
 
     /** @return list<string> */
@@ -81,12 +107,19 @@ class PhpSyntaxAuditService implements AuditServiceInterface
     /** @param list<string> $excluded */
     private function isExcluded(string $path, array $excluded): bool
     {
+        $normalisedPath = str_replace('\\', '/', $path);
         foreach ($excluded as $directory) {
-            if ($path === $directory || str_starts_with($path, rtrim($directory, '/') . DIRECTORY_SEPARATOR)) {
+            $normalisedDirectory = rtrim(str_replace('\\', '/', $directory), '/');
+            if ($normalisedPath === $normalisedDirectory || str_starts_with($normalisedPath, $normalisedDirectory . '/')) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private function relativePath(string $path): string
+    {
+        return ltrim(str_replace(base_path(), '', $path), DIRECTORY_SEPARATOR);
     }
 }

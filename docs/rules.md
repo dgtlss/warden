@@ -32,7 +32,9 @@ Every rule has a stable ID and a default disposition. `enforced` findings partic
 |---|---|---|
 | `laravel.cors.wildcard-credentials` | enforced | Wildcard CORS combined with credentials |
 | `laravel.cors.wildcard-origin` | advisory | Wildcard CORS without credentials |
-| `laravel.debug-tool.enabled` | enforced | Telescope, Debugbar, or Clockwork enabled in production |
+| `laravel.debug-tool.telescope-enabled` | enforced | Telescope enabled in production |
+| `laravel.debug-tool.debugbar-enabled` | enforced | Laravel Debugbar enabled in production |
+| `laravel.debug-tool.clockwork-enabled` | enforced | Clockwork enabled in production |
 | `deployment.env.permissions` | advisory | World-readable or world-writable production `.env` |
 | `deployment.path.world-writable` | advisory | World-writable Laravel runtime path |
 | `platform.php.eol` | enforced | Unsupported PHP branch |

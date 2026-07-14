@@ -111,7 +111,7 @@ class PlatformAuditService implements AuditServiceInterface
         return [];
     }
 
-    private function composerPlatformPhp(): ?string
+    protected function composerPlatformPhp(): ?string
     {
         $contents = @file_get_contents(base_path('composer.json'));
         if (!is_string($contents)) {

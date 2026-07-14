@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Dgtlss\Warden\Tests\Commands;
 
+use Dgtlss\Warden\Commands\WardenInitCommand;
 use Dgtlss\Warden\Tests\TestCase;
 use Illuminate\Support\Facades\Artisan;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use ReflectionMethod;
 use SplFileInfo;
 
 final class WardenInitCommandTest extends TestCase
@@ -65,5 +67,13 @@ final class WardenInitCommandTest extends TestCase
         self::assertSame("existing: true\n", file_get_contents(base_path('.gitlab-ci.yml')));
         self::assertFileExists(base_path('.gitlab/warden.yml'));
         self::assertStringContainsString('dependency_scanning', (string) file_get_contents(base_path('.gitlab/warden.yml')));
+    }
+
+    public function testMissingBundledStubDoesNotProduceEmptyContents(): void
+    {
+        $reflectionMethod = new ReflectionMethod(WardenInitCommand::class, 'stub');
+
+        self::assertNull($reflectionMethod->invoke($this->app->make(WardenInitCommand::class), 'missing.yml'));
+        self::assertFileDoesNotExist(base_path('.github/workflows/warden.yml'));
     }
 }

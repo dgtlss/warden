@@ -167,6 +167,24 @@ final class ReporterTest extends TestCase
         self::assertSame(1, $domDocument->getElementsByTagName('skipped')->length);
     }
 
+    public function testSarifOmitsRegionWhenFindingHasNoLine(): void
+    {
+        $sarif = json_decode((new SarifReporter())->format($this->report()), true, 512, JSON_THROW_ON_ERROR);
+        $physicalLocation = $sarif['runs'][0]['results'][0]['locations'][0]['physicalLocation'];
+
+        self::assertSame('composer.lock', $physicalLocation['artifactLocation']['uri']);
+        self::assertArrayNotHasKey('region', $physicalLocation);
+    }
+
+    public function testGitlabTimestampsMatchTheDeclaredSchemaVersion(): void
+    {
+        $gitlab = json_decode((new GitLabReporter())->format($this->report()), true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame('15.2.4', $gitlab['version']);
+        self::assertSame('2026-01-01T00:00:00', $gitlab['scan']['start_time']);
+        self::assertSame('2026-01-01T00:00:00', $gitlab['scan']['end_time']);
+    }
+
     private function report(): AuditReport
     {
         $finding = new Finding(

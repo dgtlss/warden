@@ -45,6 +45,11 @@ class SourceAuditService implements AuditServiceInterface
         }
 
         array_push($findings, ...$this->textSourceAnalyzer->blade($files['blade']));
+        if ($this->timedOut($startedAt, $auditContext->timeout)) {
+            $errors[] = new AuditError($this->getName(), 'timeout', 'Source analysis exceeded the configured timeout.');
+
+            return new AuditResult($this->getName(), $findings, $errors);
+        }
 
         foreach ($files['php'] as $file) {
             if ($this->timedOut($startedAt, $auditContext->timeout)) {

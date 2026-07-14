@@ -78,16 +78,28 @@ class AuditRunner
      */
     private function services(AuditContext $auditContext): array
     {
-        $services = [
-            $this->container->make(SupplyChainAuditService::class),
-            $this->container->make(ComposerAuditService::class),
-            $this->container->make(NpmAuditService::class),
-            $this->container->make(LaravelConfigAuditService::class),
-            $this->container->make(PlatformAuditService::class),
-            $this->container->make(SourceAuditService::class),
-            $this->container->make(StorageAuditService::class),
-        ];
+        $services = [];
         $errors = [];
+        $builtInClasses = [
+            SupplyChainAuditService::class,
+            ComposerAuditService::class,
+            NpmAuditService::class,
+            LaravelConfigAuditService::class,
+            PlatformAuditService::class,
+            SourceAuditService::class,
+            StorageAuditService::class,
+        ];
+        foreach ($builtInClasses as $class) {
+            try {
+                $services[] = $this->container->make($class);
+            } catch (Throwable $throwable) {
+                $errors[] = new AuditError(
+                    'configuration',
+                    'builtin_audit_initialization_failed',
+                    sprintf('%s: %s', $class, $throwable->getMessage()),
+                );
+            }
+        }
 
         $customAudits = config('warden.custom_audits', []);
         if (!is_array($customAudits)) {

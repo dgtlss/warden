@@ -6,6 +6,7 @@ namespace Dgtlss\Warden\Tests\Services\Audits;
 
 use Dgtlss\Warden\Services\Audits\SourceAuditService;
 use Dgtlss\Warden\Services\RulePolicy;
+use Dgtlss\Warden\Services\Source\PhpSourceAnalyzer;
 use Dgtlss\Warden\Reporters\ConsoleReporter;
 use Dgtlss\Warden\Reporters\GitHubReporter;
 use Dgtlss\Warden\Reporters\GitLabReporter;
@@ -17,7 +18,9 @@ use Dgtlss\Warden\ValueObjects\AuditContext;
 use Dgtlss\Warden\ValueObjects\AuditReport;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
+use ReflectionProperty;
 use SplFileInfo;
+use Symfony\Component\Finder\SplFileInfo as FinderFileInfo;
 
 final class SourceAuditServiceTest extends TestCase
 {
@@ -201,6 +204,32 @@ PHP);
         self::assertSame('timeout', $timedOut->errors[0]->code);
     }
 
+    public function testTimeoutAfterBladeAnalysisSkipsPhpAnalysis(): void
+    {
+        $this->write('resources/views/output.blade.php', '{!! $body !!}');
+        $this->write('app/Broken.php', '<?php function broken( {');
+        $service = new class(
+            $this->app->make(\Dgtlss\Warden\Services\Source\SourceFileDiscovery::class),
+            $this->app->make(\Dgtlss\Warden\Services\Source\PhpSourceAnalyzer::class),
+            $this->app->make(\Dgtlss\Warden\Services\Source\TextSourceAnalyzer::class),
+        ) extends SourceAuditService {
+            private int $checks = 0;
+
+            protected function timedOut(float $startedAt, int $timeout): bool
+            {
+                $this->checks++;
+
+                return $this->checks >= 3;
+            }
+        };
+
+        $auditResult = $service->run(new AuditContext());
+
+        self::assertSame('timeout', $auditResult->errors[0]->code);
+        self::assertContains('source.blade.unescaped-output', array_map(static fn ($finding): string => $finding->id, $auditResult->findings));
+        self::assertNotContains('parse_error', array_map(static fn ($error): string => $error->code, $auditResult->errors));
+    }
+
     public function testRuleOverridesCanPromoteDisableAndRejectRules(): void
     {
         config(['warden.rule_overrides' => [
@@ -229,6 +258,20 @@ PHP);
         $auditResult = $this->service()->run(new AuditContext());
 
         self::assertSame('invalid_configuration', $auditResult->errors[0]->code);
+    }
+
+    public function testPhpParserInstanceIsReusedAcrossFiles(): void
+    {
+        $this->write('app/First.php', '<?php return 1;');
+        $this->write('app/Second.php', '<?php return 2;');
+        $phpSourceAnalyzer = $this->app->make(PhpSourceAnalyzer::class);
+        $reflectionProperty = new ReflectionProperty(PhpSourceAnalyzer::class, 'parser');
+        $parser = $reflectionProperty->getValue($phpSourceAnalyzer);
+
+        $phpSourceAnalyzer->analyze(new FinderFileInfo($this->temporaryBasePath . '/app/First.php', 'app', 'app/First.php'));
+        $phpSourceAnalyzer->analyze(new FinderFileInfo($this->temporaryBasePath . '/app/Second.php', 'app', 'app/Second.php'));
+
+        self::assertSame($parser, $reflectionProperty->getValue($phpSourceAnalyzer));
     }
 
     private function resultWithAdvisories(): \Dgtlss\Warden\ValueObjects\AuditResult

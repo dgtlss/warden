@@ -12,24 +12,27 @@ use PhpParser\Error;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
+use PhpParser\Parser;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard;
 use Symfony\Component\Finder\SplFileInfo;
 
 final class PhpSourceAnalyzer
 {
+    private readonly Parser $parser;
+
     public function __construct(private readonly RulePolicy $rulePolicy)
     {
+        $this->parser = (new ParserFactory())->createForNewestSupportedVersion();
     }
 
     /** @return array{findings: list<Finding>, errors: list<AuditError>} */
     public function analyze(SplFileInfo $file): array
     {
         $path = ltrim(str_replace(base_path(), '', $file->getRealPath()), DIRECTORY_SEPARATOR);
-        $parser = (new ParserFactory())->createForNewestSupportedVersion();
 
         try {
-            $nodes = $parser->parse($file->getContents());
+            $nodes = $this->parser->parse($file->getContents());
         } catch (Error $error) {
             return [
                 'findings' => [],

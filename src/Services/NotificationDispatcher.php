@@ -10,6 +10,7 @@ use Dgtlss\Warden\Notifications\Channels\EmailChannel;
 use Dgtlss\Warden\Notifications\Channels\SlackChannel;
 use Dgtlss\Warden\Notifications\Channels\TeamsChannel;
 use Dgtlss\Warden\ValueObjects\AuditReport;
+use Dgtlss\Warden\ValueObjects\Finding;
 use Throwable;
 
 final class NotificationDispatcher
@@ -25,7 +26,7 @@ final class NotificationDispatcher
 
             try {
                 $notificationChannel->send(array_map(
-                    static fn ($finding): array => [
+                    static fn (Finding $finding): array => [
                         'id' => $finding->id,
                         'fingerprint' => $finding->fingerprint(),
                         'source' => $finding->source,

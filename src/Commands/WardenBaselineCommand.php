@@ -79,7 +79,7 @@ final class WardenBaselineCommand extends Command
             $expiry = null;
         }
 
-        if (!$expiry instanceof \Carbon\CarbonImmutable || $expiry->format('Y-m-d') !== $expires || $expiry->endOfDay()->isPast()) {
+        if (!$expiry instanceof CarbonImmutable || $expiry->format('Y-m-d') !== $expires || $expiry->endOfDay()->isPast()) {
             $this->error('--expires must be a future date in YYYY-MM-DD format.');
             return 2;
         }

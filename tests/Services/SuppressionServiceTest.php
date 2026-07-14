@@ -74,6 +74,28 @@ final class SuppressionServiceTest extends TestCase
         }
     }
 
+    public function testDebugToolSuppressionDoesNotHideOtherTools(): void
+    {
+        config(['warden.ignore_findings' => [[
+            'id' => 'laravel.debug-tool.telescope-enabled',
+            'reason' => 'Telescope access is restricted under SEC-123',
+            'expires_at' => '2099-01-01',
+        ]]]);
+        $findings = [
+            new Finding('laravel.debug-tool.telescope-enabled', 'laravel-config', 'Telescope', Severity::High, 'Description'),
+            new Finding('laravel.debug-tool.debugbar-enabled', 'laravel-config', 'Debugbar', Severity::High, 'Description'),
+            new Finding('laravel.debug-tool.clockwork-enabled', 'laravel-config', 'Clockwork', Severity::High, 'Description'),
+        ];
+
+        $auditReport = (new SuppressionService())->apply($this->report($findings), includeBaseline: false);
+
+        self::assertSame([
+            'laravel.debug-tool.clockwork-enabled',
+            'laravel.debug-tool.debugbar-enabled',
+        ], array_map(static fn ($finding): string => $finding->id, $auditReport->findings()));
+        self::assertSame('laravel.debug-tool.telescope-enabled', $auditReport->ignoredFindings[0]->id);
+    }
+
     /** @param list<Finding> $findings */
     private function report(array $findings): AuditReport
     {
