@@ -59,7 +59,11 @@ final class TextSourceAnalyzer
                     continue 2;
                 }
 
-                if ($this->rulePolicy->enabled('source.secrets.suspicious-literal') && preg_match('/(?:password|secret|api_?key|access_?token|private_?key)["\']?\s*(?:=>|=)\s*["\']([^"\']{8,})["\']/i', $line, $match) === 1) {
+                if (
+                    $this->rulePolicy->enabled('source.secrets.suspicious-literal')
+                    && preg_match('/(?:password|secret|api_?key|access_?token|private_?key)["\']?\s*(?:=>|=)\s*["\']([^"\']{8,})["\']/i', $line, $match) === 1
+                    && $this->looksLikeCredential($match[1])
+                ) {
                     $findings[] = new Finding(
                         id: 'source.secrets.suspicious-literal',
                         source: 'source',
@@ -77,6 +81,17 @@ final class TextSourceAnalyzer
         }
 
         return $findings;
+    }
+
+    private function looksLikeCredential(string $value): bool
+    {
+        // Values with spaces or other symbols found in validation are likely not credentials
+        if (preg_match('/[\s|{}<>]/', $value) === 1) {
+            return false;
+        }
+
+        // Values not containing digits or symbols are likely not credentials
+        return preg_match('/^[A-Za-z]+(?:[_.\-][A-Za-z]+)*$/', $value) !== 1;
     }
 
     /**
