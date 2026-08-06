@@ -16,6 +16,7 @@ use Dgtlss\Warden\Reporters\SarifReporter;
 use Dgtlss\Warden\Tests\TestCase;
 use Dgtlss\Warden\ValueObjects\AuditContext;
 use Dgtlss\Warden\ValueObjects\AuditReport;
+use PHPUnit\Framework\Attributes\DataProvider;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use ReflectionProperty;
@@ -136,6 +137,32 @@ PHP);
         self::assertFalse($byId['source.blade.unescaped-output']->blocking);
         self::assertArrayNotHasKey('source.php.xss-tainted-output', $byId);
         self::assertArrayNotHasKey('source.php.command-tainted-input', $byId);
+    }
+
+    #[DataProvider('secretNamedLiteralProvider')]
+    public function testSecretNamedLiteralsAreJudgedOnTheirValue(string $value, bool $reported): void
+    {
+        $this->write('app/Credentials.php', sprintf("<?php\n\nreturn ['api_key' => '%s'];\n", $value));
+
+        $ids = array_map(static fn ($finding): string => $finding->id, $this->service()->run(new AuditContext())->findings);
+
+        self::assertSame($reported, in_array('source.secrets.suspicious-literal', $ids, true));
+    }
+
+    /** @return iterable<string, array{string, bool}> */
+    public static function secretNamedLiteralProvider(): iterable
+    {
+        yield 'hexadecimal api key' => ['43b38433ec597605e63c7e9d67c52539', true];
+        yield 'password using symbols and digits' => ['P@ssw0rd!longenough', true];
+        yield 'base64 encoded token' => ['aGVsbG9Xb3JsZFRoaXNJc0FTZWNyZXQ=', true];
+
+        yield 'translated sentence' => ['Het wachtwoord is niet correct', false];
+        yield 'validation rule' => ['required|min:3', false];
+        yield 'validation rule referencing another field' => ['required|same:password', false];
+        yield 'field name constant' => ['password', false];
+        yield 'cache key' => ['wekeo_access_token', false];
+        yield 'enum backing value' => ['invalid_access_token', false];
+        yield 'translation key' => ['password.reset', false];
     }
 
     public function testSecretsAreRedactedAndFingerprintsSurviveLineMovement(): void
