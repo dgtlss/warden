@@ -155,14 +155,23 @@ PHP);
         yield 'hexadecimal api key' => ['43b38433ec597605e63c7e9d67c52539', true];
         yield 'password using symbols and digits' => ['P@ssw0rd!longenough', true];
         yield 'base64 encoded token' => ['aGVsbG9Xb3JsZFRoaXNJc0FTZWNyZXQ=', true];
+        yield 'base64 encoded token containing a slash' => ['aB3/xY9kLm2pQr7s/TvW4zN8dF6gH1jK', true];
+        yield 'alphabetic credential mixing case' => ['xKjhGfdsaQwerty', true];
 
-        yield 'translated sentence' => ['Het wachtwoord is niet correct', false];
+        yield 'translated sentence' => ['The password is incorrect', false];
         yield 'validation rule' => ['required|min:3', false];
         yield 'validation rule referencing another field' => ['required|same:password', false];
         yield 'field name constant' => ['password', false];
-        yield 'cache key' => ['wekeo_access_token', false];
+        yield 'capitalised label' => ['Password', false];
+        yield 'long compound word' => ['geheimwachtwoord', false];
+        yield 'screaming case constant' => ['PASSWORD', false];
+        yield 'cache key' => ['api_access_token', false];
         yield 'enum backing value' => ['invalid_access_token', false];
         yield 'translation key' => ['password.reset', false];
+        yield 'sprintf placeholder' => ['%_access_token', false];
+        yield 'validation rule with arguments' => ['required_if:status,active', false];
+        yield 'validation rule holding a pattern' => ['regex:/^[A-Z]+$/', false];
+        yield 'endpoint path' => ['/accessToken', false];
     }
 
     public function testSecretsAreRedactedAndFingerprintsSurviveLineMovement(): void
