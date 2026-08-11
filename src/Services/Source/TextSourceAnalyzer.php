@@ -59,7 +59,11 @@ final class TextSourceAnalyzer
                     continue 2;
                 }
 
-                if ($this->rulePolicy->enabled('source.secrets.suspicious-literal') && preg_match('/(?:password|secret|api_?key|access_?token|private_?key)["\']?\s*(?:=>|=)\s*["\']([^"\']{8,})["\']/i', $line, $match) === 1) {
+                if (
+                    $this->rulePolicy->enabled('source.secrets.suspicious-literal')
+                    && preg_match('/(?:password|secret|api_?key|access_?token|private_?key)["\']?\s*(?:=>|=)\s*["\']([^"\']{8,})["\']/i', $line, $match) === 1
+                    && $this->looksLikeCredential($match[1])
+                ) {
                     $findings[] = new Finding(
                         id: 'source.secrets.suspicious-literal',
                         source: 'source',
@@ -77,6 +81,28 @@ final class TextSourceAnalyzer
         }
 
         return $findings;
+    }
+
+    private function looksLikeCredential(string $value): bool
+    {
+        // Values with spaces, or symbols found in validation rules and placeholders, are likely not credentials
+        if (preg_match('/[\s|{}<>%:,]/', $value) === 1) {
+            return false;
+        }
+
+        // Values having digits or other symbols are credential shaped
+        if (preg_match('#^[_.\-/]?[A-Za-z]+(?:[_.\-/][A-Za-z]+)*$#', $value) !== 1) {
+            return true;
+        }
+
+        // Words joined by separators are probably keys
+        if (preg_match('#[_.\-/]#', $value) === 1) {
+            return false;
+        }
+
+        // A lone run of letters is 'word-shaped' unless its case is mixed beyond a leading capital
+        return preg_match('/^[A-Z]?[a-z]+$/', $value) !== 1
+            && preg_match('/^[A-Z]+$/', $value) !== 1;
     }
 
     /**
