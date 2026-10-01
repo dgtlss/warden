@@ -128,7 +128,7 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
     private function inspectFunctionCall(Node\Expr\FuncCall $funcCall): void
     {
         $name = $this->name($funcCall->name);
-        $first = $this->argument($funcCall->args, 0);
+        $first = $this->argument($funcCall, 0);
 
         if (in_array($name, ['exec', 'shell_exec', 'system', 'passthru', 'proc_open', 'popen'], true) && $first instanceof Node\Expr) {
             $this->addTaintedFinding('source.php.command-tainted-input', $first, $funcCall, 'User-controlled input reaches a shell command', Severity::Critical, 'Use Symfony Process argument arrays and never concatenate request data into a shell command.');
@@ -156,8 +156,8 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
             $this->add('source.php.tls-verification-disabled', 'TLS certificate verification is disabled', Severity::High, 'The stream context disables peer verification or permits self-signed certificates.', 'Enable peer and peer-name verification and use a trusted certificate authority.', $funcCall);
         }
 
-        $second = $this->argument($funcCall->args, 1);
-        $third = $this->argument($funcCall->args, 2);
+        $second = $this->argument($funcCall, 1);
+        $third = $this->argument($funcCall, 2);
         if ($name === 'curl_setopt' && $second instanceof \PhpParser\Node\Expr && $third instanceof \PhpParser\Node\Expr) {
             $option = strtoupper($this->name($second));
             if (in_array($option, ['CURLOPT_SSL_VERIFYPEER', 'CURLOPT_SSL_VERIFYHOST'], true) && $this->isFalseLike($third)) {
@@ -197,7 +197,7 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
     {
         $class = strtolower($this->name($staticCall->class));
         $method = strtolower($this->name($staticCall->name));
-        $first = $this->argument($staticCall->args, 0);
+        $first = $this->argument($staticCall, 0);
 
         if ($this->endsWith($class, 'db') && in_array($method, ['select', 'insert', 'update', 'delete', 'statement', 'raw'], true) && $first instanceof Node\Expr && $this->isDynamicString($first)) {
             $this->add('source.php.sql-dynamic-raw', 'Dynamic data is interpolated into raw SQL', Severity::High, 'Raw SQL contains interpolation or concatenation instead of parameter bindings.', 'Use query builder methods or positional/named bindings.', $staticCall);
@@ -235,7 +235,7 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
     private function inspectMethodCall(Node\Expr\MethodCall $methodCall): void
     {
         $method = strtolower($this->name($methodCall->name));
-        $first = $this->argument($methodCall->args, 0);
+        $first = $this->argument($methodCall, 0);
 
         if (in_array($method, ['whereraw', 'selectraw', 'orderbyraw', 'havingraw', 'groupbyraw', 'fromraw'], true) && $first instanceof Node\Expr && $this->isDynamicString($first)) {
             $this->add('source.php.sql-dynamic-raw', 'Dynamic data is interpolated into raw SQL', Severity::High, 'A raw query-builder expression contains interpolation or concatenation.', 'Use the method binding argument or a structured query-builder API.', $methodCall);
@@ -247,7 +247,7 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
 
         if (in_array($method, ['request', 'get', 'post', 'put', 'patch', 'delete', 'head'], true)
             && preg_match('/client|guzzle|http/i', $this->normalized($methodCall->var)) === 1) {
-            $url = $method === 'request' ? $this->argument($methodCall->args, 1) : $first;
+            $url = $method === 'request' ? $this->argument($methodCall, 1) : $first;
             if ($url instanceof Node\Expr) {
                 $this->addTaintedFinding('source.php.ssrf-tainted-url', $url, $methodCall, 'User-controlled input determines an outbound URL', Severity::High, 'Validate scheme, host, port, DNS result, and redirects against an allowlist.');
             }
@@ -272,7 +272,7 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
             return;
         }
 
-        $first = $this->argument($new->args, 0);
+        $first = $this->argument($new, 0);
         if ($first instanceof Node\Expr\Array_ && $this->arrayBoolean($first, 'verify') === false) {
             $this->add('source.php.tls-verification-disabled', 'TLS certificate verification is disabled', Severity::High, 'An HTTP client is constructed with verify=false.', 'Remove the override and configure the correct CA certificate.', $new);
         }
@@ -420,7 +420,7 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
 
     private function hasSafeAllowedClasses(Node\Expr\FuncCall $funcCall): bool
     {
-        $options = $this->argument($funcCall->args, 1);
+        $options = $this->argument($funcCall, 1);
         return $options instanceof Node\Expr\Array_ && $this->arrayBoolean($options, 'allowed_classes') === false;
     }
 
@@ -526,12 +526,9 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
         return count($this->taintScopes) - 1;
     }
 
-    /**
-     * @param array<Node\Arg|Node\VariadicPlaceholder> $arguments
-     */
-    private function argument(array $arguments, int $index): ?Node\Expr
+    private function argument(Node\Expr\CallLike $callLike, int $index): ?Node\Expr
     {
-        $argument = $arguments[$index] ?? null;
+        $argument = $callLike->getRawArgs()[$index] ?? null;
 
         return $argument instanceof Node\Arg ? $argument->value : null;
     }

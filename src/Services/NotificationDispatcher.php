@@ -16,8 +16,13 @@ use Throwable;
 final class NotificationDispatcher
 {
     /** @return list<string> Non-gating delivery warnings. */
-    public function send(AuditReport $auditReport): array
+    public function send(AuditReport $auditReport, bool $onlyOnFindings = false): array
     {
+        $findings = $auditReport->findings();
+        if (($onlyOnFindings || config('warden.notifications.only_on_findings', false) === true) && $findings === []) {
+            return [];
+        }
+
         $warnings = [];
         foreach ($this->channels() as $notificationChannel) {
             if (!$notificationChannel->isConfigured()) {
@@ -38,7 +43,7 @@ final class NotificationDispatcher
                         'cve' => $finding->reference,
                         'affected_versions' => $finding->metadata['affected_versions'] ?? null,
                     ],
-                    $auditReport->findings(),
+                    $findings,
                 ));
             } catch (Throwable $throwable) {
                 $warnings[] = sprintf('%s notification failed: %s', $notificationChannel->getName(), $throwable->getMessage());
