@@ -15,7 +15,7 @@ final class GitLabReporter implements ReportFormatter
     public function format(AuditReport $auditReport): string
     {
         $timestamp = ($auditReport->scannedAt ?? now())->format('Y-m-d\TH:i:s');
-        $version = '2.0.0';
+        $version = '2.1.0';
         $component = [
             'id' => 'warden',
             'name' => 'Warden',

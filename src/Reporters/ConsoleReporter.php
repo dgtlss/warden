@@ -34,7 +34,7 @@ final class ConsoleReporter implements ReportFormatter
 
         $lines = [
             '',
-            '<fg=cyan;options=bold>WARDEN 2.0</>  <options=bold>SECURITY AUDIT</>',
+            '<fg=cyan;options=bold>WARDEN 2.1</>  <options=bold>SECURITY AUDIT</>',
             sprintf(
                 '<fg=gray>%s profile  •  %s dependencies  •  %s</>',
                 $this->escape(strtoupper($auditReport->context->profile)),

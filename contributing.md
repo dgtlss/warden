@@ -49,4 +49,10 @@ Warden targets PHP 8.3–8.5 and Laravel 12–13. New behavior must work across 
 - Use stable finding IDs and include remediation for every new rule
 - Keep pull requests focused - one feature/fix per PR
 
+#### Releases
+
+Composer derives the package version from Git tags. Prepare release notes in `docs/releases/vX.Y.Z.md` and update the version displayed by the console and GitLab reporters. Report schema versions are managed separately.
+
+Merge the release preparation changes into `main` and wait for its full Tests workflow to pass. Tag that exact commit as `vX.Y.Z` and push the tag. The Release workflow verifies the commit's CI result and publishes a GitHub release using the committed notes.
+
 ### Have fun, and thank you for your contribution.
