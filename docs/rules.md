@@ -26,6 +26,8 @@ Every rule has a stable ID and a default disposition. `enforced` findings partic
 | `source.php.weak-hash-context` | advisory | MD5 or SHA-1 appearing in a security-named context |
 | `source.php.insecure-rng-context` | advisory | Predictable randomness appearing in a security-named context |
 
+The suspicious-literal rule keeps ambiguous values advisory, including alphabetic passwords, passphrases, and credentials containing punctuation. It excludes literal values in inline request validation arrays (`validate`, `validateWithBag`, `Validator::make`, and `validator`), arrays returned by the `rules` method of a class directly extending `FormRequest`, and returned translation arrays under `lang/` or `resources/lang/`. These exclusions use PHP syntax and source context rather than guessing whether a value looks random. Provider-format credentials are still reported in these contexts. Wildcard field names such as `%_access_token` are not treated as secret identifiers. Unrecognised contexts remain advisory findings.
+
 ## Configuration, platform, and supply-chain rules
 
 | Rule ID | Default | Purpose |

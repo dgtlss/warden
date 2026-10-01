@@ -11,6 +11,8 @@ use Symfony\Component\Finder\SplFileInfo;
 
 final class TextSourceAnalyzer
 {
+    private const SUSPICIOUS_LITERAL_PATTERN = '/(?<![A-Za-z0-9_%])([A-Za-z_]\w*)["\']?\s*(?:=>|=)\s*["\']([^"\']{8,})["\']/';
+
     /** @var array<string, string> */
     private const SECRET_PATTERNS = [
         'AWS access key' => '/\bAKIA[0-9A-Z]{16}\b/',
@@ -25,8 +27,10 @@ final class TextSourceAnalyzer
         'private key' => '/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/',
     ];
 
-    public function __construct(private readonly RulePolicy $rulePolicy)
-    {
+    public function __construct(
+        private readonly RulePolicy $rulePolicy,
+        private readonly SecretLiteralContext $secretLiteralContext = new SecretLiteralContext(),
+    ) {
     }
 
     /**
@@ -39,7 +43,11 @@ final class TextSourceAnalyzer
         foreach ($files as $file) {
             $contents = $file->getContents();
             $path = $this->relativePath($file);
+            $nonSecretOffsets = null;
+            $offset = 0;
             foreach (explode("\n", $contents) as $index => $line) {
+                $lineOffset = $offset;
+                $offset += strlen($line) + 1;
                 foreach (self::SECRET_PATTERNS as $provider => $pattern) {
                     if (!$this->rulePolicy->enabled('source.secrets.provider-credential') || preg_match($pattern, $line, $match) !== 1) {
                         continue;
@@ -59,7 +67,21 @@ final class TextSourceAnalyzer
                     continue 2;
                 }
 
-                if ($this->rulePolicy->enabled('source.secrets.suspicious-literal') && preg_match('/(?:password|secret|api_?key|access_?token|private_?key)["\']?\s*(?:=>|=)\s*["\']([^"\']{8,})["\']/i', $line, $match) === 1) {
+                if (!$this->rulePolicy->enabled('source.secrets.suspicious-literal')
+                    || preg_match_all(self::SUSPICIOUS_LITERAL_PATTERN, $line, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) < 1) {
+                    continue;
+                }
+
+                foreach ($matches as $match) {
+                    if (preg_match('/(?:password|secret|api_?key|access_?token|private_?key)$/i', $match[1][0]) !== 1) {
+                        continue;
+                    }
+
+                    $nonSecretOffsets ??= $this->secretLiteralContext->nonSecretLiteralOffsets($contents, $path);
+                    if (isset($nonSecretOffsets[$lineOffset + $match[2][1] - 1])) {
+                        continue;
+                    }
+
                     $findings[] = new Finding(
                         id: 'source.secrets.suspicious-literal',
                         source: 'source',
@@ -70,7 +92,7 @@ final class TextSourceAnalyzer
                         path: $path,
                         line: $index + 1,
                         blocking: false,
-                        identity: hash('sha256', $match[1]),
+                        identity: hash('sha256', $match[2][0]),
                     );
                 }
             }
