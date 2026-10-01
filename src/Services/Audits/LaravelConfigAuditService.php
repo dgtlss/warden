@@ -39,24 +39,39 @@ class LaravelConfigAuditService implements AuditServiceInterface
     /** @return list<Finding> */
     private function trackedEnvironmentFindings(): array
     {
-        if (!is_file(base_path('.env'))) {
+        $envPath = realpath(app()->environmentFilePath());
+        if ($envPath === false || !is_file($envPath)) {
             return [];
         }
 
-        $process = new Process(['git', 'ls-files', '--error-unmatch', '.env'], base_path());
+        $repository = new Process(['git', 'rev-parse', '--show-toplevel'], base_path());
+        $repository->run();
+        if (!$repository->isSuccessful()) {
+            return [];
+        }
+
+        $root = rtrim(trim($repository->getOutput()), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        if (!str_starts_with($envPath, $root)) {
+            return [];
+        }
+
+        $path = substr($envPath, strlen($root));
+        $process = new Process(['git', '--literal-pathspecs', 'ls-files', '--error-unmatch', '--', $path], $root);
         $process->run();
         if (!$process->isSuccessful()) {
             return [];
         }
+
+        $applicationRoot = rtrim(realpath(base_path()) ?: base_path(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
 
         return [new Finding(
             id: 'laravel.env.tracked',
             source: $this->getName(),
             title: 'Environment file is tracked by Git',
             severity: Severity::Critical,
-            description: '.env is present in the Git index and may expose application secrets.',
-            remediation: 'Remove .env from Git history and rotate every exposed secret.',
-            path: '.env',
+            description: sprintf('%s is present in the Git index and may expose application secrets.', $path),
+            remediation: 'Remove the environment file from Git history and rotate every exposed secret.',
+            path: str_starts_with($envPath, $applicationRoot) ? substr($envPath, strlen($applicationRoot)) : $envPath,
         )];
     }
 

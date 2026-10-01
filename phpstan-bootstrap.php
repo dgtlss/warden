@@ -14,6 +14,16 @@ class WardenPHPStanFakeApplication extends Container
     {
         return 'fake-laravel-version';
     }
+
+    public function environmentFilePath(): string
+    {
+        return __DIR__ . '/.env';
+    }
+
+    public function bootstrapPath(string $path = ''): string
+    {
+        return __DIR__ . '/bootstrap' . ($path === '' ? '' : '/' . $path);
+    }
 }
 
 if (!class_exists(\Illuminate\Foundation\Application::class)) {
