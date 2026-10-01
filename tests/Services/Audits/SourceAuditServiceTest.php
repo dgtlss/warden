@@ -16,6 +16,7 @@ use Dgtlss\Warden\Reporters\SarifReporter;
 use Dgtlss\Warden\Tests\TestCase;
 use Dgtlss\Warden\ValueObjects\AuditContext;
 use Dgtlss\Warden\ValueObjects\AuditReport;
+use PHPUnit\Framework\Attributes\DataProvider;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use ReflectionProperty;
@@ -136,6 +137,95 @@ PHP);
         self::assertFalse($byId['source.blade.unescaped-output']->blocking);
         self::assertArrayNotHasKey('source.php.xss-tainted-output', $byId);
         self::assertArrayNotHasKey('source.php.command-tainted-input', $byId);
+    }
+
+    #[DataProvider('secretLiteralContextProvider')]
+    public function testSecretLiteralsAreClassifiedByContext(string $path, string $source, bool $reported): void
+    {
+        $this->write($path, $source);
+
+        $auditResult = $this->service()->run(new AuditContext());
+
+        self::assertSame([], $auditResult->errors);
+        self::assertSame($reported, in_array('source.secrets.suspicious-literal', array_column($auditResult->findings, 'id'), true));
+    }
+
+    /** @return iterable<string, array{string, string, bool}> */
+    public static function secretLiteralContextProvider(): iterable
+    {
+        foreach (['P@ssw0rd%2026', 'A9{xK!7w}Q2', 'A9|xK!7wQ2', 'correct horse battery staple', 'Qwertyuiopasdfgh', 'password', 'PASSWORD', 'xKjhGfds-aQwErTyZ', 'aGVsbG9Xb3JsZFRoaXNJc0FTZWNyZXQ='] as $password) {
+            yield 'credential: ' . $password => ['app/Credentials.php', '<?php $password = ' . var_export($password, true) . ';', true];
+        }
+
+        yield 'ambiguous rule-shaped credential' => ['app/Credentials.php', "<?php return ['password' => 'required|min:3'];", true];
+        yield 'ambiguous field-shaped credential' => ['app/Credentials.php', "<?php return ['api_key' => 'api_access_token'];", true];
+        yield 'request validation' => ['app/Controller.php', "<?php \$request->validate(['access_token' => 'required|min:3']);", false];
+        yield 'validation field reference' => ['app/Controller.php', "<?php \$request->validate(['password' => 'required|same:password']);", false];
+        yield 'named validation arguments' => ['app/Controller.php', "<?php \$request->validate(rules: ['password' => 'required_if:status,active']);", false];
+        yield 'first-class validation callback' => ['app/Controller.php', "<?php \$validate = \$request->validate(...); \$password = 'P@ssw0rd%2026';", true];
+        yield 'validation error bag' => ['app/Controller.php', "<?php \$request->validateWithBag('login', ['password' => 'required|same:password']);", false];
+        yield 'facade validation' => ['app/Controller.php', "<?php use Illuminate\\Support\\Facades\\Validator; Validator::make([], ['password' => 'regex:/^[A-Z]+$/']);", false];
+        yield 'aliased facade validation' => ['app/Controller.php', "<?php use Illuminate\\Support\\Facades\\Validator as V; V::make([], ['access_token' => 'required|min:3']);", false];
+        yield 'credentials in validation data' => ['app/Controller.php', "<?php Validator::make(['password' => 'P@ssw0rd%2026'], ['password' => 'required|min:3']);", true];
+        yield 'helper validation' => ['app/Controller.php', "<?php validator([], ['password' => ['required', 'same:password']]);", false];
+        yield 'form request rules' => ['app/LoginRequest.php', "<?php use Illuminate\\Foundation\\Http\\FormRequest; class LoginRequest extends FormRequest { public function rules(): array { return ['password' => 'required|same:password']; } }", false];
+        yield 'conditional form request rules' => ['app/LoginRequest.php', "<?php use Illuminate\\Foundation\\Http\\FormRequest; class LoginRequest extends FormRequest { public function rules(): array { if (true) { return ['password' => 'required|same:password']; } return []; } }", false];
+        yield 'credentials in nested closure' => ['app/LoginRequest.php', "<?php use Illuminate\\Foundation\\Http\\FormRequest; class LoginRequest extends FormRequest { public function rules(): array { \$credentials = function () { return ['password' => 'P@ssw0rd%2026']; }; return ['password' => 'required|same:password']; } }", true];
+        yield 'unrelated rules method' => ['app/Credentials.php', "<?php class Credentials { public function rules(): array { return ['password' => 'P@ssw0rd%2026']; } }", true];
+        yield 'translation sentence' => ['lang/en/auth.php', "<?php return ['password' => 'The password is incorrect'];", false];
+        yield 'nested translation label' => ['resources/lang/en/auth.php', "<?php return ['fields' => ['password' => 'Password']];", false];
+        yield 'credential assignment in translation file' => ['lang/en/auth.php', "<?php \$password = 'P@ssw0rd%2026'; return ['password' => 'Password'];", true];
+        yield 'wildcard field name' => ['app/Fields.php', "<?php return ['%_access_token' => 'api_access_token'];", false];
+        yield 'prefixed secret variable' => ['app/Credentials.php', "<?php \$database_password = 'P@ssw0rd%2026';", true];
+        yield 'camel case secret variable' => ['app/Credentials.php', "<?php \$clientSecret = 'Qwertyuiopasdfgh';", true];
+        yield 'javascript credential' => ['resources/js/credentials.js', "const password = 'correct horse battery staple';", true];
+    }
+
+    public function testValidationDoesNotHideOtherSecretsOnTheSameLine(): void
+    {
+        $secret = '43b38433ec597605e63c7e9d67c52539';
+        $this->write('app/Controller.php', sprintf("<?php \$request->validate(['password' => 'required|min:3']); \$api_key = '%s'; \$secret = 'xKjhGfds-aQwErTyZ';", $secret));
+
+        $auditResult = $this->service()->run(new AuditContext());
+
+        self::assertSame([], $auditResult->errors);
+        self::assertCount(2, $auditResult->findings);
+        self::assertSame([1, 1], array_column($auditResult->findings, 'line'));
+        self::assertNotSame($auditResult->findings[0]->fingerprint(), $auditResult->findings[1]->fingerprint());
+        self::assertStringNotContainsString($secret, json_encode($auditResult, JSON_THROW_ON_ERROR));
+    }
+
+    public function testProviderCredentialsRemainVisibleInNonSecretContexts(): void
+    {
+        $secret = 'ghp_' . str_repeat('A', 36);
+        $this->write('lang/en/auth.php', sprintf("<?php return ['password' => '%s'];", $secret));
+        $this->write('app/Controller.php', sprintf("<?php \$request->validate(['access_token' => '%s']);", $secret));
+
+        $auditResult = $this->service()->run(new AuditContext());
+
+        self::assertSame([], $auditResult->errors);
+        self::assertCount(2, $auditResult->findings);
+        self::assertSame(['source.secrets.provider-credential', 'source.secrets.provider-credential'], array_column($auditResult->findings, 'id'));
+        self::assertStringNotContainsString($secret, json_encode($auditResult, JSON_THROW_ON_ERROR));
+    }
+
+    public function testSuspiciousLiteralFingerprintsAndRuleOverridesArePreserved(): void
+    {
+        $this->write('app/Credentials.php', "<?php \$password = 'correct horse battery staple';");
+        $finding = $this->finding('source.secrets.suspicious-literal');
+        $this->write('app/Credentials.php', "<?php\n\n\$password = 'correct horse battery staple';");
+        $second = $this->finding('source.secrets.suspicious-literal');
+
+        self::assertFalse($finding->blocking);
+        self::assertSame($finding->fingerprint(), $second->fingerprint());
+        self::assertNotSame($finding->line, $second->line);
+
+        config(['warden.rule_overrides' => ['source.secrets.suspicious-literal' => 'enforced']]);
+        $enforced = (new RulePolicy())->apply([$this->service()->run(new AuditContext())])[0];
+        self::assertTrue($enforced->findings[0]->blocking);
+
+        config(['warden.rule_overrides' => ['source.secrets.suspicious-literal' => 'off']]);
+        self::assertSame([], $this->service()->run(new AuditContext())->findings);
     }
 
     public function testSecretsAreRedactedAndFingerprintsSurviveLineMovement(): void
