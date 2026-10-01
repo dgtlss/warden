@@ -104,7 +104,7 @@ final class ReporterTest extends TestCase
 
         $output = (new ConsoleReporter())->format($auditReport);
 
-        self::assertStringContainsString('WARDEN 2.0  SECURITY AUDIT', $output);
+        self::assertStringContainsString('WARDEN 2.1  SECURITY AUDIT', $output);
         self::assertStringContainsString('2 active findings', $output);
         self::assertStringContainsString('CHECK RESULTS', $output);
         self::assertStringContainsString('CHECK                RESULT        SEVERITY', $output);
