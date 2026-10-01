@@ -7,6 +7,9 @@ namespace Dgtlss\Warden\Tests\Services\Audits;
 use Dgtlss\Warden\Services\Audits\LaravelConfigAuditService;
 use Dgtlss\Warden\Tests\TestCase;
 use Dgtlss\Warden\ValueObjects\AuditContext;
+use Illuminate\Filesystem\Filesystem;
+use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\Process\Process;
 
 final class LaravelConfigAuditServiceTest extends TestCase
 {
@@ -14,20 +17,102 @@ final class LaravelConfigAuditServiceTest extends TestCase
 
     private string $temporaryBasePath;
 
+    private string $originalEnvironmentPath;
+
+    private string $originalEnvironmentFile;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->originalBasePath = $this->app->basePath();
+        $this->originalEnvironmentPath = $this->app->environmentPath();
+        $this->originalEnvironmentFile = $this->app->environmentFile();
         $this->temporaryBasePath = sys_get_temp_dir() . '/warden-config-' . bin2hex(random_bytes(8));
         mkdir($this->temporaryBasePath, 0777, true);
         $this->app->setBasePath($this->temporaryBasePath);
+        $this->app->useEnvironmentPath($this->temporaryBasePath);
+        $this->app->loadEnvironmentFrom('.env');
     }
 
     protected function tearDown(): void
     {
         $this->app->setBasePath($this->originalBasePath);
-        rmdir($this->temporaryBasePath);
+        $this->app->useEnvironmentPath($this->originalEnvironmentPath);
+        $this->app->loadEnvironmentFrom($this->originalEnvironmentFile);
+        (new Filesystem())->deleteDirectory($this->temporaryBasePath);
         parent::tearDown();
+    }
+
+    #[DataProvider('environmentPathProvider')]
+    public function testTrackedConfiguredEnvironmentFileIsReported(string $directory, string $filename): void
+    {
+        $environmentPath = base_path($directory);
+        if (!is_dir($environmentPath)) {
+            mkdir($environmentPath, 0700, true);
+        }
+
+        $this->app->useEnvironmentPath($environmentPath);
+        $this->app->loadEnvironmentFrom($filename);
+        file_put_contents($this->app->environmentFilePath(), 'APP_NAME=Warden');
+        (new Process(['git', 'init', '--quiet'], base_path()))->mustRun();
+        $path = ($directory === '' ? '' : $directory . '/') . $filename;
+        (new Process(['git', 'add', '--force', '--', $path], base_path()))->mustRun();
+
+        $auditResult = (new LaravelConfigAuditService())->run(new AuditContext(profile: 'ci'));
+
+        self::assertCount(1, $auditResult->findings);
+        self::assertSame('laravel.env.tracked', $auditResult->findings[0]->id);
+        self::assertSame($path, $auditResult->findings[0]->path);
+        self::assertTrue($auditResult->findings[0]->blocking);
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function environmentPathProvider(): iterable
+    {
+        yield 'default environment file' => ['', '.env'];
+        yield 'custom filename' => ['', '.env.production'];
+        yield 'custom directory and filename' => ['private', '.env.production'];
+    }
+
+    public function testExternalEnvironmentFileDoesNotAuditUnusedTrackedDotEnv(): void
+    {
+        mkdir(base_path('application'), 0700, true);
+        $this->app->setBasePath($this->temporaryBasePath . '/application');
+        file_put_contents(base_path('.env'), 'APP_NAME=Unused');
+        (new Process(['git', 'init', '--quiet'], base_path()))->mustRun();
+        (new Process(['git', 'add', '--force', '.env'], base_path()))->mustRun();
+        $this->app->useEnvironmentPath($this->temporaryBasePath);
+        $this->app->loadEnvironmentFrom('.env.production');
+        file_put_contents($this->app->environmentFilePath(), 'APP_NAME=Warden');
+
+        self::assertSame([], (new LaravelConfigAuditService())->run(new AuditContext(profile: 'ci'))->findings);
+    }
+
+    public function testTrackedExternalEnvironmentFileInsideParentRepositoryIsReported(): void
+    {
+        (new Process(['git', 'init', '--quiet'], base_path()))->mustRun();
+        $this->app->loadEnvironmentFrom('.env.production');
+        file_put_contents($this->app->environmentFilePath(), 'APP_NAME=Warden');
+        (new Process(['git', 'add', '--force', '.env.production'], base_path()))->mustRun();
+        mkdir(base_path('application'), 0700, true);
+        $this->app->setBasePath($this->temporaryBasePath . '/application');
+
+        $auditResult = (new LaravelConfigAuditService())->run(new AuditContext(profile: 'ci'));
+
+        self::assertCount(1, $auditResult->findings);
+        self::assertSame('laravel.env.tracked', $auditResult->findings[0]->id);
+        self::assertSame($this->app->environmentFilePath(), $auditResult->findings[0]->path);
+    }
+
+    public function testEnvironmentFilenameIsALiteralGitPathspec(): void
+    {
+        $this->app->loadEnvironmentFrom('.env[production]');
+        file_put_contents($this->app->environmentFilePath(), 'APP_NAME=Warden');
+        file_put_contents(base_path('.envp'), 'APP_NAME=Unused');
+        (new Process(['git', 'init', '--quiet'], base_path()))->mustRun();
+        (new Process(['git', 'add', '--force', '.envp'], base_path()))->mustRun();
+
+        self::assertSame([], (new LaravelConfigAuditService())->run(new AuditContext(profile: 'ci'))->findings);
     }
 
     public function testCiProfileDoesNotRequireAnEnvironmentFileOrProductionConfiguration(): void

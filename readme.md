@@ -111,6 +111,8 @@ CI environment variables do not disable production checks. Use `--profile=produc
 - `source`: parser-backed PHP taint analysis, Blade review, and redacted credential detection
 - `storage`: production-only operational warnings; these do not fail the security gate
 
+Deployment checks use Laravel's configured storage, bootstrap, and environment file paths, including custom environment filenames. Findings show paths relative to the application root when possible and absolute paths for external locations. The Git tracking check inspects the configured environment file only when it is inside the application repository.
+
 Yarn, pnpm, and Bun lockfiles are detected but are not yet parsed. Warden reports the limitation so the package-manager-native audit can be added as a separate CI step.
 
 ### Source security model

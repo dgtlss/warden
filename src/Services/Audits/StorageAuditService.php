@@ -12,9 +12,6 @@ use Dgtlss\Warden\ValueObjects\Finding;
 
 final class StorageAuditService implements AuditServiceInterface
 {
-    /** @var list<string> */
-    private array $directories = ['storage/framework', 'storage/logs', 'bootstrap/cache'];
-
     public function getName(): string
     {
         return 'storage';
@@ -27,7 +24,7 @@ final class StorageAuditService implements AuditServiceInterface
         }
 
         $findings = [];
-        $envPath = base_path('.env');
+        $envPath = app()->environmentFilePath();
         if (is_file($envPath)) {
             $permissions = fileperms($envPath);
             if (is_int($permissions) && (($permissions & 0004) !== 0 || ($permissions & 0002) !== 0)) {
@@ -36,27 +33,32 @@ final class StorageAuditService implements AuditServiceInterface
                     source: $this->getName(),
                     title: 'Environment file permissions are too broad',
                     severity: Severity::Medium,
-                    description: sprintf('.env permissions are %s and permit world read or write access.', substr(sprintf('%o', $permissions), -4)),
+                    description: sprintf('%s permissions are %s and permit world read or write access.', $this->relativePath($envPath), substr(sprintf('%o', $permissions), -4)),
                     remediation: 'Restrict .env to the deployment owner/group, normally mode 600 or 640.',
-                    path: '.env',
+                    path: $this->relativePath($envPath),
                     blocking: false,
                     identity: 'env-permissions',
                 );
             }
         }
 
-        foreach ($this->directories as $directory) {
-            $path = base_path($directory);
+        $directories = [
+            'storage/framework' => storage_path('framework'),
+            'storage/logs' => storage_path('logs'),
+            'bootstrap/cache' => app()->bootstrapPath('cache'),
+        ];
+        foreach ($directories as $directory => $path) {
+            $relativePath = $this->relativePath($path);
             $permissions = @fileperms($path);
             if (is_int($permissions) && ($permissions & 0002) !== 0) {
                 $findings[] = new Finding(
                     id: 'deployment.path.world-writable',
                     source: $this->getName(),
-                    title: sprintf('Deployment path is world-writable: %s', $directory),
+                    title: sprintf('Deployment path is world-writable: %s', $relativePath),
                     severity: Severity::Medium,
                     description: 'Any local user may modify files used by the Laravel runtime.',
                     remediation: 'Grant write access only to the deployment user or service group.',
-                    path: $directory,
+                    path: $relativePath,
                     blocking: false,
                     identity: $directory,
                 );
@@ -66,16 +68,24 @@ final class StorageAuditService implements AuditServiceInterface
                 $findings[] = new Finding(
                     id: 'deployment.storage.not-writable',
                     source: $this->getName(),
-                    title: sprintf('Required directory is not writable: %s', $directory),
+                    title: sprintf('Required directory is not writable: %s', $relativePath),
                     severity: Severity::Low,
                     description: 'Laravel may fail to write caches, compiled views, sessions, or logs.',
                     remediation: 'Grant the deployment user write access without making the directory world-writable.',
-                    path: $directory,
+                    path: $relativePath,
                     blocking: false,
                 );
             }
         }
 
         return AuditResult::complete($this->getName(), $findings);
+    }
+
+    private function relativePath(string $path): string
+    {
+        $path = realpath($path) ?: $path;
+        $root = rtrim(realpath(base_path()) ?: base_path(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+
+        return str_starts_with($path, $root) ? substr($path, strlen($root)) : $path;
     }
 }
