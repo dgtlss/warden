@@ -195,6 +195,14 @@ Notifications are opt-in and never affect the audit exit code:
 php artisan warden:audit --notify
 ```
 
+To skip messages when no active findings remain, use `--notify-on-finding` instead of `--notify` (or combine both flags):
+
+```bash
+php artisan warden:audit --fail-on=never --notify-on-finding --only=composer
+```
+
+To apply this filter to every `--notify` run, set `warden.notifications.only_on_findings` to `true` or `WARDEN_NOTIFY_ONLY_ON_FINDINGS=true`. The setting defaults to `false` and does not enable notifications by itself. Suppressed findings do not trigger finding-only notifications. Filtering changes delivery only; reports and exit codes, including exit `2` for incomplete audits, are preserved.
+
 Configure any combination of:
 
 ```env

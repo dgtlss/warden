@@ -26,7 +26,8 @@ final class WardenAuditCommand extends Command
         {--output-file=- : Write the report to stdout (-) or a file}
         {--only= : Comma-separated audit IDs to run}
         {--skip= : Comma-separated audit IDs to skip}
-        {--notify : Send opt-in notifications after report generation}';
+        {--notify : Send opt-in notifications after report generation}
+        {--notify-on-finding : Send opt-in notifications only when active findings remain}';
 
     protected $description = 'Run deterministic security audits for a Laravel deployment.';
 
@@ -98,8 +99,9 @@ final class WardenAuditCommand extends Command
             return 2;
         }
 
-        if ((bool) $this->option('notify')) {
-            foreach ($this->notificationDispatcher->send($auditReport) as $warning) {
+        $notifyOnFinding = (bool) $this->option('notify-on-finding');
+        if ((bool) $this->option('notify') || $notifyOnFinding) {
+            foreach ($this->notificationDispatcher->send($auditReport, onlyOnFindings: $notifyOnFinding) as $warning) {
                 $this->writeError($warning);
             }
         }

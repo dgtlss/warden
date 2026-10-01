@@ -13,6 +13,7 @@ use Dgtlss\Warden\ValueObjects\AuditReport;
 use Dgtlss\Warden\ValueObjects\AuditResult;
 use Dgtlss\Warden\ValueObjects\Finding;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Http;
 use Mockery\MockInterface;
 
 final class WardenAuditCommandTest extends TestCase
@@ -106,6 +107,100 @@ final class WardenAuditCommandTest extends TestCase
 
         self::assertSame(2, $exitCode);
         self::assertStringContainsString('"code": "unknown_rule"', Artisan::output());
+    }
+
+    public function testFindingOnlyFlagSkipsCleanReports(): void
+    {
+        $this->configureSlack();
+        $this->bindReport(new AuditReport(new AuditContext(), [AuditResult::complete('test')]));
+
+        $exitCode = Artisan::call('warden:audit', ['--format' => 'json', '--notify-on-finding' => true]);
+
+        self::assertSame(0, $exitCode);
+        self::assertStringContainsString('"total": 0', Artisan::output());
+        Http::assertNothingSent();
+    }
+
+    public function testFindingOnlyFlagEnablesNotificationsForAdvisoryFindings(): void
+    {
+        $this->configureSlack();
+        $finding = new Finding('test.advisory', 'test', 'Review issue', Severity::Medium, 'Description', blocking: false);
+        $this->bindReport(new AuditReport(new AuditContext(), [AuditResult::complete('test', [$finding])]));
+
+        $exitCode = Artisan::call('warden:audit', ['--format' => 'json', '--notify-on-finding' => true]);
+
+        self::assertSame(0, $exitCode);
+        self::assertStringContainsString('"id": "test.advisory"', Artisan::output());
+        Http::assertSentCount(1);
+    }
+
+    public function testNotifyStillSendsCleanReportsByDefault(): void
+    {
+        $this->configureSlack();
+        $this->bindReport(new AuditReport(new AuditContext(), [AuditResult::complete('test')]));
+
+        self::assertSame(0, Artisan::call('warden:audit', ['--format' => 'json', '--notify' => true]));
+        Http::assertSentCount(1);
+    }
+
+    public function testFindingOnlyConfigurationFiltersNotify(): void
+    {
+        $this->configureSlack();
+        config(['warden.notifications.only_on_findings' => true]);
+        $this->bindReport(new AuditReport(new AuditContext(), [AuditResult::complete('test')]));
+
+        self::assertSame(0, Artisan::call('warden:audit', ['--format' => 'json', '--notify' => true]));
+        Http::assertNothingSent();
+    }
+
+    public function testFindingOnlyConfigurationDoesNotEnableNotifications(): void
+    {
+        $this->configureSlack();
+        config(['warden.notifications.only_on_findings' => true]);
+        $finding = new Finding('test.high', 'test', 'High issue', Severity::High, 'Description');
+        $this->bindReport(new AuditReport(new AuditContext(), [AuditResult::complete('test', [$finding])]));
+
+        self::assertSame(1, Artisan::call('warden:audit', ['--format' => 'json']));
+        Http::assertNothingSent();
+    }
+
+    public function testSuppressedFindingsDoNotTriggerNotifications(): void
+    {
+        $this->configureSlack();
+        $finding = new Finding('test.high', 'test', 'High issue', Severity::High, 'Description');
+        $this->bindReport(new AuditReport(new AuditContext(), [AuditResult::complete('test', [$finding])]));
+        config(['warden.ignore_findings' => [[
+            'id' => 'test.high',
+            'reason' => 'Accepted after review in SEC-123',
+            'expires_at' => '2099-12-31',
+        ]]]);
+
+        self::assertSame(0, Artisan::call('warden:audit', ['--format' => 'json', '--notify' => true, '--notify-on-finding' => true]));
+        self::assertStringContainsString('"ignored": 1', Artisan::output());
+        Http::assertNothingSent();
+    }
+
+    public function testNotificationFilterDoesNotMaskAuditFailures(): void
+    {
+        $this->configureSlack();
+        $this->bindReport(new AuditReport(new AuditContext(), [AuditResult::failed('composer', 'scanner_failed', 'Registry offline')]));
+
+        $exitCode = Artisan::call('warden:audit', ['--format' => 'json', '--fail-on' => 'never', '--notify-on-finding' => true]);
+
+        self::assertSame(2, $exitCode);
+        self::assertStringContainsString('"code": "scanner_failed"', Artisan::output());
+        Http::assertNothingSent();
+    }
+
+    private function configureSlack(): void
+    {
+        Http::fake();
+        config([
+            'warden.notifications.slack.webhook_url' => 'https://example.com/slack',
+            'warden.notifications.discord.webhook_url' => null,
+            'warden.notifications.teams.webhook_url' => null,
+            'warden.notifications.email.recipients' => null,
+        ]);
     }
 
     private function bindReport(AuditReport $auditReport): void

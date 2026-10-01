@@ -66,6 +66,7 @@ return [
     ],
 
     'notifications' => [
+        'only_on_findings' => env('WARDEN_NOTIFY_ONLY_ON_FINDINGS', false),
         'slack' => ['webhook_url' => env('WARDEN_SLACK_WEBHOOK_URL')],
         'discord' => ['webhook_url' => env('WARDEN_DISCORD_WEBHOOK_URL')],
         'teams' => ['webhook_url' => env('WARDEN_TEAMS_WEBHOOK_URL')],
