@@ -44,6 +44,9 @@ final class PhpSourceAnalyzer
             return ['findings' => [], 'errors' => []];
         }
 
+        $resolver = new NodeTraverser(new \PhpParser\NodeVisitor\NameResolver());
+        $nodes = $resolver->traverse($nodes);
+
         $securityNodeVisitor = new SecurityNodeVisitor($path, $this->rulePolicy);
         $nodeTraverser = new NodeTraverser();
         $nodeTraverser->addVisitor($securityNodeVisitor);
@@ -59,8 +62,11 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
     /** @var list<Finding> */
     private array $findings = [];
 
-    /** @var list<array<string, true>> */
+    /** @var list<array<string, array<string, true>>> */
     private array $taintScopes = [[]];
+
+    /** @var list<array<string, true>> */
+    private array $requestScopes = [[]];
 
     private readonly Standard $standard;
 
@@ -79,14 +85,27 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
     {
         if ($node instanceof Node\FunctionLike) {
             $this->taintScopes[] = [];
+            $requests = [];
+            foreach ($node->getParams() as $param) {
+                $type = $param->type instanceof Node\NullableType ? $param->type->type : $param->type;
+                if ($type instanceof Node\Name && in_array(strtolower($type->toString()), ['illuminate\\http\\request', 'illuminate\\foundation\\http\\formrequest'], true)
+                    && $param->var instanceof Node\Expr\Variable && is_string($param->var->name)) {
+                    $requests[$param->var->name] = true;
+                }
+            }
+
+            $this->requestScopes[] = $requests;
         }
 
         if ($node instanceof Node\Expr\Assign && $node->var instanceof Node\Expr\Variable && is_string($node->var->name)) {
-            if ($this->isTainted($node->expr)) {
-                $this->taintScopes[$this->scopeIndex()][$node->var->name] = true;
-            } else {
-                unset($this->taintScopes[$this->scopeIndex()][$node->var->name]);
+            $taint = [];
+            foreach (['*', 'source.php.xss-tainted-output', 'source.php.command-tainted-input'] as $context) {
+                if ($this->isTainted($node->expr, $context)) {
+                    $taint[$context] = true;
+                }
             }
+
+            $this->taintScopes[$this->scopeIndex()][$node->var->name] = $taint;
 
             if ($node->expr instanceof Node\Expr\FuncCall
                 && in_array($this->name($node->expr->name), ['rand', 'mt_rand', 'uniqid'], true)
@@ -120,6 +139,7 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
     {
         if ($node instanceof Node\FunctionLike) {
             array_pop($this->taintScopes);
+            array_pop($this->requestScopes);
         }
 
         return null;
@@ -197,7 +217,7 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
     {
         $class = strtolower($this->name($staticCall->class));
         $method = strtolower($this->name($staticCall->name));
-        $first = $this->argument($staticCall, 0);
+        $first = $this->argument($staticCall, $this->endsWith($class, 'http') && $method === 'send' ? 1 : 0);
 
         if ($this->endsWith($class, 'db') && in_array($method, ['select', 'insert', 'update', 'delete', 'statement', 'raw'], true) && $first instanceof Node\Expr && $this->isDynamicString($first)) {
             $this->add('source.php.sql-dynamic-raw', 'Dynamic data is interpolated into raw SQL', Severity::High, 'Raw SQL contains interpolation or concatenation instead of parameter bindings.', 'Use query builder methods or positional/named bindings.', $staticCall);
@@ -296,7 +316,7 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
 
     private function addTaintedFinding(string $id, Node\Expr $expr, Node $location, string $title, Severity $severity, string $remediation): void
     {
-        if ($this->isTainted($expr)) {
+        if ($this->isTainted($expr, $id)) {
             $this->add($id, $title, $severity, 'Request-controlled data reaches a security-sensitive operation without a recognized validation boundary.', $remediation, $location);
         }
     }
@@ -321,29 +341,29 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
         );
     }
 
-    private function isTainted(Node\Expr $expr): bool
+    private function isTainted(Node\Expr $expr, string $context = '*'): bool
     {
         if ($expr instanceof Node\Expr\Variable && is_string($expr->name)) {
             return in_array($expr->name, ['_GET', '_POST', '_REQUEST', '_COOKIE', '_FILES'], true)
-                || isset($this->taintScopes[$this->scopeIndex()][$expr->name]);
+                || isset($this->taintScopes[$this->scopeIndex()][$expr->name][in_array($context, ['source.php.xss-tainted-output', 'source.php.command-tainted-input'], true) ? $context : '*']);
         }
 
         if ($expr instanceof Node\Expr\ArrayDimFetch && $expr->var instanceof Node\Expr\Variable && is_string($expr->var->name)) {
-            return in_array($expr->var->name, ['_GET', '_POST', '_REQUEST', '_COOKIE', '_FILES'], true) || $this->isTainted($expr->var);
+            return in_array($expr->var->name, ['_GET', '_POST', '_REQUEST', '_COOKIE', '_FILES'], true) || $this->isTainted($expr->var, $context);
         }
 
-        if ($expr instanceof Node\Expr\PropertyFetch && $expr->var instanceof Node\Expr\Variable && $expr->var->name === 'request') {
+        if ($expr instanceof Node\Expr\PropertyFetch && $expr->var instanceof Node\Expr\Variable && $this->isRequestVariable($expr->var)) {
             return true;
         }
 
         if ($expr instanceof Node\Expr\MethodCall) {
             $method = strtolower($this->name($expr->name));
             if (in_array($method, ['input', 'get', 'post', 'query', 'cookie', 'file', 'all', 'only', 'except'], true)
-                && (($expr->var instanceof Node\Expr\Variable && $expr->var->name === 'request') || $this->isRequestHelper($expr->var))) {
+                && (($expr->var instanceof Node\Expr\Variable && $this->isRequestVariable($expr->var)) || $this->isRequestHelper($expr->var))) {
                 return true;
             }
 
-            return $this->isTainted($expr->var);
+            return $this->isTainted($expr->var, $context);
         }
 
         if ($expr instanceof Node\Expr\FuncCall) {
@@ -352,34 +372,41 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
                 return true;
             }
 
-            if (in_array($name, ['e', 'htmlspecialchars', 'htmlentities', 'escapeshellarg', 'escapeshellcmd', 'basename', 'realpath'], true)) {
+            if (($context === 'source.php.xss-tainted-output' && in_array($name, ['e', 'htmlspecialchars', 'htmlentities'], true))
+                || ($context === 'source.php.command-tainted-input' && $name === 'escapeshellarg')) {
                 return false;
             }
 
             foreach ($expr->args as $arg) {
-                if ($arg instanceof Node\Arg && $this->isTainted($arg->value)) {
+                if ($arg instanceof Node\Arg && $this->isTainted($arg->value, $context)) {
                     return true;
                 }
             }
         }
 
         if ($expr instanceof Node\Expr\BinaryOp) {
-            return $this->isTainted($expr->left) || $this->isTainted($expr->right);
+            return $this->isTainted($expr->left, $context) || $this->isTainted($expr->right, $context);
         }
 
         if ($expr instanceof Node\Expr\Ternary) {
-            return ($expr->if instanceof \PhpParser\Node\Expr && $this->isTainted($expr->if)) || $this->isTainted($expr->else) || $this->isTainted($expr->cond);
+            return ($expr->if instanceof \PhpParser\Node\Expr && $this->isTainted($expr->if, $context)) || $this->isTainted($expr->else, $context) || $this->isTainted($expr->cond, $context);
         }
 
         if ($expr instanceof Node\Scalar\InterpolatedString) {
             foreach ($expr->parts as $part) {
-                if ($part instanceof Node\Expr && $this->isTainted($part)) {
+                if ($part instanceof Node\Expr && $this->isTainted($part, $context)) {
                     return true;
                 }
             }
         }
 
         return false;
+    }
+
+    private function isRequestVariable(Node\Expr\Variable $variable): bool
+    {
+        return $variable->name === 'request'
+            || (is_string($variable->name) && isset($this->requestScopes[$this->scopeIndex()][$variable->name]));
     }
 
     private function isRequestHelper(Node\Expr $expr): bool
@@ -528,8 +555,42 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
 
     private function argument(Node\Expr\CallLike $callLike, int $index): ?Node\Expr
     {
-        $argument = $callLike->getRawArgs()[$index] ?? null;
+        $name = strtolower($this->name($callLike instanceof Node\Expr\New_ ? $callLike->class : (($callLike instanceof Node\Expr\FuncCall || $callLike instanceof Node\Expr\StaticCall || $callLike instanceof Node\Expr\MethodCall) ? $callLike->name : null)));
+        $parameters = match ($name) {
+            'exec', 'shell_exec', 'system', 'passthru', 'proc_open', 'popen' => ['command'],
+            'unserialize' => ['data', 'options'],
+            'file_get_contents', 'fopen', 'readfile', 'file_put_contents' => ['filename'],
+            'redirect', 'to' => ['path'],
+            'away' => ['path'],
+            'header' => ['header'],
+            'curl_setopt' => ['handle', 'option', 'value'],
+            'openssl_encrypt', 'openssl_decrypt' => ['data', 'cipher_algo'],
+            'stream_context_create', 'withoptions' => ['options'],
+            'request' => ['method', 'uri'],
+            'send' => ['method', 'url'],
+            'select', 'insert', 'update', 'delete', 'statement' => ['query'],
+            'raw' => ['value'],
+            'whereraw', 'orderbyraw', 'havingraw', 'groupbyraw' => ['sql'],
+            'selectraw', 'fromraw' => ['expression'],
+            'withoutmiddleware' => ['middleware'],
+            default => ['url'],
+        };
+        if ($callLike instanceof Node\Expr\New_) {
+            $parameters = ['config'];
+        } elseif ($callLike instanceof Node\Expr\StaticCall && $this->endsWith(strtolower($this->name($callLike->class)), 'storage')) {
+            $parameters = ['path'];
+        } elseif ($callLike instanceof Node\Expr\StaticCall && $this->endsWith(strtolower($this->name($callLike->class)), 'http') && $name !== 'send' && $name !== 'withoptions') {
+            $parameters = ['url'];
+        }
 
-        return $argument instanceof Node\Arg ? $argument->value : null;
+        foreach ($callLike->getRawArgs() as $position => $argument) {
+            if ($argument instanceof Node\Arg && ($argument->name instanceof \PhpParser\Node\Identifier
+                ? $argument->name->toString() === ($parameters[$index] ?? null)
+                : $position === $index)) {
+                return $argument->value;
+            }
+        }
+
+        return null;
     }
 }

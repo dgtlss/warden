@@ -83,9 +83,10 @@ final class DependencyAuditServiceTest extends TestCase
         self::assertSame('malformed_output', $auditResult->errors[0]->code);
     }
 
-    public function testNpmUsesLockfileOnlyAndProductionDependencyScope(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('npmLockfiles')]
+    public function testNpmUsesLockfileOnlyAndProductionDependencyScope(string $lockfile): void
     {
-        file_put_contents(base_path('package-lock.json'), '{}');
+        file_put_contents(base_path($lockfile), '{}');
 
         $service = new class extends NpmAuditService {
             /** @var list<string> */
@@ -103,4 +104,12 @@ final class DependencyAuditServiceTest extends TestCase
         self::assertContains('--omit=dev', $service->command);
         self::assertTrue($auditResult->succeeded());
     }
+
+    /** @return iterable<string, array{string}> */
+    public static function npmLockfiles(): iterable
+    {
+        yield 'package lock' => ['package-lock.json'];
+        yield 'shrinkwrap' => ['npm-shrinkwrap.json'];
+    }
+
 }

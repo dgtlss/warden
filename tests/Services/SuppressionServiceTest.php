@@ -96,6 +96,38 @@ final class SuppressionServiceTest extends TestCase
         self::assertSame('laravel.debug-tool.telescope-enabled', $auditReport->ignoredFindings[0]->id);
     }
 
+    public function testMalformedFingerprintsNeverBecomeRuleWideSuppressions(): void
+    {
+        foreach ([false, [], 42, '', null, 'not-a-hash', str_repeat('g', 64)] as $fingerprint) {
+            config(['warden.ignore_findings' => [[
+                'id' => 'accepted', 'reason' => 'Review', 'expires_at' => '2099-01-01',
+                'fingerprint' => $fingerprint,
+            ]]]);
+            $report = (new SuppressionService())->apply($this->report([
+                new Finding('accepted', 'test', 'Accepted', Severity::High, 'Description'),
+            ]), includeBaseline: false);
+            self::assertCount(1, $report->findings());
+            self::assertSame([], $report->ignoredFindings);
+            self::assertSame('suppression_invalid', $report->errors()[0]->code);
+            self::assertSame(2, $report->exitCode('never'));
+        }
+    }
+
+    public function testExpiryMustBeAnActualCalendarDate(): void
+    {
+        foreach (['2099-02-29', '2099-04-31', '2099-13-01', '2099-00-10'] as $date) {
+            config(['warden.ignore_findings' => [[
+                'id' => 'accepted', 'reason' => 'Review', 'expires_at' => $date,
+            ]]]);
+            self::assertSame('suppression_invalid', (new SuppressionService())->errors(false)[0]->code);
+        }
+
+        config(['warden.ignore_findings' => [[
+            'id' => 'accepted', 'reason' => 'Review', 'expires_at' => '2096-02-29',
+        ]]]);
+        self::assertSame([], (new SuppressionService())->errors(false));
+    }
+
     /** @param list<Finding> $findings */
     private function report(array $findings): AuditReport
     {

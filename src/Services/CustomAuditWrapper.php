@@ -22,6 +22,10 @@ final readonly class CustomAuditWrapper implements AuditServiceInterface
 
     public function run(AuditContext $auditContext): AuditResult
     {
+        if (!$this->customAudit->shouldRun($auditContext)) {
+            return new AuditResult($this->getName(), coverage: ['scanned' => 0, 'skipped' => 1, 'errors' => 0]);
+        }
+
         return $this->customAudit->run($auditContext);
     }
 }

@@ -58,3 +58,7 @@ php artisan vendor:publish --tag=warden-config --force
 ## Removed runtime features
 
 The production scheduler and audit-history migration were removed because a development dependency is not present after a production `--no-dev` install. Use CI scheduling and persist JSON, SARIF, GitLab, or JUnit artifacts in the CI platform instead.
+
+## Scan-integrity behavior changes
+
+Supplied suppression fingerprints must now be lowercase SHA-256 hashes; omit the key for an intentional rule-wide suppression. Invalid calendar dates and malformed values cause exit 2. Incomplete scans notify by default even in finding-only mode; `notifications.on_errors=false` explicitly silences these reports. Sanitizers apply only to their output context, so previously hidden cross-context findings can appear. Dotfiles such as `.env.example` and `.github` files now participate in credential scanning. JUnit failures follow the CLI threshold. JSON reports add optional gate and coverage fields; update cached copies of the bundled schema. Registered inactive custom audits remain valid selection IDs and report skipped coverage.

@@ -22,6 +22,7 @@ final readonly class AuditReport implements JsonSerializable
         public array $ignoredFindings = [],
         public array $configurationErrors = [],
         public ?CarbonImmutable $scannedAt = null,
+        public string $failOn = 'low',
     ) {
     }
 
@@ -57,19 +58,16 @@ final readonly class AuditReport implements JsonSerializable
         return $errors;
     }
 
-    public function exitCode(string $failOn): int
+    public function exitCode(?string $failOn = null): int
     {
+        $gate = $failOn === null ? $this : $this->withGate($failOn);
+
         if ($this->errors() !== []) {
             return 2;
         }
 
-        if ($failOn === 'never') {
-            return 0;
-        }
-
-        $threshold = Severity::from($failOn)->weight();
         foreach ($this->findings() as $finding) {
-            if ($finding->blocking && $finding->severity->weight() >= $threshold) {
+            if ($gate->failsGate($finding)) {
                 return 1;
             }
         }
@@ -84,7 +82,18 @@ final readonly class AuditReport implements JsonSerializable
      */
     public function withFilteredFindings(array $audits, array $ignoredFindings, array $configurationErrors): self
     {
-        return new self($this->context, $audits, $ignoredFindings, $configurationErrors, $this->scannedAt);
+        return new self($this->context, $audits, $ignoredFindings, $configurationErrors, $this->scannedAt, $this->failOn);
+    }
+
+    public function withGate(string $failOn): self
+    {
+        return new self($this->context, $this->audits, $this->ignoredFindings, $this->configurationErrors, $this->scannedAt, $failOn);
+    }
+
+    public function failsGate(Finding $finding): bool
+    {
+        return $this->failOn !== 'never' && $finding->blocking
+            && $finding->severity->weight() >= Severity::from($this->failOn)->weight();
     }
 
     /** @return array<string, mixed> */
@@ -108,6 +117,7 @@ final readonly class AuditReport implements JsonSerializable
                 'scope' => $this->context->scope,
                 'scanned_at' => ($this->scannedAt ?? CarbonImmutable::now())->toISOString(),
             ],
+            'gate' => ['fail_on' => $this->failOn, 'exit_code' => $this->exitCode()],
             'summary' => [
                 'total' => count($findings),
                 'blocking' => $blocking,

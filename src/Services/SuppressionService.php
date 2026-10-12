@@ -48,7 +48,7 @@ final class SuppressionService
                 }
             }
 
-            $results[] = new AuditResult($audit->audit, $active, $audit->errors, $audit->durationMs);
+            $results[] = new AuditResult($audit->audit, $active, $audit->errors, $audit->durationMs, $audit->coverage);
         }
 
         return $auditReport->withFilteredFindings(
@@ -148,8 +148,15 @@ final class SuppressionService
                 continue;
             }
 
-            if ($fingerprintRequired && (!is_string($fingerprint) || $fingerprint === '')) {
-                $errors[] = new AuditError($source, 'suppression_invalid', sprintf('Baseline entry %s requires a fingerprint.', $index));
+            if (($fingerprintRequired || array_key_exists('fingerprint', $rule))
+                && (!is_string($fingerprint) || preg_match('/^[a-f0-9]{64}$/D', $fingerprint) !== 1)) {
+                $errors[] = new AuditError($source, 'suppression_invalid', sprintf('Suppression %s fingerprint must be a lowercase SHA-256 hash (64 hexadecimal characters).', $index));
+                continue;
+            }
+
+            [$year, $month, $day] = array_map('intval', explode('-', $expiresAt));
+            if (!checkdate($month, $day, $year)) {
+                $errors[] = new AuditError($source, 'suppression_invalid', sprintf('Suppression %s has an invalid expires_at date.', $index));
                 continue;
             }
 
@@ -167,7 +174,7 @@ final class SuppressionService
 
             $rules[] = [
                 'id' => $id,
-                'fingerprint' => is_string($fingerprint) && $fingerprint !== '' ? $fingerprint : null,
+                'fingerprint' => $fingerprint,
             ];
         }
 

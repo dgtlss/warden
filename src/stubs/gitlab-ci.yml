@@ -1,8 +1,6 @@
-stages:
-  - security
-
+# .pre is available alongside any existing stage list; no global stages override.
 warden:
-  stage: security
+  stage: .pre
   image: composer:2
   cache:
     key:
@@ -12,13 +10,23 @@ warden:
       - .composer-cache/
   variables:
     COMPOSER_CACHE_DIR: "$CI_PROJECT_DIR/.composer-cache"
+  before_script:
+    # npm audit needs npm, but does not require installing application dependencies.
+    - if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then apk add --no-cache nodejs npm; fi
   script:
     - composer install --prefer-dist --no-progress --no-interaction
-    - php artisan warden:audit --format=gitlab --output-file=gl-dependency-scanning-report.json
+    - php artisan warden:audit --format=gitlab --output-file=gl-dependency-scanning-report.json --report=junit:warden-junit.xml --report=sarif:warden.sarif --report=json:warden.json
   artifacts:
     when: always
+    expire_in: 14 days
+    paths:
+      - warden.json
+      - warden.sarif
+      - warden-junit.xml
+      - gl-dependency-scanning-report.json
     reports:
       dependency_scanning: gl-dependency-scanning-report.json
+      junit: warden-junit.xml
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

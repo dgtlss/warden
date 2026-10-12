@@ -126,9 +126,7 @@ class AuditRunner
                     continue;
                 }
 
-                if ($customAudit->shouldRun($auditContext)) {
-                    $services[] = new CustomAuditWrapper($customAudit);
-                }
+                $services[] = new CustomAuditWrapper($customAudit);
             } catch (Throwable $throwable) {
                 $errors[] = new AuditError('configuration', 'custom_audit_initialization_failed', sprintf('%s: %s', $class, $throwable->getMessage()));
             }

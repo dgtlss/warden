@@ -105,7 +105,7 @@ CI environment variables do not disable production checks. Use `--profile=produc
 
 - `supply-chain`: lockfile presence/synchronization, secure Composer repositories, plugin allow-listing, and JavaScript lockfile support
 - `composer`: Composer advisories, malware, and abandoned production packages from `composer.lock`
-- `npm`: npm advisories from `package-lock.json`, auto-detected without a flag
+- `npm`: npm advisories from `package-lock.json` or `npm-shrinkwrap.json`, auto-detected without a flag
 - `laravel-config`: tracked `.env` detection and production application/session/tooling rules
 - `platform`: offline PHP and Laravel support-window enforcement, including Composer's exact platform target
 - `source`: parser-backed PHP taint analysis, Blade review, and redacted credential detection
@@ -124,7 +124,11 @@ Warden parses each selected PHP file once and distinguishes enforcement from rev
 
 Credentials are never copied into reports. Warden emits only the provider, location, and a redacted description; the secret contributes only a one-way hash to the stable fingerprint.
 
-Default PHP scan paths are `app`, `bootstrap`, `config`, and `routes`; Blade templates are read from `resources/views`. File paths, exclusions, and the 1 MiB file limit are configurable under `warden.audits.source`. A selected file that cannot be read or parsed makes the scan incomplete and exits `2`.
+Default PHP scan paths are `app`, `bootstrap`, `config`, and `routes`; Blade templates are read from `resources/views`. File paths, exclusions, and the 1 MiB file limit are configurable under `warden.audits.source`. A selected file that cannot be read or parsed makes the scan incomplete and exits `2`. Credential discovery includes dotfiles matching the supported extensions, `.env.example`, and `.github` files. Configured exclusions and VCS-directory exclusions still apply; `.env` contents are never scanned. Every provider credential and distinct secret-like literal on a line is examined.
+
+Unreadable directories also make the scan incomplete. Console and JSON audit records expose `coverage.scanned`, `coverage.skipped`, and `coverage.errors`: scanned counts unique files for which all selected analysis passes ran (including parse attempts); skipped counts known eligible files rejected by size/readability or left unfinished at timeout. Excluded/unsupported files are outside this count. An unreadable directory can hide an unknown number of files, so incomplete-run counts are lower bounds, never a claim of full coverage.
+
+Sanitization is sink-specific: HTML escaping only clears HTML-output taint; `escapeshellarg` only clears shell-argument taint. `escapeshellcmd`, `basename`, and `realpath` do not establish validation boundaries. Imported class aliases, typed Laravel Request parameters, and named arguments are recognized for existing rules. Analysis remains local and heuristic, not interprocedural or a proof that application input is safe.
 
 ### Rule policy
 
@@ -153,14 +157,15 @@ Suppressions are exact, documented, and expiring. Wildcards are not supported.
 'ignore_findings' => [
     [
         'id' => 'composer.advisory.ghsa-example',
-        'fingerprint' => 'optional-fingerprint-for-one-occurrence',
+        // Optional: paste the exact 64-character lowercase fingerprint from a report.
+        // Omit the key entirely to suppress every occurrence of this rule.
         'reason' => 'Compensating control reviewed in SEC-123',
         'expires_at' => '2099-12-31',
     ],
 ],
 ```
 
-An expired or malformed suppression is a configuration error and exits `2`.
+An expired or malformed suppression is a configuration error and exits `2` before scanning. A supplied fingerprint must be a 64-character lowercase SHA-256 hash; `null`, `false`, arrays, numbers, empty strings, and malformed hashes are rejected rather than becoming rule-wide suppressions. Expiry must be an actual calendar date in `YYYY-MM-DD` format; it remains valid through the end of that day. Baselines always require a fingerprint.
 
 ### Baselines
 
@@ -185,9 +190,18 @@ Warden supports:
 - `sarif`: SARIF 2.1.0 for GitHub code scanning and compatible platforms
 - `junit`: portable JUnit XML for Jenkins and other CI systems
 
-Advisory findings render as notices in GitHub and skipped tests in JUnit. SARIF and JSON preserve the `blocking` property.
+Advisory findings render as notices in GitHub and skipped tests in JUnit. Blocking findings below `--fail-on` (including all findings with `never`) are also non-gating in these outputs. JUnit errors still represent incomplete scans. JSON adds `gate.fail_on` and `gate.exit_code`; SARIF adds `runs[].properties.wardenGate` while preserving finding severity and disposition. The bundled JSON schema includes the optional gate and coverage fields; refresh any cached schema. Programmatic reporters default to `low`; call `$report->withGate('high')` to choose another threshold.
 
-`--output-file=-` writes to stdout. Relative file paths are resolved from the Laravel application root.
+`--output-file=-` writes to stdout. Relative file paths are resolved from the Laravel application root. Repeat `--report=format:path` to emit additional files from **one scan**, with the same timestamp, suppressions, and gate:
+
+```bash
+php artisan warden:audit --fail-on=high --format=github \
+  --report=json:warden.json --report=sarif:warden.sarif --report=junit:warden.xml
+```
+
+Generated GitHub workflows retain reports for 14 days, emit annotations, and write a concise job summary even after gate failure. SARIF upload is opt-in: after confirming code-scanning availability and policy, set repository variable `WARDEN_CODE_SCANNING=true` and add `security-events: write` to the generated job's permissions. Upload failure is non-gating; annotations and artifacts remain available. Fork PRs skip upload. Warden initialization does not change repository permissions, settings, or secrets.
+
+Generated GitLab includes use the built-in `.pre` stage without replacing an existing `stages` list. Newly created root pipelines override Warden to the regular `test` stage so standalone pipelines run. Existing root pipelines remain untouched and must include `.gitlab/warden.yml`; a pipeline containing only `.pre`/`.post` jobs also needs a regular-stage job. The Composer Alpine image installs Node/npm only when an npm lockfile exists. JUnit, SARIF, JSON and the GitLab report are retained even on gate failure.
 
 ### Notifications
 
@@ -197,13 +211,13 @@ Notifications are opt-in and never affect the audit exit code:
 php artisan warden:audit --notify
 ```
 
-To skip messages when no active findings remain, use `--notify-on-finding` instead of `--notify` (or combine both flags):
+To skip messages for completed scans when no active findings remain, use `--notify-on-finding` instead of `--notify` (or combine both flags):
 
 ```bash
 php artisan warden:audit --fail-on=never --notify-on-finding --only=composer
 ```
 
-To apply this filter to every `--notify` run, set `warden.notifications.only_on_findings` to `true` or `WARDEN_NOTIFY_ONLY_ON_FINDINGS=true`. The setting defaults to `false` and does not enable notifications by itself. Suppressed findings do not trigger finding-only notifications. Filtering changes delivery only; reports and exit codes, including exit `2` for incomplete audits, are preserved.
+To apply this filter to every `--notify` run, set `warden.notifications.only_on_findings` to `true` or `WARDEN_NOTIFY_ONLY_ON_FINDINGS=true`. The setting defaults to `false` and does not enable notifications by itself. Suppressed findings do not trigger finding-only notifications. Incomplete scans **do** notify by default, even with no findings; messages include the scan errors, profile/scope, finding disposition, and source locations. To explicitly silence entire incomplete-report notifications, set `warden.notifications.on_errors=false`. This does not enable notifications or change gate results. Built-in dispatch uses `ReportNotificationChannel::sendReport`; the legacy `NotificationChannel::send(array)` API remains available for callers that only have findings. Email report dispatch uses a plain-text report so failure state is explicit. Filtering changes delivery only; reports and exit codes, including exit `2` for incomplete audits, are preserved.
 
 Configure any combination of:
 

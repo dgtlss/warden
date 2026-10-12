@@ -21,6 +21,26 @@ use PHPUnit\Framework\TestCase;
 
 final class ReporterTest extends TestCase
 {
+    public function testJunitFailuresFollowEveryGateThresholdAndKeepErrors(): void
+    {
+        foreach (['low', 'medium', 'high', 'critical', 'never'] as $threshold) {
+            $findings = [];
+            foreach (\Dgtlss\Warden\Enums\Severity::cases() as $severity) {
+                $findings[] = new \Dgtlss\Warden\ValueObjects\Finding($severity->value, 'source', 'Synthetic finding', $severity, 'Description');
+            }
+
+            $findings[] = new \Dgtlss\Warden\ValueObjects\Finding('advisory', 'source', 'Advisory', \Dgtlss\Warden\Enums\Severity::Critical, 'Description', blocking: false);
+            $report = (new \Dgtlss\Warden\ValueObjects\AuditReport(new \Dgtlss\Warden\ValueObjects\AuditContext(), [\Dgtlss\Warden\ValueObjects\AuditResult::complete('source', $findings)]))->withGate($threshold);
+            $xml = simplexml_load_string((new \Dgtlss\Warden\Reporters\JunitReporter())->format($report));
+            self::assertSame(count(array_filter($findings, $report->failsGate(...))), (int) $xml['failures']);
+            self::assertSame($report->exitCode() === 1, (int) $xml['failures'] > 0);
+        }
+
+        $report = (new \Dgtlss\Warden\ValueObjects\AuditReport(new \Dgtlss\Warden\ValueObjects\AuditContext(), [\Dgtlss\Warden\ValueObjects\AuditResult::failed('source', 'parse_error', 'Synthetic error')]))->withGate('never');
+        self::assertSame(2, $report->exitCode());
+        self::assertStringContainsString('errors="1"', (new \Dgtlss\Warden\Reporters\JunitReporter())->format($report));
+    }
+
     public function testJsonContainsCompleteVersionedContract(): void
     {
         $decoded = json_decode((new JsonReporter())->format($this->report()), true, 512, JSON_THROW_ON_ERROR);

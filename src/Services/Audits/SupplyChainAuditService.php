@@ -162,7 +162,8 @@ class SupplyChainAuditService implements AuditServiceInterface
             return [];
         }
 
-        $supportedLock = is_file(base_path('package-lock.json'));
+        $lockPath = is_file(base_path('npm-shrinkwrap.json')) ? 'npm-shrinkwrap.json' : 'package-lock.json';
+        $supportedLock = is_file(base_path($lockPath));
         $unsupported = array_values(array_filter(
             ['yarn.lock', 'pnpm-lock.yaml', 'bun.lock', 'bun.lockb'],
             static fn (string $path): bool => is_file(base_path($path)),
@@ -185,16 +186,16 @@ class SupplyChainAuditService implements AuditServiceInterface
         }
 
         $package = $this->readJson('package.json');
-        $lock = $this->readJson('package-lock.json');
+        $lock = $this->readJson($lockPath);
         if ($package === null || $lock === null) {
             return [new Finding(
                 id: 'supply-chain.javascript-lock.invalid',
                 source: $this->getName(),
                 title: 'JavaScript manifest or lockfile is invalid',
                 severity: Severity::High,
-                description: 'package.json and package-lock.json must contain valid JSON.',
+                description: sprintf('package.json and %s must contain valid JSON.', $lockPath),
                 remediation: 'Regenerate package-lock.json with npm install --package-lock-only.',
-                path: 'package-lock.json',
+                path: $lockPath,
             )];
         }
 
@@ -208,9 +209,9 @@ class SupplyChainAuditService implements AuditServiceInterface
                     source: $this->getName(),
                     title: 'JavaScript lockfile is not synchronized',
                     severity: Severity::High,
-                    description: sprintf('%s differs between package.json and package-lock.json.', $key),
+                    description: sprintf('%s differs between package.json and %s.', $key, $lockPath),
                     remediation: 'Run npm install --package-lock-only and commit package-lock.json.',
-                    path: 'package-lock.json',
+                    path: $lockPath,
                 )];
             }
         }

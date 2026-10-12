@@ -189,7 +189,22 @@ final class WardenAuditCommandTest extends TestCase
 
         self::assertSame(2, $exitCode);
         self::assertStringContainsString('"code": "scanner_failed"', Artisan::output());
-        Http::assertNothingSent();
+        Http::assertSentCount(1);
+    }
+
+    public function testMultipleReportsShareOneScanAndTheCliThreshold(): void
+    {
+        $finding = new Finding('test.low', 'test', 'Low finding', Severity::Low, 'Description');
+        $this->bindReport(new AuditReport(new AuditContext(), [AuditResult::complete('test', [$finding])]));
+        $path = sys_get_temp_dir() . '/warden-report-' . bin2hex(random_bytes(8)) . '.xml';
+        try {
+            self::assertSame(0, Artisan::call('warden:audit', ['--format' => 'json', '--fail-on' => 'high', '--report' => ['junit:' . $path]]));
+            self::assertStringContainsString('"fail_on": "high"', Artisan::output());
+            self::assertStringContainsString('failures="0"', file_get_contents($path));
+            self::assertStringNotContainsString('<failure ', file_get_contents($path));
+        } finally {
+            if (is_file($path)) { unlink($path); }
+        }
     }
 
     private function configureSlack(): void

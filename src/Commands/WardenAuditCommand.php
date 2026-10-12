@@ -24,6 +24,7 @@ final class WardenAuditCommand extends Command
         {--fail-on=low : Failure threshold (low|medium|high|critical|never)}
         {--format=console : Report format (console|json|github|gitlab|sarif|junit)}
         {--output-file=- : Write the report to stdout (-) or a file}
+        {--report=* : Additional report as format:path (repeatable; same scan and gate)}
         {--only= : Comma-separated audit IDs to run}
         {--skip= : Comma-separated audit IDs to skip}
         {--notify : Send opt-in notifications after report generation}
@@ -84,6 +85,8 @@ final class WardenAuditCommand extends Command
             ? $this->suppressionService->apply($this->auditRunner->run($auditContext, $progress))
             : new AuditReport($auditContext, [], configurationErrors: $suppressionErrors, scannedAt: $scannedAt);
 
+        $auditReport = $auditReport->withGate($failOn);
+
         try {
             $rendered = $this->reportFormatterFactory->make(
                 $format,
@@ -99,6 +102,17 @@ final class WardenAuditCommand extends Command
             return 2;
         }
 
+        foreach ($this->additionalReports() as [$reportFormat, $reportPath]) {
+            try {
+                if (!$this->writeReport($this->reportFormatterFactory->make($reportFormat)->format($auditReport), $reportPath)) {
+                    return 2;
+                }
+            } catch (Throwable $throwable) {
+                $this->writeError('Report generation failed: ' . $throwable->getMessage());
+                return 2;
+            }
+        }
+
         $notifyOnFinding = (bool) $this->option('notify-on-finding');
         if ((bool) $this->option('notify') || $notifyOnFinding) {
             foreach ($this->notificationDispatcher->send($auditReport, onlyOnFindings: $notifyOnFinding) as $warning) {
@@ -106,7 +120,19 @@ final class WardenAuditCommand extends Command
             }
         }
 
-        return $auditReport->exitCode($failOn);
+        return $auditReport->exitCode();
+    }
+
+    /** @return list<array{string, string}> */
+    private function additionalReports(): array
+    {
+        $reports = [];
+        foreach ((array) $this->option('report') as $report) {
+            $parts = explode(':', (string) $report, 2);
+            $reports[] = [$parts[0], $parts[1] ?? ''];
+        }
+
+        return $reports;
     }
 
     /** @return list<string> */
@@ -149,6 +175,18 @@ final class WardenAuditCommand extends Command
             if (!in_array($value, $valid[$option], true)) {
                 return sprintf('Invalid --%s value "%s". Expected one of: %s.', $option, $value, implode(', ', $valid[$option]));
             }
+        }
+
+        foreach ($this->additionalReports() as [$reportFormat, $reportPath]) {
+            if (!in_array($reportFormat, $valid['format'], true) || $reportPath === '' || $reportPath === '-') {
+                return '--report requires format:path with a supported format and a file path.';
+            }
+        }
+
+        $destinations = array_column($this->additionalReports(), 1);
+        $destinations[] = $outputFile;
+        if (count(array_unique($destinations)) !== count($destinations)) {
+            return 'Report output paths must be distinct.';
         }
 
         if ($outputFile === '') {

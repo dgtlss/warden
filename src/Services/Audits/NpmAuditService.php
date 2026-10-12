@@ -22,7 +22,7 @@ class NpmAuditService implements AuditServiceInterface
 
     public function run(AuditContext $auditContext): AuditResult
     {
-        if (!is_file(base_path('package-lock.json'))) {
+        if (!is_file(base_path('package-lock.json')) && !is_file(base_path('npm-shrinkwrap.json'))) {
             return AuditResult::complete($this->getName());
         }
 
