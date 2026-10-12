@@ -8,11 +8,16 @@ use Dgtlss\Warden\ValueObjects\AuditReport;
 
 final class ReportMessage
 {
-    public static function title(AuditReport $auditReport): string
+    public static function title(AuditReport $auditReport, ?int $appNameLimit = null): string
     {
         $status = $auditReport->errors() !== [] ? 'Incomplete scan' : ($auditReport->findings() === [] ? 'Completed scan' : 'Findings detected');
 
-        return sprintf('[%s] Warden: %s', config('warden.app_name', 'Application'), $status);
+        $appName = (string) config('warden.app_name', 'Application');
+        if ($appNameLimit !== null) {
+            $appName = mb_substr($appName, 0, $appNameLimit, 'UTF-8');
+        }
+
+        return sprintf('[%s] Warden: %s', $appName, $status);
     }
 
     public static function body(AuditReport $auditReport): string

@@ -207,6 +207,74 @@ final class WardenAuditCommandTest extends TestCase
         }
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('equivalentReportDestinations')]
+    public function testEquivalentDestinationsAreRejectedBeforeScanningOrWriting(string $alias, bool $exists): void
+    {
+        $original = $this->app->basePath();
+        $root = sys_get_temp_dir() . '/warden-destinations-' . bin2hex(random_bytes(8));
+        mkdir($root . '/nested', 0777, true);
+        $this->app->setBasePath($root);
+        $this->mock(AuditRunner::class, static function (MockInterface $mock): void {
+            $mock->shouldNotReceive('run');
+        });
+        if ($exists) {
+            file_put_contents($root . '/out.json', 'existing report');
+        }
+
+        try {
+            $destination = match ($alias) {
+                'absolute' => $root . '/out.json',
+                'directory symlink' => 'linked/out.json',
+                'file symlink', 'hard link' => 'alias.json',
+                default => $alias,
+            };
+            if ($alias === 'directory symlink' && !@symlink($root, $root . '/linked')) {
+                self::markTestSkipped('Directory symlinks are unavailable.');
+            }
+
+            if ($alias === 'file symlink' && !@symlink('out.json', $root . '/alias.json')) {
+                self::markTestSkipped('File symlinks are unavailable.');
+            }
+
+            if ($alias === 'hard link' && !@link($root . '/out.json', $root . '/alias.json')) {
+                self::markTestSkipped('Hard links are unavailable.');
+            }
+
+            file_put_contents($root . '/primary.json', 'primary sentinel');
+            $options = $alias === 'secondary collision'
+                ? ['--output-file' => 'primary.json', '--report' => ['json:out.json', 'junit:./out.json']]
+                : ['--output-file' => 'out.json', '--report' => ['junit:' . $destination]];
+            self::assertSame(2, Artisan::call('warden:audit', ['--format' => 'json', ...$options]));
+            self::assertSame('primary sentinel', file_get_contents($root . '/primary.json'));
+            if ($exists) {
+                self::assertSame('existing report', file_get_contents($root . '/out.json'));
+            } else {
+                self::assertFileDoesNotExist($root . '/out.json');
+            }
+        } finally {
+            $this->app->setBasePath($original);
+            foreach (['linked', 'alias.json', 'out.json', 'primary.json'] as $file) {
+                if (is_file($root . '/' . $file) || is_link($root . '/' . $file)) {
+                    unlink($root . '/' . $file);
+                }
+            }
+
+            rmdir($root . '/nested');
+            rmdir($root);
+        }
+    }
+
+    /** @return iterable<string, array{string, bool}> */
+    public static function equivalentReportDestinations(): iterable
+    {
+        foreach (['out.json', './out.json', 'nested/../out.json', 'absolute', 'directory symlink', 'file symlink', 'secondary collision'] as $alias) {
+            yield $alias . ' existing' => [$alias, true];
+            yield $alias . ' new' => [$alias, false];
+        }
+
+        yield 'hard link' => ['hard link', true];
+    }
+
     private function configureSlack(): void
     {
         Http::fake();

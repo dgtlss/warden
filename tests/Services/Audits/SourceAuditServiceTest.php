@@ -454,6 +454,57 @@ PHP);
         }
     }
 
+    #[DataProvider('relativeSourcePaths')]
+    public function testEquivalentRelativePathsKeepPhpAndBladeAnalysis(string $phpPath, string $bladePath): void
+    {
+        config(['warden.audits.source.php_paths' => [$phpPath], 'warden.audits.source.blade_paths' => [$bladePath]]);
+        $this->write('app/Vulnerable.php', '<?php system($_GET["cmd"]);');
+        $this->write('resources/views/output.blade.php', '{!! $body !!}');
+        $this->write('application/Outside.php', '<?php system($_GET["cmd"]);');
+
+        $auditResult = $this->service()->run(new AuditContext());
+        self::assertSame([], $auditResult->errors);
+        self::assertEqualsCanonicalizing(['source.php.command-tainted-input', 'source.blade.unescaped-output'], array_column($auditResult->findings, 'id'));
+        self::assertSame(1, (new AuditReport(new AuditContext(), [$auditResult]))->exitCode());
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function relativeSourcePaths(): iterable
+    {
+        yield 'plain' => ['app', 'resources/views'];
+        yield 'leading dot' => ['./app', './resources/views'];
+        yield 'trailing dot' => ['app/.', 'resources/views/.'];
+        yield 'internal dots and repeated separators' => ['./app//./', 'resources//./views/'];
+    }
+
+    public function testNameResolutionPreservesExistingFingerprintSuppressions(): void
+    {
+        $this->write('app/F.php', '<?php use Illuminate\\Support\\Facades\\Http; Http::get($_GET["url"]);');
+        // Captured from main b77d842, before name resolution was introduced.
+        $fingerprint = '989786372c68a7a1f612cb46dd3943352265b60c3f35c9f83952be3a6f9356ab';
+        $auditResult = $this->service()->run(new AuditContext());
+        self::assertCount(1, $auditResult->findings);
+        self::assertSame($fingerprint, $auditResult->findings[0]->fingerprint());
+        config(['warden.ignore_findings' => [[
+            'id' => 'source.php.ssrf-tainted-url', 'fingerprint' => $fingerprint,
+            'reason' => 'Existing reviewed exception', 'expires_at' => '2099-12-31',
+        ]]]);
+        $report = (new \Dgtlss\Warden\Services\SuppressionService())->apply(new AuditReport(new AuditContext(), [$auditResult]));
+        self::assertSame([], $report->errors());
+        self::assertCount(1, $report->ignoredFindings);
+        self::assertSame(0, $report->exitCode());
+
+        config(['warden.ignore_findings' => []]);
+        $this->write('warden-baseline.json', json_encode(['schema_version' => '1.0.0', 'findings' => [[
+            'id' => 'source.php.ssrf-tainted-url', 'fingerprint' => $fingerprint,
+            'reason' => 'Existing baseline', 'expires_at' => '2099-12-31',
+        ]]], JSON_THROW_ON_ERROR));
+        $report = (new \Dgtlss\Warden\Services\SuppressionService())->apply(new AuditReport(new AuditContext(), [$auditResult]));
+        self::assertSame([], $report->errors());
+        self::assertCount(1, $report->ignoredFindings);
+        self::assertSame(0, $report->exitCode());
+    }
+
     private function resultWithAdvisories(): \Dgtlss\Warden\ValueObjects\AuditResult
     {
         $this->write('app/Debug.php', '<?php dd("x");');

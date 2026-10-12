@@ -168,6 +168,43 @@ final class NotificationDispatcherTest extends TestCase
         self::assertSame([], (new NotificationDispatcher())->send(new AuditReport(new AuditContext(), [AuditResult::failed('source', 'parse_error', 'Fixture error')]), true));
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('largeTeamsReports')]
+    public function testTeamsPayloadIsBoundedWithoutLosingIncompleteStatus(string $title, string $error): void
+    {
+        $this->configureChannels(teams: 'https://example.com/teams');
+        config(['warden.app_name' => $title]);
+        $findings = [];
+        for ($i = 1; $i <= 250; $i++) {
+            $findings[] = new Finding('source.php.command-tainted-input', 'source', 'User-controlled input reaches a shell command',
+                Severity::Critical, 'Request-controlled data reaches a security-sensitive operation.', path: 'app/Http/Controllers/Controller' . $i . '.php', line: 10);
+        }
+
+        Http::fake();
+        $auditReport = new AuditReport(new AuditContext(), [new AuditResult('source', $findings, [
+            new \Dgtlss\Warden\ValueObjects\AuditError('source', 'parse_error', $error),
+        ])]);
+        self::assertSame([], (new NotificationDispatcher())->send($auditReport, onlyOnFindings: true));
+        Http::assertSentCount(1);
+        Http::assertSent(static function ($request): bool {
+            self::assertLessThanOrEqual(28000, strlen($request->body()));
+            $payload = json_decode($request->body(), true, flags: JSON_THROW_ON_ERROR);
+            self::assertStringContainsString('Incomplete scan', $payload['title']);
+            self::assertStringContainsString('250 blocking findings, 0 advisory findings, 1 scan errors', $payload['text']);
+            self::assertStringContainsString('Scan incomplete: no all-clear result is available.', $payload['text']);
+            self::assertStringContainsString('ERROR [source/parse_error]', $payload['text']);
+            self::assertStringContainsString('[Report truncated.', $payload['text']);
+            self::assertTrue(mb_check_encoding($payload['text'], 'UTF-8'));
+            return true;
+        });
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function largeTeamsReports(): iterable
+    {
+        yield 'ordinary findings' => ['Application', 'Invalid PHP syntax'];
+        yield 'escaped Unicode and long application name' => [str_repeat('🛡️"', 1000), str_repeat("🔒\\\"\n", 5000)];
+    }
+
     private function report(): AuditReport
     {
         $finding = new Finding('test', 'test', 'Finding', Severity::High, 'Description');

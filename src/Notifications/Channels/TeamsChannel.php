@@ -24,9 +24,28 @@ class TeamsChannel implements ReportNotificationChannel
             return;
         }
 
-        $title = ReportMessage::title($auditReport);
+        $title = ReportMessage::title($auditReport, appNameLimit: 200);
         $body = ReportMessage::body($auditReport);
-        Http::post($this->webhookUrl, ['@type' => 'MessageCard', '@context' => 'http://schema.org/extensions', 'summary' => $title, 'title' => $title, 'text' => $body])->throw();
+        $card = ['@type' => 'MessageCard', '@context' => 'http://schema.org/extensions', 'summary' => $title, 'title' => $title, 'text' => $body];
+        // Bound the encoded payload, including JSON escaping and both title fields.
+        if (strlen(json_encode($card, JSON_THROW_ON_ERROR)) > 28000) {
+            $suffix = "\n[Report truncated. See the full Warden report for remaining details.]";
+            $low = 0;
+            $high = mb_strlen($body, 'UTF-8');
+            while ($low < $high) {
+                $length = intdiv($low + $high + 1, 2);
+                $card['text'] = mb_substr($body, 0, $length, 'UTF-8') . $suffix;
+                if (strlen(json_encode($card, JSON_THROW_ON_ERROR)) <= 28000) {
+                    $low = $length;
+                } else {
+                    $high = $length - 1;
+                }
+            }
+
+            $card['text'] = mb_substr($body, 0, $low, 'UTF-8') . $suffix;
+        }
+
+        Http::post($this->webhookUrl, $card)->throw();
     }
 
     /** @param array<array<string, mixed>> $findings */

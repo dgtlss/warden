@@ -22,7 +22,8 @@ class NpmAuditService implements AuditServiceInterface
 
     public function run(AuditContext $auditContext): AuditResult
     {
-        if (!is_file(base_path('package-lock.json')) && !is_file(base_path('npm-shrinkwrap.json'))) {
+        $lockfile = is_file(base_path('npm-shrinkwrap.json')) ? 'npm-shrinkwrap.json' : 'package-lock.json';
+        if (!is_file(base_path($lockfile))) {
             return AuditResult::complete($this->getName());
         }
 
@@ -52,7 +53,7 @@ class NpmAuditService implements AuditServiceInterface
             return AuditResult::failed($this->getName(), 'malformed_output', 'npm audit returned an unexpected JSON value.');
         }
 
-        $findings = $this->findingsFrom($decoded['vulnerabilities'] ?? []);
+        $findings = $this->findingsFrom($decoded['vulnerabilities'] ?? [], $lockfile);
         if (!$process->isSuccessful() && $findings === []) {
             return AuditResult::failed(
                 $this->getName(),
@@ -74,7 +75,7 @@ class NpmAuditService implements AuditServiceInterface
     }
 
     /** @return list<Finding> */
-    private function findingsFrom(mixed $vulnerabilities): array
+    private function findingsFrom(mixed $vulnerabilities, string $lockfile): array
     {
         if (!is_array($vulnerabilities)) {
             return [];
@@ -108,7 +109,7 @@ class NpmAuditService implements AuditServiceInterface
                     remediation: 'Upgrade the dependency using the remediation provided by npm.',
                     package: $package,
                     reference: $url,
-                    path: 'package-lock.json',
+                    path: $lockfile,
                     metadata: array_filter([
                         'affected_versions' => is_string($advisory['range'] ?? null)
                             ? $advisory['range']

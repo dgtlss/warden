@@ -97,8 +97,11 @@ final class SourceFileDiscovery
     private function withinPaths(SplFileInfo $file, array $paths): bool
     {
         foreach ($paths as $path) {
-            $path = trim($path, '/');
-            if ($path === '.' || str_starts_with($file->getRelativePathname(), $path . '/')) {
+            // Finder returns paths relative to the root, without dot segments.
+            $segments = array_filter(explode('/', str_replace(DIRECTORY_SEPARATOR, '/', $path)), static fn (string $segment): bool => $segment !== '' && $segment !== '.');
+            $path = implode('/', $segments);
+            $relativePath = str_replace(DIRECTORY_SEPARATOR, '/', $file->getRelativePathname());
+            if ($path === '' || str_starts_with($relativePath, $path . '/')) {
                 return true;
             }
         }

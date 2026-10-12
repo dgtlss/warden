@@ -52,6 +52,12 @@ final class WardenAuditCommand extends Command
         $skip = $this->csvOption('skip');
         $timeout = config('warden.audits.timeout', 300);
 
+        // A destination conflict must not even overwrite the primary report with an error.
+        if (!$this->reportDestinationsAreDistinct($outputFile)) {
+            $this->writeError('Report output paths must be distinct.');
+            return 2;
+        }
+
         $validationError = $this->validateOptions($profile, $scope, $failOn, $format, $outputFile, $timeout, $only, $skip);
         if ($validationError !== null) {
             return $this->renderInvalidConfiguration($validationError, $profile, $scope, $format, $outputFile);
@@ -183,12 +189,6 @@ final class WardenAuditCommand extends Command
             }
         }
 
-        $destinations = array_column($this->additionalReports(), 1);
-        $destinations[] = $outputFile;
-        if (count(array_unique($destinations)) !== count($destinations)) {
-            return 'Report output paths must be distinct.';
-        }
-
         if ($outputFile === '') {
             return '--output-file cannot be empty.';
         }
@@ -242,6 +242,59 @@ final class WardenAuditCommand extends Command
         return 2;
     }
 
+    private function reportDestinationsAreDistinct(string $outputFile): bool
+    {
+        $destinations = [...array_column($this->additionalReports(), 1), $outputFile];
+        $seen = [];
+        foreach ($destinations as $destination) {
+            if ($destination === '-' || $destination === '') {
+                continue;
+            }
+
+            $path = $this->canonicalReportPath($this->reportPath($destination));
+            $stat = @stat($path);
+            // Existing hard links share an inode even though realpath differs.
+            $key = is_array($stat) && $stat['ino'] !== 0
+                ? sprintf('inode:%s:%s', $stat['dev'], $stat['ino'])
+                : 'path:' . (DIRECTORY_SEPARATOR === '\\' ? strtolower($path) : $path);
+            if (isset($seen[$key])) {
+                return false;
+            }
+
+            $seen[$key] = true;
+        }
+
+        return true;
+    }
+
+    private function reportPath(string $outputFile): string
+    {
+        return str_starts_with($outputFile, DIRECTORY_SEPARATOR) ? $outputFile : base_path($outputFile);
+    }
+
+    private function canonicalReportPath(string $path, int $links = 0): string
+    {
+        $resolved = realpath($path);
+        if ($resolved !== false) {
+            return $resolved;
+        }
+
+        // Resolve the parent when the report does not exist yet, including directory symlinks.
+        $parent = realpath(dirname($path));
+        $path = ($parent !== false ? $parent : dirname($path)) . DIRECTORY_SEPARATOR . basename($path);
+        if ($links < 40 && is_link($path)) {
+            $target = readlink($path);
+            if ($target !== false) {
+                return $this->canonicalReportPath(
+                    str_starts_with($target, DIRECTORY_SEPARATOR) ? $target : dirname($path) . DIRECTORY_SEPARATOR . $target,
+                    $links + 1,
+                );
+            }
+        }
+
+        return $path;
+    }
+
     private function writeReport(string $report, string $outputFile): bool
     {
         if ($outputFile === '-') {
@@ -250,7 +303,7 @@ final class WardenAuditCommand extends Command
             return true;
         }
 
-        $path = str_starts_with($outputFile, DIRECTORY_SEPARATOR) ? $outputFile : base_path($outputFile);
+        $path = $this->reportPath($outputFile);
         if (@file_put_contents($path, $report) === false) {
             $this->writeError(sprintf('Unable to write report to %s.', $outputFile));
 

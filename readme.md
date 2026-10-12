@@ -105,7 +105,7 @@ CI environment variables do not disable production checks. Use `--profile=produc
 
 - `supply-chain`: lockfile presence/synchronization, secure Composer repositories, plugin allow-listing, and JavaScript lockfile support
 - `composer`: Composer advisories, malware, and abandoned production packages from `composer.lock`
-- `npm`: npm advisories from `package-lock.json` or `npm-shrinkwrap.json`, auto-detected without a flag
+- `npm`: npm advisories from `package-lock.json` or `npm-shrinkwrap.json`, auto-detected without a flag; shrinkwrap takes precedence when both exist and report locations identify the selected lockfile
 - `laravel-config`: tracked `.env` detection and production application/session/tooling rules
 - `platform`: offline PHP and Laravel support-window enforcement, including Composer's exact platform target
 - `source`: parser-backed PHP taint analysis, Blade review, and redacted credential detection
@@ -128,7 +128,7 @@ Default PHP scan paths are `app`, `bootstrap`, `config`, and `routes`; Blade tem
 
 Unreadable directories also make the scan incomplete. Console and JSON audit records expose `coverage.scanned`, `coverage.skipped`, and `coverage.errors`: scanned counts unique files for which all selected analysis passes ran (including parse attempts); skipped counts known eligible files rejected by size/readability or left unfinished at timeout. Excluded/unsupported files are outside this count. An unreadable directory can hide an unknown number of files, so incomplete-run counts are lower bounds, never a claim of full coverage.
 
-Sanitization is sink-specific: HTML escaping only clears HTML-output taint; `escapeshellarg` only clears shell-argument taint. `escapeshellcmd`, `basename`, and `realpath` do not establish validation boundaries. Imported class aliases, typed Laravel Request parameters, and named arguments are recognized for existing rules. Analysis remains local and heuristic, not interprocedural or a proof that application input is safe.
+Sanitization is sink-specific: HTML escaping only clears HTML-output taint; `escapeshellarg` only clears shell-argument taint. `escapeshellcmd`, `basename`, and `realpath` do not establish validation boundaries. Imported class aliases, typed Laravel Request parameters, and named arguments are recognized for existing rules. Name resolution preserves fingerprints for unchanged source, so existing fingerprint suppressions and baselines keep matching. Relative source paths such as `./app` and `app/.` select the same files as `app`. Analysis remains local and heuristic, not interprocedural or a proof that application input is safe.
 
 ### Rule policy
 
@@ -192,7 +192,7 @@ Warden supports:
 
 Advisory findings render as notices in GitHub and skipped tests in JUnit. Blocking findings below `--fail-on` (including all findings with `never`) are also non-gating in these outputs. JUnit errors still represent incomplete scans. JSON adds `gate.fail_on` and `gate.exit_code`; SARIF adds `runs[].properties.wardenGate` while preserving finding severity and disposition. The bundled JSON schema includes the optional gate and coverage fields; refresh any cached schema. Programmatic reporters default to `low`; call `$report->withGate('high')` to choose another threshold.
 
-`--output-file=-` writes to stdout. Relative file paths are resolved from the Laravel application root. Repeat `--report=format:path` to emit additional files from **one scan**, with the same timestamp, suppressions, and gate:
+`--output-file=-` writes to stdout. Relative file paths are resolved from the Laravel application root. Equivalent destinations (including dot segments, symlinks, and existing hard links) are rejected with exit `2` before scanning or writing any report; the error goes to stderr. Repeat `--report=format:path` to emit additional files from **one scan**, with the same timestamp, suppressions, and gate:
 
 ```bash
 php artisan warden:audit --fail-on=high --format=github \
@@ -217,7 +217,7 @@ To skip messages for completed scans when no active findings remain, use `--noti
 php artisan warden:audit --fail-on=never --notify-on-finding --only=composer
 ```
 
-To apply this filter to every `--notify` run, set `warden.notifications.only_on_findings` to `true` or `WARDEN_NOTIFY_ONLY_ON_FINDINGS=true`. The setting defaults to `false` and does not enable notifications by itself. Suppressed findings do not trigger finding-only notifications. Incomplete scans **do** notify by default, even with no findings; messages include the scan errors, profile/scope, finding disposition, and source locations. To explicitly silence entire incomplete-report notifications, set `warden.notifications.on_errors=false`. This does not enable notifications or change gate results. Built-in dispatch uses `ReportNotificationChannel::sendReport`; the legacy `NotificationChannel::send(array)` API remains available for callers that only have findings. Email report dispatch uses a plain-text report so failure state is explicit. Filtering changes delivery only; reports and exit codes, including exit `2` for incomplete audits, are preserved.
+To apply this filter to every `--notify` run, set `warden.notifications.only_on_findings` to `true` or `WARDEN_NOTIFY_ONLY_ON_FINDINGS=true`. The setting defaults to `false` and does not enable notifications by itself. Suppressed findings do not trigger finding-only notifications. Incomplete scans **do** notify by default, even with no findings; messages include the scan errors, profile/scope, finding disposition, and source locations. To explicitly silence entire incomplete-report notifications, set `warden.notifications.on_errors=false`. This does not enable notifications or change gate results. Built-in dispatch uses `ReportNotificationChannel::sendReport`; the legacy `NotificationChannel::send(array)` API remains available for callers that only have findings. Email report dispatch uses a plain-text report so failure state is explicit. Teams report payloads are limited to 28,000 encoded JSON bytes; long reports retain the scan status and counts, mark truncation, and refer to the full report for remaining details. Filtering changes delivery only; reports and exit codes, including exit `2` for incomplete audits, are preserved.
 
 Configure any combination of:
 

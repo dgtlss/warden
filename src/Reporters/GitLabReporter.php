@@ -102,7 +102,7 @@ final class GitLabReporter implements ReportFormatter
         foreach ($files as $path => $dependencies) {
             $output[] = [
                 'path' => $path,
-                'package_manager' => $path === 'package-lock.json' ? 'npm' : 'composer',
+                'package_manager' => in_array($path, ['package-lock.json', 'npm-shrinkwrap.json'], true) ? 'npm' : 'composer',
                 'dependencies' => $dependencies,
             ];
         }

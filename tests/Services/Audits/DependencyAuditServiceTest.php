@@ -105,6 +105,44 @@ final class DependencyAuditServiceTest extends TestCase
         self::assertTrue($auditResult->succeeded());
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('advisoryLockfiles')]
+    public function testNpmAdvisoriesUseTheSelectedLockfileInReports(array $lockfiles, string $expected): void
+    {
+        foreach ($lockfiles as $lockfile) {
+            file_put_contents(base_path($lockfile), '{}');
+        }
+
+        $service = new class extends NpmAuditService {
+            protected function createProcess(array $command, int $timeout): Process
+            {
+                $json = json_encode(['vulnerabilities' => ['example' => [
+                    'severity' => 'high', 'range' => '<2',
+                    'via' => [['title' => 'Test advisory', 'source' => 42]],
+                ]]], JSON_THROW_ON_ERROR);
+                return new Process([PHP_BINARY, '-r', 'echo ' . var_export($json, true) . '; exit(1);']);
+            }
+        };
+        $auditResult = $service->run(new AuditContext());
+        self::assertSame([], $auditResult->errors);
+        self::assertCount(1, $auditResult->findings);
+        self::assertSame($expected, $auditResult->findings[0]->path);
+        $auditReport = new \Dgtlss\Warden\ValueObjects\AuditReport(new AuditContext(), [$auditResult]);
+        $gitlab = json_decode((new \Dgtlss\Warden\Reporters\GitLabReporter())->format($auditReport), true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame($expected, $gitlab['vulnerabilities'][0]['location']['file']);
+        self::assertSame($expected, $gitlab['dependency_files'][0]['path']);
+        self::assertSame('npm', $gitlab['dependency_files'][0]['package_manager']);
+        $json = json_decode((new \Dgtlss\Warden\Reporters\JsonReporter())->format($auditReport), true, flags: JSON_THROW_ON_ERROR);
+        self::assertSame($expected, $json['findings'][0]['location']['path']);
+    }
+
+    /** @return iterable<string, array{list<string>, string}> */
+    public static function advisoryLockfiles(): iterable
+    {
+        yield 'package lock' => [['package-lock.json'], 'package-lock.json'];
+        yield 'shrinkwrap' => [['npm-shrinkwrap.json'], 'npm-shrinkwrap.json'];
+        yield 'shrinkwrap takes precedence' => [['package-lock.json', 'npm-shrinkwrap.json'], 'npm-shrinkwrap.json'];
+    }
+
     /** @return iterable<string, array{string}> */
     public static function npmLockfiles(): iterable
     {

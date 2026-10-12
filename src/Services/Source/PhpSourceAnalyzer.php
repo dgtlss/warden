@@ -44,6 +44,8 @@ final class PhpSourceAnalyzer
             return ['findings' => [], 'errors' => []];
         }
 
+        // Resolve a cloned tree so fingerprints retain the original source names.
+        $nodes = (new NodeTraverser(new \PhpParser\NodeVisitor\CloningVisitor()))->traverse($nodes);
         $resolver = new NodeTraverser(new \PhpParser\NodeVisitor\NameResolver());
         $nodes = $resolver->traverse($nodes);
 
@@ -337,7 +339,7 @@ final class SecurityNodeVisitor extends NodeVisitorAbstract
             path: $this->path,
             line: max(1, $node->getStartLine()),
             blocking: $blocking,
-            identity: hash('sha256', $this->normalized($node)),
+            identity: hash('sha256', $this->normalized($node->getAttribute('origNode') instanceof Node ? $node->getAttribute('origNode') : $node)),
         );
     }
 
