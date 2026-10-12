@@ -80,6 +80,8 @@ final class ReporterTest extends TestCase
     {
         yield 'SARIF 2.1.0' => [SarifReporter::class, 'version', '2.1.0'];
         yield 'GitLab 15.2.4' => [GitLabReporter::class, 'version', '15.2.4'];
+        yield 'Warden analyzer version' => [GitLabReporter::class, 'scan.analyzer.version', '2.2.0'];
+        yield 'Warden scanner version' => [GitLabReporter::class, 'scan.scanner.version', '2.2.0'];
     }
 
     public function testJunitIsValidXmlAndRepresentsFindingsAsFailures(): void
@@ -124,7 +126,7 @@ final class ReporterTest extends TestCase
 
         $output = (new ConsoleReporter())->format($auditReport);
 
-        self::assertStringContainsString('WARDEN 2.1  SECURITY AUDIT', $output);
+        self::assertStringContainsString('WARDEN 2.2  SECURITY AUDIT', $output);
         self::assertStringContainsString('2 active findings', $output);
         self::assertStringContainsString('CHECK RESULTS', $output);
         self::assertStringContainsString('CHECK                RESULT        SEVERITY', $output);
