@@ -2,16 +2,29 @@
 
 namespace Dgtlss\Warden\Notifications\Channels;
 
-use Dgtlss\Warden\Contracts\NotificationChannel;
+use Dgtlss\Warden\Contracts\ReportNotificationChannel;
+use Dgtlss\Warden\Notifications\ReportMessage;
+use Dgtlss\Warden\ValueObjects\AuditReport;
 use Illuminate\Support\Facades\Http;
 
-class SlackChannel implements NotificationChannel
+class SlackChannel implements ReportNotificationChannel
 {
     protected ?string $webhookUrl;
 
     public function __construct()
     {
         $this->webhookUrl = config('warden.notifications.slack.webhook_url');
+    }
+
+    public function sendReport(AuditReport $auditReport): void
+    {
+        if (!$this->isConfigured() || $this->webhookUrl === null) {
+            return;
+        }
+
+        $title = ReportMessage::title($auditReport);
+        $body = ReportMessage::body($auditReport);
+        Http::post($this->webhookUrl, ['text' => $title . PHP_EOL . $body])->throw();
     }
 
     /** @param array<array<string, mixed>> $findings */

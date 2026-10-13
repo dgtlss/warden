@@ -34,7 +34,7 @@ final class ConsoleReporter implements ReportFormatter
 
         $lines = [
             '',
-            '<fg=cyan;options=bold>WARDEN 2.1</>  <options=bold>SECURITY AUDIT</>',
+            '<fg=cyan;options=bold>WARDEN 2.2</>  <options=bold>SECURITY AUDIT</>',
             sprintf(
                 '<fg=gray>%s profile  •  %s dependencies  •  %s</>',
                 $this->escape(strtoupper($auditReport->context->profile)),
@@ -59,6 +59,8 @@ final class ConsoleReporter implements ReportFormatter
             ),
         ];
 
+        $lines[] = sprintf('Gate: --fail-on=%s; exit %d', $auditReport->failOn, $auditReport->exitCode());
+
         if ($auditReport->audits !== []) {
             $lines[] = '';
             $lines[] = '<options=bold>CHECK RESULTS</>';
@@ -74,6 +76,9 @@ final class ConsoleReporter implements ReportFormatter
             )) . '</>';
             foreach ($auditReport->audits as $audit) {
                 $lines[] = $this->auditSummary($audit);
+                if ($audit->coverage !== null) {
+                    $lines[] = sprintf('   Coverage: %d scanned; %d skipped; %d errors', $audit->coverage['scanned'], $audit->coverage['skipped'], $audit->coverage['errors']);
+                }
             }
         }
 

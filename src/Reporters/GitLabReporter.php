@@ -15,7 +15,7 @@ final class GitLabReporter implements ReportFormatter
     public function format(AuditReport $auditReport): string
     {
         $timestamp = ($auditReport->scannedAt ?? now())->format('Y-m-d\TH:i:s');
-        $version = '2.1.0';
+        $version = '2.2.0';
         $component = [
             'id' => 'warden',
             'name' => 'Warden',
@@ -102,7 +102,7 @@ final class GitLabReporter implements ReportFormatter
         foreach ($files as $path => $dependencies) {
             $output[] = [
                 'path' => $path,
-                'package_manager' => $path === 'package-lock.json' ? 'npm' : 'composer',
+                'package_manager' => in_array($path, ['package-lock.json', 'npm-shrinkwrap.json'], true) ? 'npm' : 'composer',
                 'dependencies' => $dependencies,
             ];
         }

@@ -49,22 +49,23 @@ final class TextSourceAnalyzer
                 $lineOffset = $offset;
                 $offset += strlen($line) + 1;
                 foreach (self::SECRET_PATTERNS as $provider => $pattern) {
-                    if (!$this->rulePolicy->enabled('source.secrets.provider-credential') || preg_match($pattern, $line, $match) !== 1) {
+                    if (!$this->rulePolicy->enabled('source.secrets.provider-credential') || preg_match_all($pattern, $line, $providerMatches, PREG_SET_ORDER) < 1) {
                         continue;
                     }
 
-                    $findings[] = new Finding(
-                        id: 'source.secrets.provider-credential',
-                        source: 'source',
-                        title: sprintf('%s appears to be committed in source', $provider),
-                        severity: Severity::Critical,
-                        description: sprintf('A provider-format credential was detected at %s:%d. Its value has been redacted.', $path, $index + 1),
-                        remediation: 'Revoke and rotate the credential, remove it from history, and load it from a secret store.',
-                        path: $path,
-                        line: $index + 1,
-                        identity: hash('sha256', $match[0]),
-                    );
-                    continue 2;
+                    foreach ($providerMatches as $providerMatch) {
+                        $findings[] = new Finding(
+                            id: 'source.secrets.provider-credential',
+                            source: 'source',
+                            title: sprintf('%s appears to be committed in source', $provider),
+                            severity: Severity::Critical,
+                            description: sprintf('A provider-format credential was detected at %s:%d. Its value has been redacted.', $path, $index + 1),
+                            remediation: 'Revoke and rotate the credential, remove it from history, and load it from a secret store.',
+                            path: $path,
+                            line: $index + 1,
+                            identity: hash('sha256', $providerMatch[0]),
+                        );
+                    }
                 }
 
                 if (!$this->rulePolicy->enabled('source.secrets.suspicious-literal')
@@ -73,6 +74,10 @@ final class TextSourceAnalyzer
                 }
 
                 foreach ($matches as $match) {
+                    if ($this->rulePolicy->enabled('source.secrets.provider-credential') && $this->isProviderCredential($match[2][0])) {
+                        continue;
+                    }
+
                     if (preg_match('/(?:password|secret|api_?key|access_?token|private_?key)$/i', $match[1][0]) !== 1) {
                         continue;
                     }
@@ -130,6 +135,17 @@ final class TextSourceAnalyzer
         }
 
         return $findings;
+    }
+
+    private function isProviderCredential(string $value): bool
+    {
+        foreach (self::SECRET_PATTERNS as $pattern) {
+            if (preg_match($pattern, $value) === 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function advisory(string $id, string $title, Severity $severity, string $description, string $remediation, string $path, int $line, string $identity): Finding

@@ -33,6 +33,7 @@ final class SarifReporter implements ReportFormatter
             'version' => '2.1.0',
             '$schema' => 'https://json.schemastore.org/sarif-2.1.0.json',
             'runs' => [[
+                'properties' => ['wardenGate' => ['failOn' => $auditReport->failOn, 'exitCode' => $auditReport->exitCode()]],
                 'tool' => ['driver' => ['name' => 'Warden', 'informationUri' => 'https://github.com/dgtlss/warden', 'rules' => array_values($rules)]],
                 'results' => array_map(fn (Finding $finding): array => $this->result($finding), $findings),
                 'invocations' => [[

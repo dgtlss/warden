@@ -106,7 +106,7 @@ final class WardenInitCommand extends Command
         }
 
         if (!is_file($root)) {
-            if (file_put_contents($root, "include:\n  - local: .gitlab/warden.yml\n") === false) {
+            if (file_put_contents($root, "include:\n  - local: .gitlab/warden.yml\n# A standalone pipeline needs a regular stage job.\nwarden:\n  stage: test\n") === false) {
                 $this->error('Unable to create .gitlab-ci.yml.');
 
                 return false;

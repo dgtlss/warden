@@ -11,12 +11,14 @@ final readonly class AuditResult implements JsonSerializable
     /**
      * @param list<Finding> $findings
      * @param list<AuditError> $errors
+     * @param array{scanned: int, skipped: int, errors: int}|null $coverage
      */
     public function __construct(
         public string $audit,
         public array $findings = [],
         public array $errors = [],
         public float $durationMs = 0.0,
+        public ?array $coverage = null,
     ) {
     }
 
@@ -33,13 +35,13 @@ final readonly class AuditResult implements JsonSerializable
 
     public function withDuration(float $durationMs): self
     {
-        return new self($this->audit, $this->findings, $this->errors, $durationMs);
+        return new self($this->audit, $this->findings, $this->errors, $durationMs, $this->coverage);
     }
 
     /** @param list<Finding> $findings */
     public function withFindings(array $findings): self
     {
-        return new self($this->audit, $findings, $this->errors, $this->durationMs);
+        return new self($this->audit, $findings, $this->errors, $this->durationMs, $this->coverage);
     }
 
     public function succeeded(): bool
@@ -56,6 +58,7 @@ final readonly class AuditResult implements JsonSerializable
             'duration_ms' => round($this->durationMs, 1),
             'findings' => count($this->findings),
             'errors' => $this->errors,
+            'coverage' => $this->coverage,
         ];
     }
 }

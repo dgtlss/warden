@@ -2,11 +2,13 @@
 
 namespace Dgtlss\Warden\Notifications\Channels;
 
-use Dgtlss\Warden\Contracts\NotificationChannel;
+use Dgtlss\Warden\Contracts\ReportNotificationChannel;
+use Dgtlss\Warden\Notifications\ReportMessage;
+use Dgtlss\Warden\ValueObjects\AuditReport;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 
-class EmailChannel implements NotificationChannel
+class EmailChannel implements ReportNotificationChannel
 {
     use \Dgtlss\Warden\Notifications\Concerns\HasSeverityHelpers;
 
@@ -21,6 +23,20 @@ class EmailChannel implements NotificationChannel
         $this->recipients = config('warden.notifications.email.recipients');
         $this->fromAddress = config('warden.notifications.email.from_address');
         $this->fromName = config('warden.notifications.email.from_name', 'Warden Security');
+    }
+
+    public function sendReport(AuditReport $auditReport): void
+    {
+        if (!$this->isConfigured()) {
+            return;
+        }
+
+        $title = ReportMessage::title($auditReport);
+        $body = ReportMessage::body($auditReport);
+        Mail::raw($body, function ($message) use ($title): void {
+            $message->to($this->parseRecipients((string) $this->recipients))
+                ->subject($title)->from($this->fromAddress, $this->fromName);
+        });
     }
 
     /** @param array<array<string, mixed>> $findings */

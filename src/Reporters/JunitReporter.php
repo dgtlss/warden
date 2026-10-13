@@ -26,7 +26,7 @@ final class JunitReporter implements ReportFormatter
         foreach ($auditReport->findings() as $finding) {
             $className = $this->escape('warden.' . $finding->source);
             $name = $this->escape($finding->id . ':' . $finding->fingerprint());
-            if ($finding->blocking) {
+            if ($auditReport->failsGate($finding)) {
                 $cases[] = sprintf(
                     '  <testcase classname="%s" name="%s"><failure type="%s" message="%s">%s</failure></testcase>',
                     $className,
@@ -37,7 +37,7 @@ final class JunitReporter implements ReportFormatter
                 );
             } else {
                 $cases[] = sprintf(
-                    '  <testcase classname="%s" name="%s"><skipped message="advisory finding"/><system-out>%s</system-out></testcase>',
+                    '  <testcase classname="%s" name="%s"><skipped message="non-gating finding (advisory or below threshold)"/><system-out>%s</system-out></testcase>',
                     $className,
                     $name,
                     $this->escape($finding->description),
@@ -52,9 +52,9 @@ final class JunitReporter implements ReportFormatter
         return sprintf(
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuite name=\"Warden Security Audit\" tests=\"%d\" failures=\"%d\" errors=\"%d\" skipped=\"%d\">\n%s\n</testsuite>\n",
             count($cases),
-            count(array_filter($auditReport->findings(), static fn ($finding): bool => $finding->blocking)),
+            count(array_filter($auditReport->findings(), static fn ($finding): bool => $auditReport->failsGate($finding))),
             count($auditReport->errors()),
-            count(array_filter($auditReport->findings(), static fn ($finding): bool => !$finding->blocking)),
+            count(array_filter($auditReport->findings(), static fn ($finding): bool => !$auditReport->failsGate($finding))),
             implode("\n", $cases),
         );
     }

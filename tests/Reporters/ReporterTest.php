@@ -21,6 +21,26 @@ use PHPUnit\Framework\TestCase;
 
 final class ReporterTest extends TestCase
 {
+    public function testJunitFailuresFollowEveryGateThresholdAndKeepErrors(): void
+    {
+        foreach (['low', 'medium', 'high', 'critical', 'never'] as $threshold) {
+            $findings = [];
+            foreach (\Dgtlss\Warden\Enums\Severity::cases() as $severity) {
+                $findings[] = new \Dgtlss\Warden\ValueObjects\Finding($severity->value, 'source', 'Synthetic finding', $severity, 'Description');
+            }
+
+            $findings[] = new \Dgtlss\Warden\ValueObjects\Finding('advisory', 'source', 'Advisory', \Dgtlss\Warden\Enums\Severity::Critical, 'Description', blocking: false);
+            $report = (new \Dgtlss\Warden\ValueObjects\AuditReport(new \Dgtlss\Warden\ValueObjects\AuditContext(), [\Dgtlss\Warden\ValueObjects\AuditResult::complete('source', $findings)]))->withGate($threshold);
+            $xml = simplexml_load_string((new \Dgtlss\Warden\Reporters\JunitReporter())->format($report));
+            self::assertSame(count(array_filter($findings, $report->failsGate(...))), (int) $xml['failures']);
+            self::assertSame($report->exitCode() === 1, (int) $xml['failures'] > 0);
+        }
+
+        $report = (new \Dgtlss\Warden\ValueObjects\AuditReport(new \Dgtlss\Warden\ValueObjects\AuditContext(), [\Dgtlss\Warden\ValueObjects\AuditResult::failed('source', 'parse_error', 'Synthetic error')]))->withGate('never');
+        self::assertSame(2, $report->exitCode());
+        self::assertStringContainsString('errors="1"', (new \Dgtlss\Warden\Reporters\JunitReporter())->format($report));
+    }
+
     public function testJsonContainsCompleteVersionedContract(): void
     {
         $decoded = json_decode((new JsonReporter())->format($this->report()), true, 512, JSON_THROW_ON_ERROR);
@@ -60,6 +80,8 @@ final class ReporterTest extends TestCase
     {
         yield 'SARIF 2.1.0' => [SarifReporter::class, 'version', '2.1.0'];
         yield 'GitLab 15.2.4' => [GitLabReporter::class, 'version', '15.2.4'];
+        yield 'Warden analyzer version' => [GitLabReporter::class, 'scan.analyzer.version', '2.2.0'];
+        yield 'Warden scanner version' => [GitLabReporter::class, 'scan.scanner.version', '2.2.0'];
     }
 
     public function testJunitIsValidXmlAndRepresentsFindingsAsFailures(): void
@@ -104,7 +126,7 @@ final class ReporterTest extends TestCase
 
         $output = (new ConsoleReporter())->format($auditReport);
 
-        self::assertStringContainsString('WARDEN 2.1  SECURITY AUDIT', $output);
+        self::assertStringContainsString('WARDEN 2.2  SECURITY AUDIT', $output);
         self::assertStringContainsString('2 active findings', $output);
         self::assertStringContainsString('CHECK RESULTS', $output);
         self::assertStringContainsString('CHECK                RESULT        SEVERITY', $output);

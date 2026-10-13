@@ -24,6 +24,7 @@ final class WardenAuditCommand extends Command
         {--fail-on=low : Failure threshold (low|medium|high|critical|never)}
         {--format=console : Report format (console|json|github|gitlab|sarif|junit)}
         {--output-file=- : Write the report to stdout (-) or a file}
+        {--report=* : Additional report as format:path (repeatable; same scan and gate)}
         {--only= : Comma-separated audit IDs to run}
         {--skip= : Comma-separated audit IDs to skip}
         {--notify : Send opt-in notifications after report generation}
@@ -50,6 +51,12 @@ final class WardenAuditCommand extends Command
         $only = $this->csvOption('only');
         $skip = $this->csvOption('skip');
         $timeout = config('warden.audits.timeout', 300);
+
+        // A destination conflict must not even overwrite the primary report with an error.
+        if (!$this->reportDestinationsAreDistinct($outputFile)) {
+            $this->writeError('Report output paths must be distinct.');
+            return 2;
+        }
 
         $validationError = $this->validateOptions($profile, $scope, $failOn, $format, $outputFile, $timeout, $only, $skip);
         if ($validationError !== null) {
@@ -84,6 +91,8 @@ final class WardenAuditCommand extends Command
             ? $this->suppressionService->apply($this->auditRunner->run($auditContext, $progress))
             : new AuditReport($auditContext, [], configurationErrors: $suppressionErrors, scannedAt: $scannedAt);
 
+        $auditReport = $auditReport->withGate($failOn);
+
         try {
             $rendered = $this->reportFormatterFactory->make(
                 $format,
@@ -99,6 +108,17 @@ final class WardenAuditCommand extends Command
             return 2;
         }
 
+        foreach ($this->additionalReports() as [$reportFormat, $reportPath]) {
+            try {
+                if (!$this->writeReport($this->reportFormatterFactory->make($reportFormat)->format($auditReport), $reportPath)) {
+                    return 2;
+                }
+            } catch (Throwable $throwable) {
+                $this->writeError('Report generation failed: ' . $throwable->getMessage());
+                return 2;
+            }
+        }
+
         $notifyOnFinding = (bool) $this->option('notify-on-finding');
         if ((bool) $this->option('notify') || $notifyOnFinding) {
             foreach ($this->notificationDispatcher->send($auditReport, onlyOnFindings: $notifyOnFinding) as $warning) {
@@ -106,7 +126,19 @@ final class WardenAuditCommand extends Command
             }
         }
 
-        return $auditReport->exitCode($failOn);
+        return $auditReport->exitCode();
+    }
+
+    /** @return list<array{string, string}> */
+    private function additionalReports(): array
+    {
+        $reports = [];
+        foreach ((array) $this->option('report') as $report) {
+            $parts = explode(':', (string) $report, 2);
+            $reports[] = [$parts[0], $parts[1] ?? ''];
+        }
+
+        return $reports;
     }
 
     /** @return list<string> */
@@ -148,6 +180,12 @@ final class WardenAuditCommand extends Command
         foreach (['profile' => $profile, 'scope' => $scope, 'fail-on' => $failOn, 'format' => $format] as $option => $value) {
             if (!in_array($value, $valid[$option], true)) {
                 return sprintf('Invalid --%s value "%s". Expected one of: %s.', $option, $value, implode(', ', $valid[$option]));
+            }
+        }
+
+        foreach ($this->additionalReports() as [$reportFormat, $reportPath]) {
+            if (!in_array($reportFormat, $valid['format'], true) || $reportPath === '' || $reportPath === '-') {
+                return '--report requires format:path with a supported format and a file path.';
             }
         }
 
@@ -204,6 +242,59 @@ final class WardenAuditCommand extends Command
         return 2;
     }
 
+    private function reportDestinationsAreDistinct(string $outputFile): bool
+    {
+        $destinations = [...array_column($this->additionalReports(), 1), $outputFile];
+        $seen = [];
+        foreach ($destinations as $destination) {
+            if ($destination === '-' || $destination === '') {
+                continue;
+            }
+
+            $path = $this->canonicalReportPath($this->reportPath($destination));
+            $stat = @stat($path);
+            // Existing hard links share an inode even though realpath differs.
+            $key = is_array($stat) && $stat['ino'] !== 0
+                ? sprintf('inode:%s:%s', $stat['dev'], $stat['ino'])
+                : 'path:' . (DIRECTORY_SEPARATOR === '\\' ? strtolower($path) : $path);
+            if (isset($seen[$key])) {
+                return false;
+            }
+
+            $seen[$key] = true;
+        }
+
+        return true;
+    }
+
+    private function reportPath(string $outputFile): string
+    {
+        return str_starts_with($outputFile, DIRECTORY_SEPARATOR) ? $outputFile : base_path($outputFile);
+    }
+
+    private function canonicalReportPath(string $path, int $links = 0): string
+    {
+        $resolved = realpath($path);
+        if ($resolved !== false) {
+            return $resolved;
+        }
+
+        // Resolve the parent when the report does not exist yet, including directory symlinks.
+        $parent = realpath(dirname($path));
+        $path = ($parent !== false ? $parent : dirname($path)) . DIRECTORY_SEPARATOR . basename($path);
+        if ($links < 40 && is_link($path)) {
+            $target = readlink($path);
+            if ($target !== false) {
+                return $this->canonicalReportPath(
+                    str_starts_with($target, DIRECTORY_SEPARATOR) ? $target : dirname($path) . DIRECTORY_SEPARATOR . $target,
+                    $links + 1,
+                );
+            }
+        }
+
+        return $path;
+    }
+
     private function writeReport(string $report, string $outputFile): bool
     {
         if ($outputFile === '-') {
@@ -212,7 +303,7 @@ final class WardenAuditCommand extends Command
             return true;
         }
 
-        $path = str_starts_with($outputFile, DIRECTORY_SEPARATOR) ? $outputFile : base_path($outputFile);
+        $path = $this->reportPath($outputFile);
         if (@file_put_contents($path, $report) === false) {
             $this->writeError(sprintf('Unable to write report to %s.', $outputFile));
 

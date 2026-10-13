@@ -69,6 +69,60 @@ final class WardenInitCommandTest extends TestCase
         self::assertStringContainsString('dependency_scanning', (string) file_get_contents(base_path('.gitlab/warden.yml')));
     }
 
+    public function testGitlabLockfileBootstrapRunsWithBothNpmLockfileNames(): void
+    {
+        self::assertSame(0, Artisan::call('warden:init', ['--ci' => 'gitlab']));
+        $pipeline = \Symfony\Component\Yaml\Yaml::parseFile(base_path('.gitlab/warden.yml'));
+        self::assertArrayNotHasKey('stages', $pipeline);
+        self::assertSame('.pre', $pipeline['warden']['stage']);
+        $root = \Symfony\Component\Yaml\Yaml::parseFile(base_path('.gitlab-ci.yml'));
+        self::assertSame('test', $root['warden']['stage']);
+        mkdir(base_path('bin'));
+        file_put_contents(base_path('bin/apk'), "#!/bin/sh\nprintf '%s\\n' \"\$*\" >> apk.log\n");
+        chmod(base_path('bin/apk'), 0755);
+        foreach ([null, 'package-lock.json', 'npm-shrinkwrap.json'] as $lockfile) {
+            if ($lockfile !== null) { file_put_contents(base_path($lockfile), '{}'); }
+
+            $process = new \Symfony\Component\Process\Process(['sh', '-ec', implode("\n", $pipeline['warden']['before_script'])], base_path(), ['PATH' => base_path('bin') . ':' . getenv('PATH')]);
+            $process->mustRun();
+            if ($lockfile === null) {
+                self::assertFileDoesNotExist(base_path('apk.log'));
+            } else {
+                self::assertStringContainsString('add --no-cache nodejs npm', file_get_contents(base_path('apk.log')));
+                unlink(base_path($lockfile));
+                unlink(base_path('apk.log'));
+            }
+        }
+
+        self::assertSame('always', $pipeline['warden']['artifacts']['when']);
+        self::assertSame(1, substr_count(implode("\n", $pipeline['warden']['script']), 'warden:audit'));
+        self::assertStringContainsString('--report=junit:', implode("\n", $pipeline['warden']['script']));
+    }
+
+    public function testGithubSummaryExecutesWithMissingAndIncompleteReports(): void
+    {
+        self::assertSame(0, Artisan::call('warden:init', ['--ci' => 'github']));
+        $workflow = \Symfony\Component\Yaml\Yaml::parseFile(base_path('.github/workflows/warden.yml'));
+        $steps = array_column($workflow['jobs']['warden']['steps'], null, 'name');
+        self::assertStringContainsString('--report=sarif:', $steps['Run Warden']['run']);
+        self::assertSame('always()', $steps['Retain Warden reports']['if']);
+        self::assertTrue($steps['Upload SARIF to code scanning (opt-in)']['continue-on-error']);
+        self::assertArrayNotHasKey('security-events', $workflow['permissions']);
+        $script = $steps['Warden summary']['run'];
+        $summary = base_path('summary.md');
+        $process = new \Symfony\Component\Process\Process(['sh', '-ec', $script], base_path(), ['GITHUB_STEP_SUMMARY' => $summary]);
+        $process->mustRun();
+        self::assertStringContainsString('report unavailable', file_get_contents($summary));
+        unlink($summary);
+        file_put_contents(base_path('warden.json'), json_encode([
+            'run' => ['status' => 'failed'], 'gate' => ['exit_code' => 2],
+            'summary' => ['blocking' => 0, 'advisory' => 1, 'errors' => 1],
+        ], JSON_THROW_ON_ERROR));
+        $process->mustRun();
+        self::assertStringContainsString('gate exit: 2', file_get_contents($summary));
+        self::assertStringContainsString('0 blocking, 1 advisory, 1 errors', file_get_contents($summary));
+    }
+
     public function testMissingBundledStubDoesNotProduceEmptyContents(): void
     {
         $reflectionMethod = new ReflectionMethod(WardenInitCommand::class, 'stub');

@@ -17,7 +17,7 @@ final class GitHubReporter implements ReportFormatter
         }
 
         foreach ($auditReport->findings() as $finding) {
-            $level = $finding->blocking
+            $level = $auditReport->failsGate($finding)
                 ? (in_array($finding->severity->value, ['critical', 'high'], true) ? 'error' : 'warning')
                 : ('notice');
             $properties = ['title=' . $this->key($finding->id)];

@@ -60,6 +60,21 @@ final class SupplyChainAuditServiceTest extends TestCase
         self::assertContains('supply-chain.javascript-lock.missing', $ids);
     }
 
+    public function testShrinkwrapTakesPrecedenceOverPackageLock(): void
+    {
+        file_put_contents(base_path('composer.json'), '{}');
+        file_put_contents(base_path('package.json'), '{"dependencies":{"example":"^1.0"}}');
+        file_put_contents(base_path('package-lock.json'), '{}');
+        file_put_contents(base_path('npm-shrinkwrap.json'), '{"packages":{"":{"dependencies":{"example":"^1.0"}}}}');
+        $result = (new SupplyChainAuditService())->run(new AuditContext());
+        self::assertNotContains('supply-chain.javascript-lock.stale', array_column($result->findings, 'id'));
+        self::assertNotContains('supply-chain.javascript-lock.missing', array_column($result->findings, 'id'));
+        file_put_contents(base_path('npm-shrinkwrap.json'), '{}');
+        $result = (new SupplyChainAuditService())->run(new AuditContext());
+        $stale = array_values(array_filter($result->findings, static fn ($finding): bool => $finding->id === 'supply-chain.javascript-lock.stale'));
+        self::assertSame('npm-shrinkwrap.json', $stale[0]->path);
+    }
+
     public function testManifestValidationFailureIsAnAuditError(): void
     {
         file_put_contents(base_path('composer.json'), '{"name":"invalid uppercase/name"}');

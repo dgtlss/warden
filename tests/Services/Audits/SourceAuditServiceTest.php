@@ -364,6 +364,147 @@ PHP);
         self::assertSame($parser, $reflectionProperty->getValue($phpSourceAnalyzer));
     }
 
+    public function testSanitizersAreSpecificToTheirSinkIncludingAssignments(): void
+    {
+        $this->write('app/Contexts.php', <<<'PHP'
+<?php
+$html = e($_GET['value']);
+$shell = escapeshellarg($_GET['value']);
+echo $html;
+system($shell);
+system($html);
+echo $shell;
+file_get_contents(realpath($_GET['path']));
+Http::get(basename($_GET['url']));
+redirect(htmlspecialchars($_GET['url']));
+unserialize(escapeshellarg($_GET['payload']));
+system(escapeshellcmd($_GET['command']));
+PHP);
+        $auditResult = $this->service()->run(new AuditContext());
+        self::assertSame([], $auditResult->errors);
+        self::assertSame([6, 7, 8, 9, 10, 11, 12], array_column($auditResult->findings, 'line'));
+    }
+
+    public function testAliasesTypedRequestsAndReorderedNamedArguments(): void
+    {
+        $this->write('app/Aliases.php', <<<'PHP'
+<?php
+use Illuminate\Http\Request as Incoming;
+use Illuminate\Support\Facades\Http as Client;
+use Illuminate\Support\Facades\DB as Database;
+use Illuminate\Support\Facades\Storage as Disk;
+function run(Incoming $incoming) {
+    Client::get(query: [], url: $incoming->input('url'));
+    Database::select(bindings: [], query: 'select ' . $incoming->input('id'));
+    Disk::get(path: $incoming->input('path'));
+    system(result_code: $exit, command: $incoming->input('cmd'));
+    unserialize(options: ['allowed_classes' => false], data: $incoming->input('payload'));
+    unserialize(options: [], data: $incoming->input('payload'));
+    echo $incoming->name;
+    Client::send(options: [], url: $incoming->input('url'), method: 'GET');
+}
+function unrelated($incoming) { echo $incoming->name; }
+PHP);
+        $auditResult = $this->service()->run(new AuditContext());
+        self::assertSame([], $auditResult->errors);
+        self::assertSame([7, 8, 9, 10, 12, 13, 14], array_column($auditResult->findings, 'line'));
+    }
+
+    public function testHiddenFilesAndEveryCredentialOnALineAreScannedAndRedacted(): void
+    {
+        $first = 'ghp_' . str_repeat('A', 36);
+        $second = 'ghp_' . str_repeat('B', 36);
+        $third = 'AKIA' . str_repeat('C', 16);
+        $this->write('.env.example', 'TOKENS="' . $first . ' ' . $second . ' ' . $third . '"; password="synthetic-password"');
+        $this->write('.github/workflows/example.yml', 'token: ' . $first);
+        $this->write('.env', 'TOKEN=' . $first);
+        $this->write('.github/excluded.yml', 'token: ' . $first);
+        config(['warden.audits.source.exclude' => ['.github/excluded.yml']]);
+        $auditResult = $this->service()->run(new AuditContext());
+        self::assertSame([], $auditResult->errors);
+        self::assertCount(5, $auditResult->findings);
+        self::assertCount(5, array_unique(array_map(static fn ($finding): string => $finding->fingerprint(), $auditResult->findings)));
+        self::assertSame(['scanned' => 2, 'skipped' => 0, 'errors' => 0], $auditResult->coverage);
+        $auditReport = new AuditReport(new AuditContext(), [$auditResult]);
+        foreach ([new ConsoleReporter(), new JsonReporter(), new GitHubReporter(), new GitLabReporter(), new SarifReporter(), new JunitReporter()] as $reporter) {
+            foreach ([$first, $second, $third, 'synthetic-password'] as $secret) {
+                self::assertStringNotContainsString($secret, $reporter->format($auditReport));
+            }
+        }
+    }
+
+    public function testUnreadableDirectoriesAreIncompleteUnlessExcluded(): void
+    {
+        $this->write('app/private/Hidden.php', '<?php echo $_GET["name"];');
+        $directory = $this->temporaryBasePath . '/app/private';
+        chmod($directory, 0000);
+        try {
+            if (is_readable($directory)) {
+                self::markTestSkipped('Permission test requires an unprivileged user.');
+            }
+
+            $result = $this->service()->run(new AuditContext());
+            self::assertContains('unreadable_directory', array_column($result->errors, 'code'));
+            self::assertSame(2, (new AuditReport(new AuditContext(), [$result]))->exitCode('never'));
+            self::assertGreaterThan(0, $result->coverage['errors']);
+            config(['warden.audits.source.exclude' => ['private']]);
+            self::assertSame([], $this->service()->run(new AuditContext())->errors);
+        } finally {
+            chmod($directory, 0755);
+        }
+    }
+
+    #[DataProvider('relativeSourcePaths')]
+    public function testEquivalentRelativePathsKeepPhpAndBladeAnalysis(string $phpPath, string $bladePath): void
+    {
+        config(['warden.audits.source.php_paths' => [$phpPath], 'warden.audits.source.blade_paths' => [$bladePath]]);
+        $this->write('app/Vulnerable.php', '<?php system($_GET["cmd"]);');
+        $this->write('resources/views/output.blade.php', '{!! $body !!}');
+        $this->write('application/Outside.php', '<?php system($_GET["cmd"]);');
+
+        $auditResult = $this->service()->run(new AuditContext());
+        self::assertSame([], $auditResult->errors);
+        self::assertEqualsCanonicalizing(['source.php.command-tainted-input', 'source.blade.unescaped-output'], array_column($auditResult->findings, 'id'));
+        self::assertSame(1, (new AuditReport(new AuditContext(), [$auditResult]))->exitCode());
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function relativeSourcePaths(): iterable
+    {
+        yield 'plain' => ['app', 'resources/views'];
+        yield 'leading dot' => ['./app', './resources/views'];
+        yield 'trailing dot' => ['app/.', 'resources/views/.'];
+        yield 'internal dots and repeated separators' => ['./app//./', 'resources//./views/'];
+    }
+
+    public function testNameResolutionPreservesExistingFingerprintSuppressions(): void
+    {
+        $this->write('app/F.php', '<?php use Illuminate\\Support\\Facades\\Http; Http::get($_GET["url"]);');
+        // Captured from main b77d842, before name resolution was introduced.
+        $fingerprint = '989786372c68a7a1f612cb46dd3943352265b60c3f35c9f83952be3a6f9356ab';
+        $auditResult = $this->service()->run(new AuditContext());
+        self::assertCount(1, $auditResult->findings);
+        self::assertSame($fingerprint, $auditResult->findings[0]->fingerprint());
+        config(['warden.ignore_findings' => [[
+            'id' => 'source.php.ssrf-tainted-url', 'fingerprint' => $fingerprint,
+            'reason' => 'Existing reviewed exception', 'expires_at' => '2099-12-31',
+        ]]]);
+        $report = (new \Dgtlss\Warden\Services\SuppressionService())->apply(new AuditReport(new AuditContext(), [$auditResult]));
+        self::assertSame([], $report->errors());
+        self::assertCount(1, $report->ignoredFindings);
+        self::assertSame(0, $report->exitCode());
+
+        config(['warden.ignore_findings' => []]);
+        $this->write('warden-baseline.json', json_encode(['schema_version' => '1.0.0', 'findings' => [[
+            'id' => 'source.php.ssrf-tainted-url', 'fingerprint' => $fingerprint,
+            'reason' => 'Existing baseline', 'expires_at' => '2099-12-31',
+        ]]], JSON_THROW_ON_ERROR));
+        $report = (new \Dgtlss\Warden\Services\SuppressionService())->apply(new AuditReport(new AuditContext(), [$auditResult]));
+        self::assertSame([], $report->errors());
+        self::assertCount(1, $report->ignoredFindings);
+        self::assertSame(0, $report->exitCode());
+    }
+
     private function resultWithAdvisories(): \Dgtlss\Warden\ValueObjects\AuditResult
     {
         $this->write('app/Debug.php', '<?php dd("x");');
