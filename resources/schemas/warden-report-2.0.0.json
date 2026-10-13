@@ -27,15 +27,6 @@
             },
             "additionalProperties": false
         },
-        "gate": {
-            "type": "object",
-            "required": ["fail_on", "exit_code"],
-            "properties": {
-                "fail_on": { "enum": ["low", "medium", "high", "critical", "never"] },
-                "exit_code": { "enum": [0, 1, 2] }
-            },
-            "additionalProperties": false
-        },
         "summary": {
             "type": "object",
             "required": ["total", "blocking", "advisory", "ignored", "errors", "severity"],
@@ -93,16 +84,6 @@
             "properties": {
                 "id": { "type": "string", "minLength": 1 },
                 "status": { "enum": ["completed", "failed"] },
-                "coverage": {
-                    "type": ["object", "null"],
-                    "required": ["scanned", "skipped", "errors"],
-                    "properties": {
-                        "scanned": { "type": "integer", "minimum": 0 },
-                        "skipped": { "type": "integer", "minimum": 0 },
-                        "errors": { "type": "integer", "minimum": 0 }
-                    },
-                    "additionalProperties": false
-                },
                 "duration_ms": { "type": "number", "minimum": 0 },
                 "findings": { "type": "integer", "minimum": 0 },
                 "errors": {

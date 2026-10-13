@@ -96,6 +96,7 @@ final class WardenInitCommandTest extends TestCase
 
         self::assertSame('always', $pipeline['warden']['artifacts']['when']);
         self::assertSame(1, substr_count(implode("\n", $pipeline['warden']['script']), 'warden:audit'));
+        self::assertStringContainsString('--report=json-v2.1:warden.json', implode("\n", $pipeline['warden']['script']));
         self::assertStringContainsString('--report=junit:', implode("\n", $pipeline['warden']['script']));
     }
 
@@ -104,6 +105,7 @@ final class WardenInitCommandTest extends TestCase
         self::assertSame(0, Artisan::call('warden:init', ['--ci' => 'github']));
         $workflow = \Symfony\Component\Yaml\Yaml::parseFile(base_path('.github/workflows/warden.yml'));
         $steps = array_column($workflow['jobs']['warden']['steps'], null, 'name');
+        self::assertStringContainsString('--report=json-v2.1:warden.json', $steps['Run Warden']['run']);
         self::assertStringContainsString('--report=sarif:', $steps['Run Warden']['run']);
         self::assertSame('always()', $steps['Retain Warden reports']['if']);
         self::assertTrue($steps['Upload SARIF to code scanning (opt-in)']['continue-on-error']);
@@ -121,6 +123,15 @@ final class WardenInitCommandTest extends TestCase
         $process->mustRun();
         self::assertStringContainsString('gate exit: 2', file_get_contents($summary));
         self::assertStringContainsString('0 blocking, 1 advisory, 1 errors', file_get_contents($summary));
+        unlink($summary);
+        file_put_contents(base_path('warden.json'), json_encode([
+            'run' => ['status' => 'completed'],
+            'summary' => ['blocking' => 1, 'advisory' => 0, 'errors' => 0],
+        ], JSON_THROW_ON_ERROR));
+        $process->mustRun();
+        self::assertSame('', $process->getErrorOutput());
+        self::assertStringContainsString('gate exit: unavailable (legacy report)', file_get_contents($summary));
+        self::assertStringContainsString('1 blocking, 0 advisory, 0 errors', file_get_contents($summary));
     }
 
     public function testMissingBundledStubDoesNotProduceEmptyContents(): void

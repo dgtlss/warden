@@ -22,7 +22,7 @@ final class WardenAuditCommand extends Command
         {--profile=ci : Audit profile (ci|production|local)}
         {--scope=production : Dependency scope (production|all)}
         {--fail-on=low : Failure threshold (low|medium|high|critical|never)}
-        {--format=console : Report format (console|json|github|gitlab|sarif|junit)}
+        {--format=console : Report format (console|json|json-v2.1|github|gitlab|sarif|junit)}
         {--output-file=- : Write the report to stdout (-) or a file}
         {--report=* : Additional report as format:path (repeatable; same scan and gate)}
         {--only= : Comma-separated audit IDs to run}
@@ -60,7 +60,7 @@ final class WardenAuditCommand extends Command
 
         $validationError = $this->validateOptions($profile, $scope, $failOn, $format, $outputFile, $timeout, $only, $skip);
         if ($validationError !== null) {
-            return $this->renderInvalidConfiguration($validationError, $profile, $scope, $format, $outputFile);
+            return $this->renderInvalidConfiguration($validationError, $profile, $scope, $format, $outputFile, $failOn);
         }
 
         $scannedAt = CarbonImmutable::now();
@@ -174,7 +174,7 @@ final class WardenAuditCommand extends Command
             'profile' => ['ci', 'production', 'local'],
             'scope' => ['production', 'all'],
             'fail-on' => ['low', 'medium', 'high', 'critical', 'never'],
-            'format' => ['console', 'json', 'github', 'gitlab', 'sarif', 'junit'],
+            'format' => ['console', 'json', 'json-v2.1', 'github', 'gitlab', 'sarif', 'junit'],
         ];
 
         foreach (['profile' => $profile, 'scope' => $scope, 'fail-on' => $failOn, 'format' => $format] as $option => $value) {
@@ -220,9 +220,10 @@ final class WardenAuditCommand extends Command
         string $scope,
         string $format,
         string $outputFile,
+        string $failOn,
     ): int {
         $this->writeError($message);
-        if (!in_array($format, ['json', 'github', 'gitlab', 'sarif', 'junit'], true)) {
+        if (!in_array($format, ['json', 'json-v2.1', 'github', 'gitlab', 'sarif', 'junit'], true)) {
             return 2;
         }
 
@@ -235,6 +236,7 @@ final class WardenAuditCommand extends Command
             [],
             configurationErrors: [new AuditError('configuration', 'invalid_option', $message)],
             scannedAt: CarbonImmutable::now(),
+            failOn: in_array($failOn, ['low', 'medium', 'high', 'critical', 'never'], true) ? $failOn : 'low',
         );
         $rendered = $this->reportFormatterFactory->make($format)->format($auditReport);
         $this->writeReport($rendered, $outputFile === '' ? '-' : $outputFile);

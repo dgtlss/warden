@@ -117,7 +117,6 @@ final readonly class AuditReport implements JsonSerializable
                 'scope' => $this->context->scope,
                 'scanned_at' => ($this->scannedAt ?? CarbonImmutable::now())->toISOString(),
             ],
-            'gate' => ['fail_on' => $this->failOn, 'exit_code' => $this->exitCode()],
             'summary' => [
                 'total' => count($findings),
                 'blocking' => $blocking,

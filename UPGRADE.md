@@ -61,7 +61,7 @@ The production scheduler and audit-history migration were removed because a deve
 
 ## Scan-integrity behavior changes
 
-Supplied suppression fingerprints must now be lowercase SHA-256 hashes; omit the key for an intentional rule-wide suppression. Invalid calendar dates and malformed values cause exit 2. Notification delivery remains opt-in and existing finding-only preferences apply to incomplete scans by default; see the 2.1 → 2.2 guidance below. Sanitizers apply only to their output context, so previously hidden cross-context findings can appear. Dotfiles such as `.env.example` and `.github` files now participate in credential scanning. JUnit failures follow the CLI threshold. JSON reports add optional gate and coverage fields; update cached copies of the bundled schema. Registered inactive custom audits remain valid selection IDs and report skipped coverage.
+Supplied suppression fingerprints must now be lowercase SHA-256 hashes; omit the key for an intentional rule-wide suppression. Invalid calendar dates and malformed values cause exit 2. Notification delivery remains opt-in and existing finding-only preferences apply to incomplete scans by default; see the 2.1 → 2.2 guidance below. Sanitizers apply only to their output context, so previously hidden cross-context findings can appear. Dotfiles such as `.env.example` and `.github` files now participate in credential scanning. JUnit failures follow the CLI threshold. Default JSON and its strict schema remain unchanged; gate and coverage fields require explicit `json-v2.1` selection. Registered inactive custom audits remain valid selection IDs and report skipped coverage.
 
 
 ## Notifications: upgrading from 2.1 to 2.2
@@ -77,3 +77,12 @@ The new `notifications.on_errors` setting is tri-state:
 If you published the unreleased 2.2 development config from PR #35, it contained `on_errors=true`. Remove that key or set it to `null` to retain your previous finding-only behavior; keep `true` only for a deliberate error-alert opt-in. Rebuild your application's config cache after changing published configuration. Do not overwrite your existing settings merely to add this key.
 
 Delivered incomplete reports explicitly identify scan errors instead of claiming all-clear. Completed emails continue using the existing `warden::mail.enhanced-report` view and application overrides. Incomplete emails use plain text rather than a findings-only custom template that might incorrectly claim success. Recipients and sender preferences are unchanged. See the [notification delivery table](readme.md#notifications) for all combinations.
+
+
+## JSON: upgrading from 2.1 to 2.2
+
+Existing `--format=json`, `--report=json:path`, `new JsonReporter()`, and direct `json_encode()` calls on `AuditReport` and `AuditResult` retain the original strict `2.0.0` schema. No cached schema update is needed for these defaults. In-memory gate and coverage properties remain available.
+
+To consume the new fields, explicitly choose `--format=json-v2.1` or `--report=json-v2.1:warden.json`; programmatic callers can use `new JsonReporter(extended: true)`. This emits `schema_version: "2.1.0"`, `gate.fail_on`, `gate.exit_code`, and `audits[].coverage` (null when unavailable). Validate it against the separate `resources/schemas/warden-report-2.1.0.json`. The package version remains 2.2.0; schema and package versions are independent.
+
+Newly generated CI configurations opt into this extended format. Existing generated workflows are not rewritten automatically: if their summaries consume gate or coverage fields, change the relevant JSON report option to `json-v2.1`. The new GitHub summary tolerates missing files and legacy reports without gate data; it does not infer a potentially incorrect gate result from finding counts. Other consumers can keep using legacy JSON, including alongside extended reports from the same scan.

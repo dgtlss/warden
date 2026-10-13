@@ -32,7 +32,7 @@ jobs:
         run: composer install --prefer-dist --no-progress --no-interaction
 
       - name: Run Warden
-        run: php artisan warden:audit --format=github --report=json:warden.json --report=sarif:warden.sarif --report=junit:warden-junit.xml
+        run: php artisan warden:audit --format=github --report=json-v2.1:warden.json --report=sarif:warden.sarif --report=junit:warden-junit.xml
 
       - name: Retain Warden reports
         if: always()
@@ -49,7 +49,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          php -r '$p = "warden.json"; if (!is_file($p)) { echo "Warden: report unavailable; inspect the job log.\n"; exit; } $r = json_decode(file_get_contents($p), true, 512, JSON_THROW_ON_ERROR); printf("## Warden\nStatus: %s; gate exit: %d\n\n%d blocking, %d advisory, %d errors. See annotations and retained reports.\n", $r["run"]["status"], $r["gate"]["exit_code"], $r["summary"]["blocking"], $r["summary"]["advisory"], $r["summary"]["errors"]);' >> "$GITHUB_STEP_SUMMARY"
+          php -r '$p = "warden.json"; if (!is_file($p)) { echo "Warden: report unavailable; inspect the job log.\n"; exit; } $r = json_decode(file_get_contents($p), true, 512, JSON_THROW_ON_ERROR); printf("## Warden\nStatus: %s; gate exit: %s\n\n%d blocking, %d advisory, %d errors. See annotations and retained reports.\n", $r["run"]["status"], $r["gate"]["exit_code"] ?? "unavailable (legacy report)", $r["summary"]["blocking"], $r["summary"]["advisory"], $r["summary"]["errors"]);' >> "$GITHUB_STEP_SUMMARY"
 
       # Optional: enable the repository variable WARDEN_CODE_SCANNING and grant
       # this job security-events: write after reviewing your repository policy.

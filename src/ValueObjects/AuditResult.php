@@ -58,7 +58,6 @@ final readonly class AuditResult implements JsonSerializable
             'duration_ms' => round($this->durationMs, 1),
             'findings' => count($this->findings),
             'errors' => $this->errors,
-            'coverage' => $this->coverage,
         ];
     }
 }

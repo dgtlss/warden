@@ -20,6 +20,7 @@ final class ReportFormatterFactory
         return match ($format) {
             'console' => new ConsoleReporter($decorated),
             'json' => new JsonReporter(),
+            'json-v2.1' => new JsonReporter(extended: true),
             'github' => new GitHubReporter(),
             'gitlab' => new GitLabReporter(),
             'sarif' => new SarifReporter(),

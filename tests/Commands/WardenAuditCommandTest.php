@@ -198,7 +198,7 @@ final class WardenAuditCommandTest extends TestCase
         $this->bindReport(new AuditReport(new AuditContext(), [AuditResult::complete('test', [$finding])]));
         $path = sys_get_temp_dir() . '/warden-report-' . bin2hex(random_bytes(8)) . '.xml';
         try {
-            self::assertSame(0, Artisan::call('warden:audit', ['--format' => 'json', '--fail-on' => 'high', '--report' => ['junit:' . $path]]));
+            self::assertSame(0, Artisan::call('warden:audit', ['--format' => 'json-v2.1', '--fail-on' => 'high', '--report' => ['junit:' . $path]]));
             self::assertStringContainsString('"fail_on": "high"', Artisan::output());
             self::assertStringContainsString('failures="0"', file_get_contents($path));
             self::assertStringNotContainsString('<failure ', file_get_contents($path));
