@@ -189,7 +189,7 @@ final class WardenAuditCommandTest extends TestCase
 
         self::assertSame(2, $exitCode);
         self::assertStringContainsString('"code": "scanner_failed"', Artisan::output());
-        Http::assertSentCount(1);
+        Http::assertNothingSent();
     }
 
     public function testMultipleReportsShareOneScanAndTheCliThreshold(): void

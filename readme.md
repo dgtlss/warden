@@ -217,7 +217,24 @@ To skip messages for completed scans when no active findings remain, use `--noti
 php artisan warden:audit --fail-on=never --notify-on-finding --only=composer
 ```
 
-To apply this filter to every `--notify` run, set `warden.notifications.only_on_findings` to `true` or `WARDEN_NOTIFY_ONLY_ON_FINDINGS=true`. The setting defaults to `false` and does not enable notifications by itself. Suppressed findings do not trigger finding-only notifications. Incomplete scans **do** notify by default, even with no findings; messages include the scan errors, profile/scope, finding disposition, and source locations. To explicitly silence entire incomplete-report notifications, set `warden.notifications.on_errors=false`. This does not enable notifications or change gate results. Built-in dispatch uses `ReportNotificationChannel::sendReport`; the legacy `NotificationChannel::send(array)` API remains available for callers that only have findings. Email report dispatch uses a plain-text report so failure state is explicit. Teams report payloads are limited to 28,000 encoded JSON bytes; long reports retain the scan status and counts, mark truncation, and refer to the full report for remaining details. Filtering changes delivery only; reports and exit codes, including exit `2` for incomplete audits, are preserved.
+To apply this filter to every `--notify` run, set `warden.notifications.only_on_findings` to `true` or `WARDEN_NOTIFY_ONLY_ON_FINDINGS=true`. The setting defaults to `false` and does not enable notifications by itself. The flag and configured filter combine with OR: `--notify` cannot override a finding-only preference, and suppressed findings do not count as active findings.
+
+`warden.notifications.on_errors` controls incomplete reports. Missing or `null` (the default) respects existing finding-only preferences. Only the boolean `true` explicitly opts into additional error-only alerts; boolean `false` silences all incomplete reports, including those containing active findings. Existing published 2.1 configs need no new key and do not gain additional alerts.
+
+Delivery requires `--notify` or `--notify-on-finding` **and** a configured channel in every case:
+
+| Scan result | Finding-only filter | `on_errors` missing / `null` | `on_errors=true` | `on_errors=false` |
+| --- | --- | --- | --- | --- |
+| Completed, active findings | Either | Send | Send | Send |
+| Completed, no active findings | Off | Send | Send | Send |
+| Completed, no active findings | On | Skip | Skip | Skip |
+| Incomplete, active findings | Either | Send | Send | Skip |
+| Incomplete, no active findings | Off | Send | Send | Skip |
+| Incomplete, no active findings | On | Skip | Send (explicit opt-in) | Skip |
+
+Reports containing only ignored findings use the no-active-findings rows. To opt into error-only alerts, deliberately add `'on_errors' => true` to the `notifications` array of your published config. This does not enable notification delivery on its own.
+
+Every delivered incomplete report explicitly describes the failure and never claims all-clear. Completed emails retain the existing `warden::mail.enhanced-report` view, including application overrides, recipients, and sender settings. Incomplete emails use explicit plain text because legacy findings-only templates cannot safely represent scan errors; suppress these with `on_errors=false` if that format is unsuitable. Built-in dispatch uses `ReportNotificationChannel::sendReport`; the legacy `NotificationChannel::send(array)` API remains available. Teams report payloads are limited to 28,000 encoded JSON bytes; long reports retain status and counts and mark truncation. Delivery filtering does not change reports or exit codes, including exit `2` for incomplete audits.
 
 Configure any combination of:
 

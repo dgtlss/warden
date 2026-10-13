@@ -61,4 +61,19 @@ The production scheduler and audit-history migration were removed because a deve
 
 ## Scan-integrity behavior changes
 
-Supplied suppression fingerprints must now be lowercase SHA-256 hashes; omit the key for an intentional rule-wide suppression. Invalid calendar dates and malformed values cause exit 2. Incomplete scans notify by default even in finding-only mode; `notifications.on_errors=false` explicitly silences these reports. Sanitizers apply only to their output context, so previously hidden cross-context findings can appear. Dotfiles such as `.env.example` and `.github` files now participate in credential scanning. JUnit failures follow the CLI threshold. JSON reports add optional gate and coverage fields; update cached copies of the bundled schema. Registered inactive custom audits remain valid selection IDs and report skipped coverage.
+Supplied suppression fingerprints must now be lowercase SHA-256 hashes; omit the key for an intentional rule-wide suppression. Invalid calendar dates and malformed values cause exit 2. Notification delivery remains opt-in and existing finding-only preferences apply to incomplete scans by default; see the 2.1 → 2.2 guidance below. Sanitizers apply only to their output context, so previously hidden cross-context findings can appear. Dotfiles such as `.env.example` and `.github` files now participate in credential scanning. JUnit failures follow the CLI threshold. JSON reports add optional gate and coverage fields; update cached copies of the bundled schema. Registered inactive custom audits remain valid selection IDs and report skipped coverage.
+
+
+## Notifications: upgrading from 2.1 to 2.2
+
+Existing 2.1 published configs require no change. With `--notify-on-finding` or `notifications.only_on_findings=true`, error-only and ignored-only reports stay silent by default. `--notify` does not override a configured finding-only filter. Neither channel configuration nor error policy enables notifications without a notification flag.
+
+The new `notifications.on_errors` setting is tri-state:
+
+- Omitted or `null`: respect the existing finding-only preference (the bundled default).
+- Boolean `true`: explicitly permit incomplete reports even when no active findings remain, provided notifications were requested.
+- Boolean `false`: suppress every incomplete report, including reports with active findings. Completed reports still follow existing filters.
+
+If you published the unreleased 2.2 development config from PR #35, it contained `on_errors=true`. Remove that key or set it to `null` to retain your previous finding-only behavior; keep `true` only for a deliberate error-alert opt-in. Rebuild your application's config cache after changing published configuration. Do not overwrite your existing settings merely to add this key.
+
+Delivered incomplete reports explicitly identify scan errors instead of claiming all-clear. Completed emails continue using the existing `warden::mail.enhanced-report` view and application overrides. Incomplete emails use plain text rather than a findings-only custom template that might incorrectly claim success. Recipients and sender preferences are unchanged. See the [notification delivery table](readme.md#notifications) for all combinations.

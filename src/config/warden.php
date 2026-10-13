@@ -66,8 +66,9 @@ return [
     ],
 
     'notifications' => [
-        // Incomplete scans notify even in finding-only mode. Set false to silence incomplete reports.
-        'on_errors' => true,
+        // null/missing respects finding-only preferences; true explicitly adds error alerts.
+        // false silences all incomplete reports, including those with findings.
+        'on_errors' => null,
         'only_on_findings' => env('WARDEN_NOTIFY_ONLY_ON_FINDINGS', false),
         'slack' => ['webhook_url' => env('WARDEN_SLACK_WEBHOOK_URL')],
         'discord' => ['webhook_url' => env('WARDEN_DISCORD_WEBHOOK_URL')],
