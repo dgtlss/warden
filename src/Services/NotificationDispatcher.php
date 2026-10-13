@@ -18,11 +18,15 @@ final class NotificationDispatcher
     public function send(AuditReport $auditReport, bool $onlyOnFindings = false): array
     {
         $findings = $auditReport->findings();
-        if ($auditReport->errors() !== [] && config('warden.notifications.on_errors', true) === false) {
+        $incomplete = $auditReport->errors() !== [];
+        $onErrors = config('warden.notifications.on_errors');
+        if ($incomplete && $onErrors === false) {
             return [];
         }
 
-        if ($auditReport->errors() === [] && ($onlyOnFindings || config('warden.notifications.only_on_findings', false) === true) && $findings === []) {
+        // Only an explicit true opts into error alerts beyond the finding-only filter.
+        $errorOptIn = $incomplete && $onErrors === true;
+        if (!$errorOptIn && ($onlyOnFindings || config('warden.notifications.only_on_findings', false) === true) && $findings === []) {
             return [];
         }
 

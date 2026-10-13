@@ -111,11 +111,11 @@ final class NotificationDispatcherTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function testIncompleteReportsAlwaysNotifyWithoutAnAllClear(): void
+    public function testExplicitErrorOptInNotifiesWithoutAnAllClear(): void
     {
         Http::fake();
         $this->configureChannels(slack: 'https://example.com/slack', discord: 'https://example.com/discord', teams: 'https://example.com/teams');
-        config(['warden.notifications.only_on_findings' => true]);
+        config(['warden.notifications.only_on_findings' => true, 'warden.notifications.on_errors' => true]);
         $auditReport = new AuditReport(new AuditContext(), [AuditResult::failed('source', 'unreadable_file', 'Unable to read app/Private.php.')]);
         self::assertSame([], (new NotificationDispatcher())->send($auditReport, onlyOnFindings: true));
         Http::assertSentCount(3);
@@ -156,7 +156,7 @@ final class NotificationDispatcherTest extends TestCase
     public function testEmailReceivesIncompleteReportAndDoesNotClaimSuccess(): void
     {
         $this->configureChannels();
-        config(['warden.notifications.email.recipients' => 'security@example.com', 'warden.notifications.email.from_address' => 'warden@example.com']);
+        config(['warden.notifications.email.recipients' => 'security@example.com', 'warden.notifications.email.from_address' => 'warden@example.com', 'warden.notifications.on_errors' => true]);
         Mail::shouldReceive('raw')->once()->withArgs(static function (string $body, callable $callback): bool {
             self::assertStringContainsString('Scan incomplete', $body);
             self::assertStringContainsString('parse_error', $body);
@@ -203,6 +203,51 @@ final class NotificationDispatcherTest extends TestCase
     {
         yield 'ordinary findings' => ['Application', 'Invalid PHP syntax'];
         yield 'escaped Unicode and long application name' => [str_repeat('🛡️"', 1000), str_repeat("🔒\\\"\n", 5000)];
+    }
+
+    public function testBundledErrorPolicyDoesNotOptUsersIntoExtraAlerts(): void
+    {
+        self::assertNull(config('warden.notifications.on_errors'));
+        $this->configureChannels(slack: 'https://example.com/slack');
+        Http::fake();
+        (new NotificationDispatcher())->send(new AuditReport(new AuditContext(), [AuditResult::failed('source', 'parse_error', 'Invalid syntax')]), true);
+        Http::assertNothingSent();
+    }
+
+    public function testErrorOptInDoesNotConfigureChannels(): void
+    {
+        $this->configureChannels();
+        config(['warden.notifications.on_errors' => true]);
+        Http::fake();
+        Mail::shouldReceive('raw')->never();
+        Mail::shouldReceive('send')->never();
+        self::assertSame([], (new NotificationDispatcher())->send(new AuditReport(new AuditContext(), [AuditResult::failed('source', 'parse_error', 'Invalid syntax')]), true));
+        Http::assertNothingSent();
+    }
+
+    public function testCompletedEmailStillUsesExistingTemplateOverrides(): void
+    {
+        $this->configureChannels();
+        config(['warden.notifications.email.recipients' => 'security@example.com', 'warden.notifications.email.from_address' => 'warden@example.com']);
+        $path = sys_get_temp_dir() . '/warden-email-view-' . bin2hex(random_bytes(8));
+        mkdir($path . '/mail', 0777, true);
+        file_put_contents($path . '/mail/enhanced-report.blade.php', 'Existing custom template: {{ $totalFindings }} / {{ $findings[0]["title"] }}');
+        $this->app['view']->getFinder()->prependNamespace('warden', $path);
+        try {
+            Mail::shouldReceive('send')->once()->withArgs(static function (string $view, array $data, callable $callback): bool {
+                self::assertSame('warden::mail.enhanced-report', $view);
+                self::assertSame('Existing custom template: 1 / Finding', view($view, $data)->render());
+                self::assertSame('application', $data['findings'][0]['package']);
+                self::assertArrayHasKey('fingerprint', $data['findings'][0]);
+                return true;
+            });
+            Mail::shouldReceive('raw')->never();
+            self::assertSame([], (new NotificationDispatcher())->send($this->report()));
+        } finally {
+            unlink($path . '/mail/enhanced-report.blade.php');
+            rmdir($path . '/mail');
+            rmdir($path);
+        }
     }
 
     private function report(): AuditReport

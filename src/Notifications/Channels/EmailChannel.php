@@ -31,6 +31,24 @@ class EmailChannel implements ReportNotificationChannel
             return;
         }
 
+        if ($auditReport->errors() === []) {
+            // Preserve the existing view (including published overrides) for completed scans.
+            $this->send(array_map(static fn (\Dgtlss\Warden\ValueObjects\Finding $finding): array => [
+                'id' => $finding->id,
+                'fingerprint' => $finding->fingerprint(),
+                'source' => $finding->source,
+                'package' => $finding->package ?? 'application',
+                'title' => $finding->title,
+                'severity' => $finding->severity->value,
+                'description' => $finding->description,
+                'remediation' => $finding->remediation,
+                'cve' => $finding->reference,
+                'affected_versions' => $finding->metadata['affected_versions'] ?? null,
+            ], $auditReport->findings()));
+            return;
+        }
+
+        // Findings-only templates cannot safely represent an incomplete scan.
         $title = ReportMessage::title($auditReport);
         $body = ReportMessage::body($auditReport);
         Mail::raw($body, function ($message) use ($title): void {

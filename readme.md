@@ -126,7 +126,7 @@ Credentials are never copied into reports. Warden emits only the provider, locat
 
 Default PHP scan paths are `app`, `bootstrap`, `config`, and `routes`; Blade templates are read from `resources/views`. File paths, exclusions, and the 1 MiB file limit are configurable under `warden.audits.source`. A selected file that cannot be read or parsed makes the scan incomplete and exits `2`. Credential discovery includes dotfiles matching the supported extensions, `.env.example`, and `.github` files. Configured exclusions and VCS-directory exclusions still apply; `.env` contents are never scanned. Every provider credential and distinct secret-like literal on a line is examined.
 
-Unreadable directories also make the scan incomplete. Console and JSON audit records expose `coverage.scanned`, `coverage.skipped`, and `coverage.errors`: scanned counts unique files for which all selected analysis passes ran (including parse attempts); skipped counts known eligible files rejected by size/readability or left unfinished at timeout. Excluded/unsupported files are outside this count. An unreadable directory can hide an unknown number of files, so incomplete-run counts are lower bounds, never a claim of full coverage.
+Unreadable directories also make the scan incomplete. Console and explicitly selected `json-v2.1` audit records expose `coverage.scanned`, `coverage.skipped`, and `coverage.errors`: scanned counts unique files for which all selected analysis passes ran (including parse attempts); skipped counts known eligible files rejected by size/readability or left unfinished at timeout. Excluded/unsupported files are outside this count. An unreadable directory can hide an unknown number of files, so incomplete-run counts are lower bounds, never a claim of full coverage.
 
 Sanitization is sink-specific: HTML escaping only clears HTML-output taint; `escapeshellarg` only clears shell-argument taint. `escapeshellcmd`, `basename`, and `realpath` do not establish validation boundaries. Imported class aliases, typed Laravel Request parameters, and named arguments are recognized for existing rules. Name resolution preserves fingerprints for unchanged source, so existing fingerprint suppressions and baselines keep matching. Relative source paths such as `./app` and `app/.` select the same files as `app`. Analysis remains local and heuristic, not interprocedural or a proof that application input is safe.
 
@@ -184,22 +184,23 @@ This creates `warden-baseline.json`. Baseline generation refuses to write a file
 Warden supports:
 
 - `console`: readable terminal report
-- `json`: versioned Warden schema with audits, blocking/advisory counts, findings, ignored findings, errors, and summary; the schema ships at `resources/schemas/warden-report-2.0.0.json`
+- `json`: the unchanged 2.1-release JSON contract, with audits, blocking/advisory counts, findings, ignored findings, errors, and summary; validates against `resources/schemas/warden-report-2.0.0.json`
+- `json-v2.1`: explicitly selected extended JSON with gate and per-audit coverage fields; validates against `resources/schemas/warden-report-2.1.0.json`
 - `github`: GitHub Actions workflow annotations
 - `gitlab`: GitLab dependency scanning report schema 15.2.4
 - `sarif`: SARIF 2.1.0 for GitHub code scanning and compatible platforms
 - `junit`: portable JUnit XML for Jenkins and other CI systems
 
-Advisory findings render as notices in GitHub and skipped tests in JUnit. Blocking findings below `--fail-on` (including all findings with `never`) are also non-gating in these outputs. JUnit errors still represent incomplete scans. JSON adds `gate.fail_on` and `gate.exit_code`; SARIF adds `runs[].properties.wardenGate` while preserving finding severity and disposition. The bundled JSON schema includes the optional gate and coverage fields; refresh any cached schema. Programmatic reporters default to `low`; call `$report->withGate('high')` to choose another threshold.
+Advisory findings render as notices in GitHub and skipped tests in JUnit. Blocking findings below `--fail-on` (including all findings with `never`) are also non-gating in these outputs. JUnit errors still represent incomplete scans. `json-v2.1` adds `gate.fail_on`, `gate.exit_code`, and `audits[].coverage` (null when unavailable); SARIF adds `runs[].properties.wardenGate` while preserving finding severity and disposition. Default `json`, `new JsonReporter()`, and direct `json_encode($report)` / `json_encode($auditResult)` preserve schema `2.0.0` without gate or coverage fields. Use `new JsonReporter(extended: true)` for schema `2.1.0`. Schema versions are independent of the package version. Programmatic reporters default to `low`; call `$report->withGate('high')` to choose another threshold.
 
 `--output-file=-` writes to stdout. Relative file paths are resolved from the Laravel application root. Equivalent destinations (including dot segments, symlinks, and existing hard links) are rejected with exit `2` before scanning or writing any report; the error goes to stderr. Repeat `--report=format:path` to emit additional files from **one scan**, with the same timestamp, suppressions, and gate:
 
 ```bash
 php artisan warden:audit --fail-on=high --format=github \
-  --report=json:warden.json --report=sarif:warden.sarif --report=junit:warden.xml
+  --report=json-v2.1:warden.json --report=sarif:warden.sarif --report=junit:warden.xml
 ```
 
-Generated GitHub workflows retain reports for 14 days, emit annotations, and write a concise job summary even after gate failure. SARIF upload is opt-in: after confirming code-scanning availability and policy, set repository variable `WARDEN_CODE_SCANNING=true` and add `security-events: write` to the generated job's permissions. Upload failure is non-gating; annotations and artifacts remain available. Fork PRs skip upload. Warden initialization does not change repository permissions, settings, or secrets.
+Generated GitHub and GitLab configurations explicitly select `json-v2.1` for `warden.json`. The GitHub summary reports an unavailable gate for legacy JSON instead of guessing an exit code. Generated GitHub workflows retain reports for 14 days, emit annotations, and write a concise job summary even after gate failure. SARIF upload is opt-in: after confirming code-scanning availability and policy, set repository variable `WARDEN_CODE_SCANNING=true` and add `security-events: write` to the generated job's permissions. Upload failure is non-gating; annotations and artifacts remain available. Fork PRs skip upload. Warden initialization does not change repository permissions, settings, or secrets.
 
 Generated GitLab includes use the built-in `.pre` stage without replacing an existing `stages` list. Newly created root pipelines override Warden to the regular `test` stage so standalone pipelines run. Existing root pipelines remain untouched and must include `.gitlab/warden.yml`; a pipeline containing only `.pre`/`.post` jobs also needs a regular-stage job. The Composer Alpine image installs Node/npm only when an npm lockfile exists. JUnit, SARIF, JSON and the GitLab report are retained even on gate failure.
 
@@ -217,7 +218,24 @@ To skip messages for completed scans when no active findings remain, use `--noti
 php artisan warden:audit --fail-on=never --notify-on-finding --only=composer
 ```
 
-To apply this filter to every `--notify` run, set `warden.notifications.only_on_findings` to `true` or `WARDEN_NOTIFY_ONLY_ON_FINDINGS=true`. The setting defaults to `false` and does not enable notifications by itself. Suppressed findings do not trigger finding-only notifications. Incomplete scans **do** notify by default, even with no findings; messages include the scan errors, profile/scope, finding disposition, and source locations. To explicitly silence entire incomplete-report notifications, set `warden.notifications.on_errors=false`. This does not enable notifications or change gate results. Built-in dispatch uses `ReportNotificationChannel::sendReport`; the legacy `NotificationChannel::send(array)` API remains available for callers that only have findings. Email report dispatch uses a plain-text report so failure state is explicit. Teams report payloads are limited to 28,000 encoded JSON bytes; long reports retain the scan status and counts, mark truncation, and refer to the full report for remaining details. Filtering changes delivery only; reports and exit codes, including exit `2` for incomplete audits, are preserved.
+To apply this filter to every `--notify` run, set `warden.notifications.only_on_findings` to `true` or `WARDEN_NOTIFY_ONLY_ON_FINDINGS=true`. The setting defaults to `false` and does not enable notifications by itself. The flag and configured filter combine with OR: `--notify` cannot override a finding-only preference, and suppressed findings do not count as active findings.
+
+`warden.notifications.on_errors` controls incomplete reports. Missing or `null` (the default) respects existing finding-only preferences. Only the boolean `true` explicitly opts into additional error-only alerts; boolean `false` silences all incomplete reports, including those containing active findings. Existing published 2.1 configs need no new key and do not gain additional alerts.
+
+Delivery requires `--notify` or `--notify-on-finding` **and** a configured channel in every case:
+
+| Scan result | Finding-only filter | `on_errors` missing / `null` | `on_errors=true` | `on_errors=false` |
+| --- | --- | --- | --- | --- |
+| Completed, active findings | Either | Send | Send | Send |
+| Completed, no active findings | Off | Send | Send | Send |
+| Completed, no active findings | On | Skip | Skip | Skip |
+| Incomplete, active findings | Either | Send | Send | Skip |
+| Incomplete, no active findings | Off | Send | Send | Skip |
+| Incomplete, no active findings | On | Skip | Send (explicit opt-in) | Skip |
+
+Reports containing only ignored findings use the no-active-findings rows. To opt into error-only alerts, deliberately add `'on_errors' => true` to the `notifications` array of your published config. This does not enable notification delivery on its own.
+
+Every delivered incomplete report explicitly describes the failure and never claims all-clear. Completed emails retain the existing `warden::mail.enhanced-report` view, including application overrides, recipients, and sender settings. Incomplete emails use explicit plain text because legacy findings-only templates cannot safely represent scan errors; suppress these with `on_errors=false` if that format is unsuitable. Built-in dispatch uses `ReportNotificationChannel::sendReport`; the legacy `NotificationChannel::send(array)` API remains available. Teams report payloads are limited to 28,000 encoded JSON bytes; long reports retain status and counts and mark truncation. Delivery filtering does not change reports or exit codes, including exit `2` for incomplete audits.
 
 Configure any combination of:
 
