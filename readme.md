@@ -8,11 +8,14 @@
     <a href="https://packagist.org/packages/dgtlss/warden"><img src="https://img.shields.io/packagist/dt/dgtlss/warden?style=flat-square" alt="Total Downloads"></a>
     <a href="https://packagist.org/packages/dgtlss/warden"><img src="https://img.shields.io/packagist/php-v/dgtlss/warden?style=flat-square" alt="PHP Version"></a>
     <a href="https://github.com/dgtlss/warden/blob/main/LICENSE"><img src="https://img.shields.io/github/license/dgtlss/warden?style=flat-square" alt="License"></a>
+    <a href="https://github.com/sponsors/dgtlss"><img src="https://img.shields.io/github/sponsors/dgtlss?style=flat-square&label=Sponsor&logo=githubsponsors" alt="Sponsor Warden"></a>
 </p>
 
 ## Introduction
 
 Warden audits locked production dependencies, supply-chain configuration, and high-confidence Laravel production settings without becoming part of the deployed application.
+
+Warden is free, MIT-licensed and independently maintained. If it protects your pipelines, please consider [sponsoring its development](https://github.com/sponsors/dgtlss).
 
 ## Requirements
 
@@ -308,6 +311,18 @@ Please see [contributing.md](contributing.md) for contribution guidelines. Upgra
 ## Security Vulnerabilities
 
 Please report security vulnerabilities privately using [GitHub Security Advisories](https://github.com/dgtlss/warden/security/advisories/new).
+
+## Support Warden
+
+Vulnerable dependencies and risky production settings are among the easiest ways for a Laravel application to be compromised, and Warden exists to catch them before they ship. It is free, MIT-licensed and independently maintained.
+
+Sponsorship directly funds:
+
+- **Maintenance**: keeping pace with new PHP and Laravel releases, Composer and npm changes, and CI platform updates
+- **Advisory and rule coverage**: faster support for new advisory sources, supply-chain checks and source security rules
+- **New features**: additional lockfile formats such as Yarn, pnpm and Bun, more report formats, and better CI integrations
+
+If Warden is part of your team's release process, [sponsoring on GitHub](https://github.com/sponsors/dgtlss) is the most direct way to keep it healthy. Company sponsors are very welcome. Starring the repository and reporting issues helps too.
 
 ## License
 
