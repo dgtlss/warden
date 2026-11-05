@@ -5,6 +5,7 @@ namespace Dgtlss\Warden\Notifications\Channels;
 use Dgtlss\Warden\Contracts\ReportNotificationChannel;
 use Dgtlss\Warden\Notifications\ReportMessage;
 use Dgtlss\Warden\ValueObjects\AuditReport;
+use Dgtlss\Warden\ValueObjects\Finding;
 use Illuminate\Support\Facades\Http;
 
 class SlackChannel implements ReportNotificationChannel
@@ -22,9 +23,24 @@ class SlackChannel implements ReportNotificationChannel
             return;
         }
 
-        $title = ReportMessage::title($auditReport);
-        $body = ReportMessage::body($auditReport);
-        Http::post($this->webhookUrl, ['text' => $title . PHP_EOL . $body])->throw();
+        if ($auditReport->errors() !== []) {
+            $title = ReportMessage::title($auditReport);
+            $body = ReportMessage::body($auditReport);
+            Http::post($this->webhookUrl, ['text' => $title . PHP_EOL . $body])->throw();
+
+            return;
+        }
+
+        $this->send(array_map(
+            static fn (Finding $finding): array => [
+                'source' => $finding->source,
+                'package' => $finding->package ?? 'application',
+                'title' => $finding->title,
+                'severity' => $finding->severity->value,
+                'cve' => $finding->reference,
+            ],
+            $auditReport->findings(),
+        ));
     }
 
     /** @param array<array<string, mixed>> $findings */
