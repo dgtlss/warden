@@ -55,6 +55,7 @@ final class NotificationPreferencesTest extends TestCase
                 } else {
                     self::assertSame('warden::mail.enhanced-report', $arguments[0]);
                 }
+
                 $callback = $arguments[count($arguments) - 1];
                 $message = new \Illuminate\Mail\Message(new \Symfony\Component\Mime\Email());
                 $callback($message);
